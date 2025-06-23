@@ -1,0 +1,241 @@
+/**
+ * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * 
+ * Stili per il layout principale dell'applicazione.
+ * Include header, navigazione, logo, menu dropdown e footer.
+ * 
+ * @package C2MS
+ * @subpackage Styles
+ * @version 1.0
+ * @since 1.0
+ * @author Michele Di Gennaro
+ * @copyright 2025 C2MS
+ * 
+ * Sezioni:
+ * - Header & Logo: Logo animato e header principale
+ * - Navigation: Menu principale e navigazione
+ * - Dropdown Menus: Menu a tendina e sottomenu
+ * - Footer: Footer dell'applicazione
+ * - Responsive: Adattamenti per dispositivi mobili
+ */
+
+/* ===========================================
+   HEADER E LOGO
+   =========================================== */
+   .header-logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    z-index: 1031;
+    padding: 0 15px;
+}
+
+.logo-text {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 1.8rem;
+    letter-spacing: 0.2em;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    padding: 0 5px;
+    transition: letter-spacing 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.logo-letter {
+    display: inline-block;
+    transform-origin: center center;
+    position: relative;
+    transition: transform 0.3s ease-out, color 0.3s ease;
+}
+
+/* Effetto hover sofisticato del logo */
+.header-logo:hover .logo-text {
+    letter-spacing: 0.25em;
+}
+
+.header-logo:hover .logo-letter:nth-child(1) {
+    color: var(--gold-light);
+    transform: translateY(-2px);
+}
+
+.header-logo:hover .logo-letter:nth-child(2) {
+    color: var(--gold);
+    transform: translateY(2px);
+}
+
+.header-logo:hover .logo-letter:nth-child(3) {
+    color: var(--gold-light);
+    transform: translateY(-1px);
+}
+
+.header-logo:hover .logo-letter:nth-child(4) {
+    color: var(--gold);
+    transform: translateY(1px);
+}
+
+/* ===========================================
+   NAVIGAZIONE PRINCIPALE
+   =========================================== */
+.nav-center {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    height: 100%;
+}
+
+.header-spacer {
+    width: 150px; /* Bilanciare con la larghezza del logo */
+}
+
+/* Horizontal Navigation */
+.nav-menu {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+.nav-menu-item {
+    position: relative;
+    height: 100%;
+}
+
+.nav-menu-item > a {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1.2rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--transition-normal);
+    border-bottom: 3px solid transparent;
+}
+
+.nav-menu-item > a:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: var(--gold);
+}
+
+.nav-menu-item.active > a {
+    color: white;
+    border-bottom-color: var(--gold);
+}
+
+.nav-menu-item i {
+    margin-right: 0.5rem;
+}
+
+/* ===========================================
+   MENU DROPDOWN
+   =========================================== */
+.nav-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 220px;
+    background-color: white;
+    border-radius: 0 0 6px 6px;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    z-index: 1025;
+    list-style: none;
+    padding: 0;
+}
+
+.nav-menu-item:hover .nav-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.nav-dropdown-item a {
+    display: block;
+    padding: 0.75rem 1.5rem;
+    color: var(--navy);
+    text-decoration: none;
+    transition: var(--transition-normal);
+}
+
+.nav-dropdown-item a:hover {
+    background-color: rgba(10, 35, 66, 0.05);
+    color: var(--navy-light);
+}
+
+.nav-dropdown-item.active a {
+    color: var(--navy-light);
+    font-weight: 500;
+    background-color: rgba(10, 35, 66, 0.03);
+}
+
+/* ===========================================
+   FOOTER
+   =========================================== */
+.footer {
+    background-color: var(--navy);
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    padding: 1rem;
+    font-size: 0.875rem;
+}
+
+.footer a {
+    color: var(--gold);
+    text-decoration: none;
+}
+
+/* ===========================================
+   RESPONSIVE LAYOUT
+   =========================================== */
+@media (max-width: 992px) {
+    .nav-menu-item > a {
+        padding: 0 0.8rem;
+        font-size: 0.9rem;
+    }
+    
+    .header-logo {
+        padding: 0 10px;
+    }
+    
+    .logo-text {
+        font-size: 1.6rem;
+    }
+    
+    .header-spacer {
+        width: 120px;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-center {
+        position: static;
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+    
+    .nav-menu {
+        width: 100%;
+        overflow-x: auto;
+    }
+    
+    .nav-menu-item > a {
+        padding: 0 0.6rem;
+        font-size: 0.85rem;
+    }
+    
+    .logo-text {
+        font-size: 1.4rem;
+    }
+    
+    .header-spacer {
+        display: none;
+    }
+}

@@ -1,0 +1,48 @@
+---
+description: Specific rules for IA
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+Sei un esperto full stack developer e web designer di successo, con anni di esperienza nello sviluppo di applicazioni web complesse. Il progetto su cui stai lavorando è basato su Laravel (PHP 8.2+ e Laravel 11) e utilizza Blade come motore di templating, MySQL come database e CSS/JS per il front-end. Il progetto include modelli Eloquent per entità come Militare, Certificato, Grado, Plotone, Polo, Presenza e altri, e definisce controllori come MilitareController, CertificatiController e OrganigrammaController.
+Il front-end è composto da viste Blade che utilizzano componenti riutilizzabili (partial) e una struttura modulare. Il design si basa su Bootstrap 4.5, Google Fonts (Montserrat) e Font Awesome per le icone. Il progetto gestisce anche funzionalità di ricerca e filtri dinamici, salvataggio automatico dei dati via AJAX, e un’architettura RESTful per le risorse.
+
+Le regole e i requisiti specifici del progetto sono:
+
+Struttura del Progetto e Architettura:
+
+Il codice è organizzato secondo le convenzioni Laravel.
+I modelli (es. Militare, Certificato, Grado, Plotone, Polo, Presenza) sono definiti in app/Models e usano le relazioni Eloquent per collegarsi tra loro.
+I controllori in app/Http/Controllers gestiscono la logica applicativa, ad esempio CertificatiController per la gestione dei certificati (compresi metodi come corsiLavoratori, pefo, idoneita, create, edit, update, etc.) e MilitareController per la gestione dei militari.
+Routing e Viste:
+
+Le rotte sono definite in routes/web.php con un prefisso “certificati” per tutte le funzionalità relative ai certificati e sono strutturate in modo RESTful.
+Le viste sono create con Blade e sono suddivise in layout e partials per promuovere la riutilizzabilità.
+Le pagine includono file CSS personalizzati (spostati nella cartella public/css) e script JavaScript per funzionalità dinamiche (filtri, ricerca, salvataggio automatico, etc.).
+Front-End e UI:
+
+Il design utilizza Bootstrap 4.5 per la responsività e componenti UI standard.
+Viene utilizzata Google Fonts (Montserrat) per una tipografia coerente.
+Font Awesome (CDN) viene impiegato per le icone in tutta l’applicazione.
+Il CSS personalizzato è gestito tramite file statici in public/css (es. certificati.css per le pagine relative ai certificati e militare.css per le pagine dei militari).
+Le funzionalità di mostra/nascondi filtri e di suggerimento nella ricerca sono implementate in JavaScript, con attenzione alla corretta gestione del DOM e degli eventi.
+Interazione AJAX e Funzionalità Dinamiche:
+
+Il salvataggio automatico dei campi (es. ruoli e note) avviene via AJAX, con richieste PUT al controller dei militari.
+Le funzioni JavaScript devono essere scritte in modo robusto, controllando l'esistenza degli elementi prima di assegnare gli event listener e gestendo eventuali errori.
+Requisiti di Best Practice e Standard:
+
+Il codice deve essere modulare, leggibile e commentato dove necessario per facilitare la manutenzione.
+Si devono seguire le convenzioni di Laravel e PSR-12 per la formattazione del codice.
+Le query e le relazioni Eloquent devono essere ottimizzate per garantire performance elevate, soprattutto per le funzionalità di ricerca e filtraggio.
+
+In quanto IA, dovrai:
+Fornire suggerimenti e revisioni approfondite sul codice già esistente (modelli, controllori, viste, rotte e file statici).
+Correggere eventuali errori (come il riferimento a metodi mancanti nel controller, errori di query SQL, e problemi nel caricamento degli asset).
+Ottimizzare la struttura delle viste, promuovendo l'uso di partials e layout per aumentare la riutilizzabilità del codice.
+Assicurarti che le funzionalità dinamiche (come il toggle dei filtri e il salvataggio automatico via AJAX) funzionino in modo affidabile e senza errori.
+Offrire linee guida per la corretta configurazione dell'ambiente (DocumentRoot, gestione degli asset, sicurezza CSRF, ecc.).
+Scrivere codice completo, commentato e conforme agli standard del settore, specifico per le tecnologie utilizzate (PHP, Laravel, Blade, JavaScript, CSS, Bootstrap, Font Awesome, MySQL).
+Utilizza tutte le informazioni presenti nei file caricati per garantire che le soluzioni proposte siano fedeli al progetto e alle tecnologie usate.

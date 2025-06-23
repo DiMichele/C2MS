@@ -1,0 +1,699 @@
+/* Modern Dashboard Styles */
+
+/* ==========================================
+   GLOBAL FONT CONSISTENCY
+   ========================================== */
+*:not([class*="fa-"]):not(.fa):not(.fas):not(.far):not(.fab):not(.fal):not(.fad) {
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important;
+}
+
+h1:not(.page-title), h2:not(.page-title), h3:not(.page-title), h4:not(.page-title), h5:not(.page-title), h6:not(.page-title), .card-title, .kpi-value {
+    font-family: 'Oswald', 'Arial Black', Arial, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+/* Titoli pagina uniformi - Regola specifica */
+h1.page-title, h2.page-title, h3.page-title, h4.page-title, h5.page-title, h6.page-title {
+    font-family: 'Oswald', sans-serif !important;
+    font-size: 2.5rem !important;
+    font-weight: 300 !important;
+    color: #0A2342 !important;
+    margin-bottom: 0 !important;
+    text-align: center !important;
+    letter-spacing: 0.5px !important;
+}
+
+
+
+/* Font Awesome Override  */
+.fa, .fas, .far, .fab, .fal, .fad, [class*="fa-"] {
+    font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", "Font Awesome 5 Free", "Font Awesome 5 Pro", FontAwesome !important;
+    font-weight: 900 !important;
+    -webkit-font-smoothing: antialiased;
+    display: inline-block;
+    font-style: normal;
+    font-variant: normal;
+    text-rendering: auto;
+    line-height: 1;
+}
+
+/* ==========================================
+   MINIMAL HEADER
+   ========================================== */
+.minimal-header {
+    margin-bottom: 2.5rem;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.minimal-header h1 {
+    font-size: 2.5rem;
+    color: #0A2342;
+    margin-bottom: 0.5rem;
+    letter-spacing: 1px;
+}
+
+.minimal-header p {
+    color: #6c757d;
+    font-size: 1.1rem;
+    margin-bottom: 0;
+    font-weight: 400;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* ==========================================
+   SEARCH SECTION - DESIGN PULITO E PROFESSIONALE
+   ========================================== */
+.search-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.search-wrapper {
+    position: relative;
+    max-width: 500px;
+    width: 100%;
+}
+
+/* INPUT SEARCH - STILE PULITO E PROFESSIONALE */
+.search-input-clean,
+input.search-input-clean,
+#quickSearch.search-input-clean {
+    display: block;
+    width: 100%;
+    height: 50px;
+    padding: 0 18px 0 50px;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #333;
+    background-color: #fff;
+    border: 2px solid #e1e8ed;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    outline: none;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+/* STATI FOCUS E HOVER */
+.search-input-clean:focus,
+input.search-input-clean:focus,
+#quickSearch.search-input-clean:focus {
+    border-color: #0A2342;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.1);
+    outline: none;
+}
+
+.search-input-clean:hover,
+input.search-input-clean:hover,
+#quickSearch.search-input-clean:hover {
+    border-color: #346751;
+}
+
+/* PLACEHOLDER STYLING */
+.search-input-clean::placeholder,
+input.search-input-clean::placeholder,
+#quickSearch.search-input-clean::placeholder {
+    color: #8E9BAE;
+    font-weight: 400;
+}
+
+/* ICONA SEARCH - Override del CSS globale */
+.search-wrapper .search-icon {
+    position: absolute !important;
+    left: 18px !important;
+    right: auto !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: #8E9BAE !important;
+    font-size: 16px !important;
+    transition: all 0.2s ease !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+    font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro" !important;
+    font-weight: 900 !important;
+}
+
+.search-wrapper:focus-within .search-icon {
+    color: #0A2342 !important;
+}
+
+/* ==========================================
+   CLEAN ALERTS SECTION
+   ========================================== */
+.card-header-clean {
+    background: linear-gradient(135deg, #f8f9fa, #ffffff);
+    border-bottom: 1px solid #e9ecef;
+    padding: 1.5rem;
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.card-title-clean {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0A2342;
+    margin: 0;
+}
+
+.card-subtitle-clean {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin: 0.5rem 0 0 0;
+}
+
+.alerts-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+}
+
+.alert-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.alert-item:last-child {
+    border-bottom: none;
+}
+
+.alert-item:hover {
+    background-color: #f8f9fa;
+}
+
+.alert-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.alert-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.alert-item.critical .alert-icon {
+    background: rgba(172, 14, 40, 0.1);
+    color: #AC0E28;
+}
+
+.alert-item.warning .alert-icon {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.alert-item.info .alert-icon {
+    background: rgba(52, 103, 81, 0.1);
+    color: #346751;
+}
+
+.alert-message {
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 0.25rem;
+    font-family: 'Roboto', sans-serif;
+}
+
+.alert-detail {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-family: 'Roboto', sans-serif;
+}
+
+.alert-action {
+    flex-shrink: 0;
+    margin-left: 1rem;
+}
+
+/* ==========================================
+   COMPACT KPI CARDS
+   ========================================== */
+.compact-kpi-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.compact-kpi-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.compact-kpi-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    transition: all 0.3s ease;
+}
+
+.compact-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.compact-kpi-card:hover::before {
+    height: 6px;
+}
+
+.compact-kpi-card.kpi-primary::before { 
+    background: linear-gradient(90deg, #0A2342, #1a3a5c); 
+}
+.compact-kpi-card.kpi-success::before { 
+    background: linear-gradient(90deg, #346751, #4a8066); 
+}
+.compact-kpi-card.kpi-danger::before { 
+    background: linear-gradient(90deg, #AC0E28, #c71e3c); 
+}
+
+.compact-kpi-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.compact-kpi-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.compact-kpi-card:hover .compact-kpi-icon {
+    transform: scale(1.1);
+}
+
+.compact-kpi-card.kpi-primary .compact-kpi-icon {
+    color: #0A2342;
+    background: linear-gradient(135deg, rgba(10, 35, 66, 0.1), rgba(10, 35, 66, 0.05));
+}
+
+.compact-kpi-card.kpi-success .compact-kpi-icon {
+    color: #346751;
+    background: linear-gradient(135deg, rgba(52, 103, 81, 0.1), rgba(52, 103, 81, 0.05));
+}
+
+.compact-kpi-card.kpi-danger .compact-kpi-icon {
+    color: #AC0E28;
+    background: linear-gradient(135deg, rgba(172, 14, 40, 0.1), rgba(172, 14, 40, 0.05));
+}
+
+.compact-kpi-data {
+    flex: 1;
+}
+
+.compact-kpi-value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.compact-kpi-card.kpi-primary .compact-kpi-value { color: #0A2342; }
+.compact-kpi-card.kpi-success .compact-kpi-value { color: #346751; }
+.compact-kpi-card.kpi-danger .compact-kpi-value { color: #AC0E28; }
+
+.compact-kpi-label {
+    color: #6c757d;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-family: 'Roboto', sans-serif;
+}
+
+.compact-kpi-trend {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    backdrop-filter: blur(10px);
+    font-family: 'Roboto', sans-serif;
+}
+
+.compact-kpi-trend.trend-up {
+    background: rgba(52, 103, 81, 0.1);
+    color: #346751;
+    border: 1px solid rgba(52, 103, 81, 0.2);
+}
+
+.compact-kpi-trend.trend-down {
+    background: rgba(172, 14, 40, 0.1);
+    color: #AC0E28;
+    border: 1px solid rgba(172, 14, 40, 0.2);
+}
+
+/* ==========================================
+   CLICKABLE ORG ITEMS
+   ========================================== */
+.org-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.org-item:hover {
+    background: #f8f9fa;
+    border-color: #0A2342;
+    transform: translateX(4px);
+    text-decoration: none;
+    color: inherit;
+}
+
+.org-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.org-count {
+    background: #0A2342;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    min-width: 30px;
+    text-align: center;
+}
+
+/* ==========================================
+   CARD TITLES CLEAN
+   ========================================== */
+.card-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+/* Override Bootstrap focus styles */
+.form-control:focus,
+input:focus,
+.modern-search-input:focus {
+    outline: none !important;
+    box-shadow: 0 8px 32px rgba(10, 35, 66, 0.15) !important;
+    border-color: #0A2342 !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .kpi-card {
+        padding: 1rem;
+    }
+    
+    .kpi-value {
+        font-size: 1.5rem;
+    }
+    
+    .search-wrapper {
+        max-width: 100%;
+    }
+    
+    .search-input-clean {
+        height: 48px;
+        font-size: 14px;
+        padding: 0 16px 0 45px;
+    }
+    
+    .search-wrapper .search-icon {
+        left: 16px !important;
+        right: auto !important;
+        font-size: 14px !important;
+    }
+}
+
+/* ==========================================
+   SEZIONE AZIONI CERTIFICATI - DESIGN ESPANSO
+   ========================================== */
+.cert-actions-section {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid #e9ecef;
+}
+
+.cert-action-btn {
+    padding: 0.8rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 50px;
+}
+
+.cert-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.cert-action-btn i {
+    font-size: 1rem;
+}
+
+.cert-action-btn span {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Media query per mobile */
+@media (max-width: 576px) {
+    .cert-actions-section {
+        margin-top: 1rem;
+    }
+    
+    .cert-action-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .cert-action-btn span {
+        font-size: 0.85rem;
+    }
+}
+
+/* ==========================================
+   OTTIMIZZAZIONE CARD-BODY PER DASHBOARD
+   ========================================== */
+.dashboard-card .card-body {
+    padding: 1.25rem !important;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.dashboard-card .card-header {
+    padding: 1.25rem !important;
+}
+
+/* Ottimizzazione contenuto certificati */
+.cert-content-expanded {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.cert-stats-row {
+    margin-bottom: 1.1rem;
+    font-size: 1.05rem;
+    padding: 0.3rem 0;
+}
+
+.cert-stats-row span:first-child {
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+.cert-stats-row span:last-child {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.cert-progress {
+    margin-top: 1.5rem !important;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Titoli sezioni più grandi */
+.dashboard-card h6.fw-bold {
+    font-size: 1.2rem !important;
+    margin-bottom: 1.25rem !important;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+/* Ottimizzazione per totale con bordo */
+.cert-stats-row.border-top {
+    border-top: 1px solid #dee2e6 !important;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem !important;
+    font-size: 1.1rem !important;
+}
+
+.cert-stats-row.border-top span {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+}
+
+/* Padding ridotto per mobile */
+@media (max-width: 768px) {
+    .dashboard-card .card-body {
+        padding: 1rem !important;
+        min-height: 320px;
+    }
+    
+    .dashboard-card .card-header {
+        padding: 1rem !important;
+    }
+    
+    .dashboard-card h6.fw-bold {
+        font-size: 1.1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .cert-stats-row {
+        margin-bottom: 0.9rem;
+        font-size: 0.95rem;
+    }
+    
+    .cert-actions-section {
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+    }
+    
+    .cert-action-btn {
+        padding: 0.65rem 1rem;
+        font-size: 0.9rem;
+        min-height: 45px;
+    }
+    
+    .cert-action-btn span {
+        font-size: 0.9rem;
+    }
+}
+
+/* ==========================================
+   OTTIMIZZAZIONE ACCESSO RAPIDO - SOLO CONTENITORE RIDOTTO
+   ========================================== */
+
+.quick-access-item {
+    padding: 2rem 1.5rem !important;
+}
+
+.quick-access-item i {
+    font-size: 2rem !important;
+    margin-bottom: 1.25rem !important;
+    width: 60px !important;
+    height: 60px !important;
+}
+
+.quick-access-text {
+    font-size: 0.95rem !important;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* Riduco il card-body della sezione accesso rapido */
+.quick-access-card .card-body {
+    padding: 0.75rem 1rem !important;
+}
+
+.quick-access-card .card-header {
+    padding: 0.75rem 1.25rem !important;
+}
+
+/* Grid bilanciata */
+.quick-access-grid {
+    gap: 0.75rem !important;
+    margin: 0 !important;
+}
+
+/* Elimino margini extra dalla sezione */
+.quick-access-card {
+    margin-bottom: 0 !important;
+}
+
+/* Altezza ottimizzata */
+.quick-access-card .card-body {
+    min-height: auto !important;
+    height: auto !important;
+}
+
+/* Mobile responsive per accesso rapido */
+@media (max-width: 768px) {
+    .quick-access-card .card-body {
+        padding: 0.5rem 0.75rem !important;
+    }
+    
+    .quick-access-card .card-header {
+        padding: 0.5rem 1rem !important;
+    }
+    
+    .quick-access-grid {
+        gap: 0.5rem !important;
+    }
+}
