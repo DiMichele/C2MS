@@ -1,4 +1,4 @@
-# C2MS - Sistema di Gestione Militare Digitale
+# C2MS -  Gestione e Controllo Digitale a Supporto del Comando
 
 Sistema completo per la gestione digitale delle informazioni militari, certificati, presenze e organigramma.
 
@@ -79,7 +79,7 @@ php artisan storage:link
 ```
 
 ### 10. Accedi all'applicazione
-Apri il browser e vai su: `http://localhost/C2MS`
+Apri il browser e vai su: `http://localhost/C2MS/public`
 
 ## Dati di Test Inclusi
 
@@ -150,4 +150,4 @@ Questo progetto è sviluppato per uso interno.
 
 ---
 
-**C2MS** - Sistema di Gestione Militare Digitale v1.0
+**C2MS** -  Gestione e Controllo Digitale a Supporto del Comando v1.0
