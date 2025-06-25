@@ -139,6 +139,7 @@
     <!-- Scripts Sistema - Caricati nell'ordine corretto delle dipendenze -->
     <script src="{{ asset('js/c2ms-core.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/toast-system.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/filters.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/search-fixed.js') }}?v={{ time() }}&bust={{ rand(1000,9999) }}&debug=true"></script>
     <script src="{{ asset('js/autosave.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/certificate-tooltips.js') }}?v={{ time() }}"></script>

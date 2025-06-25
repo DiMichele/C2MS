@@ -8,6 +8,7 @@ use App\Models\CertificatiLavoratori;
 use App\Models\Idoneita;
 use App\Models\Mansione;
 use App\Models\Ruolo;
+use App\Models\Grado;
 use App\Services\CertificatiService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -63,10 +64,11 @@ class CertificatiController extends Controller
         // Esegui la query con paginazione
         $militari = $query->paginate(25);
         
-        // Recupera ruoli per i filtri
+        // Recupera dati per i filtri
+        $gradi = \App\Models\Grado::orderBy('ordine')->get();
         $ruoli = Ruolo::orderBy('nome')->get();
         
-        return view('certificati.corsi_lavoratori', compact('militari', 'ruoli'));
+        return view('certificati.corsi_lavoratori', compact('militari', 'gradi', 'ruoli'));
     }
 
     /**
@@ -88,10 +90,11 @@ class CertificatiController extends Controller
         // Esegui la query con paginazione
         $militari = $query->paginate(25);
         
-        // Recupera mansioni per i filtri
+        // Recupera gradi e mansioni per i filtri
+        $gradi = Grado::orderBy('ordine')->get();
         $mansioni = Mansione::orderBy('nome')->get();
         
-        return view('certificati.idoneita', compact('militari', 'mansioni'));
+        return view('certificati.idoneita', compact('militari', 'gradi', 'mansioni'));
     }
 
     /**

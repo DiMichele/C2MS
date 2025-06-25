@@ -2,7 +2,7 @@
 <div class="note-form mb-4">
     <div class="card">
         <div class="card-header">
-            <h5><i class="fas fa-sticky-note me-2"></i> Note personali</h5>
+            <h5><i class="fas fa-sticky-note me-2"></i> Note Aggiuntive</h5>
         </div>
         <div class="card-body">
             <form id="noteForm">
@@ -13,7 +13,7 @@
                         class="form-control note-textarea" 
                         id="noteContent" 
                         name="contenuto" 
-                        placeholder="Aggiungi una nota personale su questo militare..."
+                        placeholder="Aggiungi una nota aggiuntiva su questo militare..."
                         rows="6"
                     >{{ $nota->contenuto ?? '' }}</textarea>
                     <div class="note-save-indicator" id="noteSaveIndicator">
@@ -23,7 +23,7 @@
                 </div>
             </form>
             <div class="note-info text-muted mt-2">
-                <small>Le note vengono salvate automaticamente mentre scrivi. Sono visibili solo a te.</small>
+                <small>Le note vengono salvate automaticamente mentre scrivi.</small>
             </div>
         </div>
     </div>

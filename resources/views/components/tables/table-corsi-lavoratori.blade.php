@@ -274,24 +274,15 @@
                                             </div>
                                             @endif
                                         </div>
+                                        
+                                        <div class="cert-actions">
+                                            <a href="{{ route('certificati.edit', $certPreposti->id) }}" 
+                                               class="btn btn-warning" 
+                                               title="Modifica certificato">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </a>
+                                        </div>
                                     </div>
-                                    @if($certPreposti)
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.edit', $certPreposti->id) }}" 
-                                           class="btn btn-warning" 
-                                           title="Modifica certificato">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </a>
-                                    </div>
-                                    @else
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.create', [$m->id, 'preposti']) }}" 
-                                           class="btn btn-success" 
-                                           title="Aggiungi certificato">
-                                            <i class="fas fa-upload"></i>
-                                        </a>
-                                    </div>
-                                    @endif
                                 @else
                                     <div class="cert-missing">
                                         <span class="badge bg-danger mb-2">Richiesto</span>
@@ -370,24 +361,15 @@
                                             </div>
                                             @endif
                                         </div>
+                                        
+                                        <div class="cert-actions">
+                                            <a href="{{ route('certificati.edit', $certDirigenti->id) }}" 
+                                               class="btn btn-warning" 
+                                               title="Modifica certificato">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </a>
+                                        </div>
                                     </div>
-                                    @if($certDirigenti)
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.edit', $certDirigenti->id) }}" 
-                                           class="btn btn-warning" 
-                                           title="Modifica certificato">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </a>
-                                    </div>
-                                    @else
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.create', [$m->id, 'dirigenti']) }}" 
-                                           class="btn btn-success" 
-                                           title="Aggiungi certificato">
-                                            <i class="fas fa-upload"></i>
-                                        </a>
-                                    </div>
-                                    @endif
                                 @else
                                     <div class="cert-missing">
                                         <span class="badge bg-danger mb-2">Richiesto</span>
@@ -696,24 +678,15 @@
                                             </div>
                                             @endif
                                         </div>
+                                        
+                                        <div class="cert-actions">
+                                            <a href="{{ route('certificati.edit', $certPreposti->id) }}" 
+                                               class="btn btn-warning" 
+                                               title="Modifica certificato">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </a>
+                                        </div>
                                     </div>
-                                    @if($certPreposti)
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.edit', $certPreposti->id) }}" 
-                                           class="btn btn-warning" 
-                                           title="Modifica certificato">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </a>
-                                    </div>
-                                    @else
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.create', [$m->id, 'preposti']) }}" 
-                                           class="btn btn-success" 
-                                           title="Aggiungi certificato">
-                                            <i class="fas fa-upload"></i>
-                                        </a>
-                                    </div>
-                                    @endif
                                 @else
                                     <div class="cert-missing">
                                         <span class="badge bg-danger mb-2">Richiesto</span>
@@ -792,24 +765,15 @@
                                             </div>
                                             @endif
                                         </div>
+                                        
+                                        <div class="cert-actions">
+                                            <a href="{{ route('certificati.edit', $certDirigenti->id) }}" 
+                                               class="btn btn-warning" 
+                                               title="Modifica certificato">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </a>
+                                        </div>
                                     </div>
-                                    @if($certDirigenti)
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.edit', $certDirigenti->id) }}" 
-                                           class="btn btn-warning" 
-                                           title="Modifica certificato">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </a>
-                                    </div>
-                                    @else
-                                    <div class="cert-actions mt-1">
-                                        <a href="{{ route('certificati.create', [$m->id, 'dirigenti']) }}" 
-                                           class="btn btn-success" 
-                                           title="Aggiungi certificato">
-                                            <i class="fas fa-upload"></i>
-                                        </a>
-                                    </div>
-                                    @endif
                                 @else
                                     <div class="cert-missing">
                                         <span class="badge bg-danger mb-2">Richiesto</span>

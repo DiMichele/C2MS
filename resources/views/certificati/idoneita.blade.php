@@ -12,7 +12,7 @@
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['mansione', 'certificati_registrati', 'stato_file', 'valido', 'in_scadenza', 'scaduti', 'idoneita_mansione', 'idoneita_smi', 'idoneita', 'pefo'] as $filter) {
+    foreach(['grado_id', 'mansione', 'certificati_registrati', 'stato_file', 'valido', 'in_scadenza', 'scaduti', 'idoneita_mansione', 'idoneita_smi', 'idoneita', 'pefo'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $hasActiveFilters = count($activeFilters) > 0;
@@ -75,6 +75,12 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // Inizializza il modulo Filters per l'auto-submit
+        if (typeof C2MS !== 'undefined' && typeof C2MS.Filters !== 'undefined') {
+            C2MS.Filters.init();
+        }
+        
         // Inizializza i tooltip dei certificati
         if (typeof initializeCertificateTooltips === 'function') {
             initializeCertificateTooltips();

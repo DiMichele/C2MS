@@ -25,7 +25,7 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         
-        // Seed dei dati di base necessari per i test
+        // Seed solo dei dati essenziali per i test (non tutti i militari)
         $this->seedBasicData();
     }
 

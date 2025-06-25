@@ -17,7 +17,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Nota;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -107,11 +106,11 @@ class NoteController extends Controller
                 'contenuto' => 'nullable|string|max:2000',
             ]);
 
-            // Cerca una nota esistente o ne crea una nuova
+            // Cerca una nota esistente o ne crea una nuova - Sistema monoutente
             $nota = Nota::updateOrCreate(
                 [
                     'militare_id' => $validated['militare_id'],
-                    'user_id' => Auth::id(),
+                    'user_id' => 1, // Sistema monoutente - ID utente fisso
                 ],
                 [
                     'contenuto' => $validated['contenuto'],
@@ -137,7 +136,7 @@ class NoteController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Errore durante il salvataggio della nota', [
-                'user_id' => Auth::id(),
+                'user_id' => 1, // Sistema monoutente
                 'militare_id' => $request->get('militare_id'),
                 'error' => $e->getMessage()
             ]);

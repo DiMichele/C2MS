@@ -99,15 +99,15 @@ class Nota extends Model
     }
 
     /**
-     * Scope per filtrare note per utente creatore
+     * Scope per filtrare note per utente creatore (Sistema monoutente - sempre utente 1)
      * 
      * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $userId ID dell'utente
+     * @param int $userId ID dell'utente (ignorato in sistema monoutente)
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopePerUtente($query, $userId)
+    public function scopePerUtente($query, $userId = 1)
     {
-        return $query->where('user_id', $userId);
+        return $query->where('user_id', 1); // Sistema monoutente
     }
 
     /**
@@ -273,28 +273,26 @@ class Nota extends Model
     }
 
     /**
-     * Verifica se l'utente può modificare questa nota
+     * Verifica se l'utente può modificare questa nota (Sistema monoutente - sempre true)
      * 
-     * @param \App\Models\User $user Utente da verificare
+     * @param \App\Models\User|null $user Utente da verificare (ignorato)
      * @return bool True se può modificare
      */
-    public function canEdit(User $user)
+    public function canEdit($user = null)
     {
-        // Solo il creatore può modificare la nota (entro 24 ore dalla creazione)
-        return $this->user_id === $user->id && 
-               $this->created_at >= now()->subHours(24);
+        // Sistema monoutente - tutte le note possono essere modificate
+        return true;
     }
 
     /**
-     * Verifica se l'utente può eliminare questa nota
+     * Verifica se l'utente può eliminare questa nota (Sistema monoutente - sempre true)
      * 
-     * @param \App\Models\User $user Utente da verificare
+     * @param \App\Models\User|null $user Utente da verificare (ignorato)
      * @return bool True se può eliminare
      */
-    public function canDelete(User $user)
+    public function canDelete($user = null)
     {
-        // Solo il creatore può eliminare la nota (entro 48 ore dalla creazione)
-        return $this->user_id === $user->id && 
-               $this->created_at >= now()->subHours(48);
+        // Sistema monoutente - tutte le note possono essere eliminate
+        return true;
     }
 }

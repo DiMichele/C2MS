@@ -193,7 +193,7 @@ class BoardController extends Controller
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
                 'column_id' => $validated['column_id'],
-                'created_by' => auth()->id(),
+                'created_by' => 1, // Sistema monoutente - ID utente fisso
                 'order' => $this->getNextOrderForColumn($validated['column_id'])
             ]);
 
@@ -480,7 +480,7 @@ class BoardController extends Controller
                 'file_path' => $path,
                 'file_size' => $file->getSize(),
                 'mime_type' => $file->getMimeType(),
-                'uploaded_by' => auth()->id()
+                'uploaded_by' => 1 // Sistema monoutente - ID utente fisso
             ]);
             
             return response()->json([

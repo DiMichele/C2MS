@@ -9,7 +9,7 @@
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['ruolo', 'certificati_registrati', 'stato_file', 'valido', 'in_scadenza', 'scaduti', 'cert_4h', 'cert_8h', 'cert_preposti', 'cert_dirigenti'] as $filter) {
+    foreach(['grado_id', 'ruolo', 'certificati_registrati', 'stato_file', 'valido', 'in_scadenza', 'scaduti', 'cert_4h', 'cert_8h', 'cert_preposti', 'cert_dirigenti'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $activeCount = count($activeFilters);
@@ -17,6 +17,28 @@
 @endphp
 
 @component('components.filters.filter-base', ['formAction' => route('certificati.corsi_lavoratori'), 'activeCount' => $activeCount, 'filterActive' => $filterActive])
+    {{-- Filtro Grado --}}
+    <div class="col-md-3 mb-3">
+        <label for="grado_id" class="form-label">
+            <i class="fas fa-medal me-1"></i> Grado
+        </label>
+        <div class="select-wrapper">
+            <select name="grado_id" id="grado_id" class="form-select filter-select {{ request()->filled('grado_id') ? 'applied' : '' }}">
+                <option value="">Tutti i gradi</option>
+                @if(isset($gradi))
+                    @foreach($gradi as $grado)
+                        <option value="{{ $grado->id }}" {{ request('grado_id') == $grado->id ? 'selected' : '' }}>
+                            {{ $grado->nome }}
+                        </option>
+                    @endforeach
+                @endif
+            </select>
+            @if(request()->filled('grado_id'))
+                <span class="clear-filter" data-filter="grado_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @endif
+        </div>
+    </div>
+    
     {{-- Filtro Ruolo --}}
     <div class="col-md-3 mb-3">
         <label for="ruolo" class="form-label">

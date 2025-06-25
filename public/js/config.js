@@ -124,7 +124,7 @@ window.C2MS_CONFIG = {
     MESSAGES: {
         NETWORK_ERROR: 'Errore di connessione. Verifica la tua connessione internet.',
         PERMISSION_DENIED: 'Non hai i permessi necessari per questa operazione.',
-        SESSION_EXPIRED: 'La sessione è scaduta. Effettua nuovamente il login.',
+        SESSION_EXPIRED: 'Errore di connessione. Ricarica la pagina.',
         GENERIC_ERROR: 'Si è verificato un errore imprevisto. Riprova più tardi.',
         SAVE_SUCCESS: 'Dati salvati con successo',
         DELETE_SUCCESS: 'Elemento eliminato con successo',

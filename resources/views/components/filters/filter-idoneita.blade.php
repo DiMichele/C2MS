@@ -9,7 +9,7 @@
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['mansione', 'certificati_registrati', 'stato_file', 'valido', 'in_scadenza', 'scaduti', 'idoneita_mansione', 'idoneita_smi', 'idoneita'] as $filter) {
+    foreach(['grado_id', 'mansione', 'certificati_registrati', 'stato_file', 'valido', 'in_scadenza', 'scaduti', 'idoneita_mansione', 'idoneita_smi', 'idoneita', 'pefo'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $activeCount = count($activeFilters);
@@ -17,6 +17,28 @@
 @endphp
 
 @component('components.filters.filter-base', ['formAction' => route('certificati.idoneita'), 'activeCount' => $activeCount, 'filterActive' => $filterActive])
+    {{-- Filtro Grado --}}
+    <div class="col-md-3 mb-3">
+        <label for="grado_id" class="form-label">
+            <i class="fas fa-medal me-1"></i> Grado
+        </label>
+        <div class="select-wrapper">
+            <select name="grado_id" id="grado_id" class="form-select filter-select {{ request()->filled('grado_id') ? 'applied' : '' }}">
+                <option value="">Tutti i gradi</option>
+                @if(isset($gradi))
+                    @foreach($gradi as $grado)
+                        <option value="{{ $grado->id }}" {{ request('grado_id') == $grado->id ? 'selected' : '' }}>
+                            {{ $grado->nome }}
+                        </option>
+                    @endforeach
+                @endif
+            </select>
+            @if(request()->filled('grado_id'))
+                <span class="clear-filter" data-filter="grado_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @endif
+        </div>
+    </div>
+    
     {{-- Filtro Mansione --}}
     <div class="col-md-3 mb-3">
         <label for="mansione" class="form-label">
@@ -121,6 +143,24 @@
             </select>
             @if(request()->filled('idoneita'))
                 <span class="clear-filter" data-filter="idoneita" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @endif
+        </div>
+    </div>
+    
+    {{-- Filtro PEFO --}}
+    <div class="col-md-3 mb-3">
+        <label for="pefo" class="form-label">
+            <i class="fas fa-dumbbell me-1"></i> PEFO
+        </label>
+        <div class="select-wrapper">
+            <select name="pefo" id="pefo" class="form-select filter-select {{ request()->filled('pefo') ? 'applied' : '' }}">
+                <option value="">Tutti</option>
+                <option value="attiva" {{ request('pefo') == 'attiva' ? 'selected' : '' }}>Valida</option>
+                <option value="in_scadenza" {{ request('pefo') == 'in_scadenza' ? 'selected' : '' }}>In scadenza</option>
+                <option value="scaduta" {{ request('pefo') == 'scaduta' ? 'selected' : '' }}>Scaduta</option>
+            </select>
+            @if(request()->filled('pefo'))
+                <span class="clear-filter" data-filter="pefo" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
             @endif
         </div>
     </div>

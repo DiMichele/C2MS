@@ -40,7 +40,8 @@ class CertificatiService
     public const TIPI_IDONEITA = [
         'idoneita_mansione', 
         'idoneita_smi', 
-        'idoneita'
+        'idoneita',
+        'pefo'
     ];
 
     /**
@@ -83,8 +84,15 @@ class CertificatiService
             'certificatiLavoratori' => function($q) {
                 $q->select('id', 'militare_id', 'tipo', 'data_ottenimento', 'data_scadenza', 'file_path');
             },
+            'grado:id,nome',
             'ruoloCertificati:id,nome'
         ]);
+        
+        // Filtro per grado
+        if ($request->filled('grado_id')) {
+            $gradoId = $request->input('grado_id');
+            $query->where('grado_id', $gradoId);
+        }
         
         // Filtro per ruolo
         if ($request->filled('ruolo')) {
@@ -117,8 +125,15 @@ class CertificatiService
             'idoneita' => function($q) {
                 $q->select('id', 'militare_id', 'tipo', 'data_ottenimento', 'data_scadenza', 'file_path');
             },
+            'grado:id,nome',
             'mansione:id,nome'
         ]);
+        
+        // Filtro per grado
+        if ($request->filled('grado_id')) {
+            $gradoId = $request->input('grado_id');
+            $query->where('grado_id', $gradoId);
+        }
         
         // Filtro per mansione
         if ($request->filled('mansione')) {
