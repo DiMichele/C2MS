@@ -63,16 +63,27 @@ class Militare extends Model
      */
     protected $fillable = [
         'grado_id',
+        'categoria',
+        'numero_matricola',
         'cognome',
         'nome',
         'plotone_id',
         'polo_id',
         'ruolo_id',
         'mansione_id',
+        'approntamento_principale_id',
+        'anzianita',
+        'email_istituzionale',
+        'telefono',
         'certificati_note',
         'idoneita_note', 
         'note',
-        'foto_path'
+        'ultimo_poligono_id',
+        'data_ultimo_poligono',
+        'nos_status',
+        'nos_scadenza',
+        'nos_note',
+        'compagnia_nos'
     ];
 
     /**
@@ -121,8 +132,11 @@ class Militare extends Model
      */
     public function scopeOrderByGradoENome($query)
     {
-        return $query->join('gradi', 'militari.grado_id', '=', 'gradi.id')
-                    ->orderByDesc('gradi.ordine')
+        return $query->leftJoin('gradi', 'militari.grado_id', '=', 'gradi.id')
+                    // Chi ha il grado viene prima (0), chi non ha grado viene dopo (1)
+                    ->orderByRaw('CASE WHEN militari.grado_id IS NULL THEN 1 ELSE 0 END')
+                    // Tra chi ha il grado, ordina per ordine CRESCENTE (ordine 1 = COL più alto, ordine 23 = SOL più basso)
+                    ->orderBy('gradi.ordine', 'asc')
                     ->orderBy('militari.cognome')
                     ->orderBy('militari.nome')
                     ->select('militari.*');
@@ -319,6 +333,74 @@ class Militare extends Model
     public function valutazioni()
     {
         return $this->hasMany(MilitareValutazione::class);
+    }
+
+    /**
+     * Relazione con l'approntamento principale
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function approntamentoPrincipale()
+    {
+        return $this->belongsTo(Approntamento::class, 'approntamento_principale_id');
+    }
+
+    /**
+     * Relazione many-to-many con gli approntamenti
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function approntamenti()
+    {
+        return $this->belongsToMany(Approntamento::class, 'militare_approntamenti')
+                    ->withPivot(['ruolo', 'data_assegnazione', 'data_fine_assegnazione', 'principale', 'note'])
+                    ->withTimestamps();
+    }
+
+    /**
+     * Relazione con le assegnazioni agli approntamenti
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function militareApprontamenti()
+    {
+        return $this->hasMany(MilitareApprontamento::class);
+    }
+
+    /**
+     * Relazione con le patenti possedute
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function patenti()
+    {
+        return $this->hasMany(PatenteMilitare::class);
+    }
+
+    /**
+     * Relazione con le pianificazioni giornaliere
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function pianificazioniGiornaliere()
+    {
+        return $this->hasMany(PianificazioneGiornaliera::class);
+    }
+
+    /**
+     * Relazione con i poligoni effettuati
+     */
+    public function poligoni()
+    {
+        return $this->hasMany(Poligono::class, 'militare_id');
+    }
+
+    /**
+     * Relazione con l'ultimo poligono effettuato
+     */
+    public function ultimoPoligono()
+    {
+        return $this->belongsTo(Poligono::class, 'ultimo_poligono_id');
     }
 
     // ============================================

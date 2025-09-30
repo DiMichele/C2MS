@@ -55,7 +55,7 @@ class Grado extends Model
      * 
      * @var array<string>
      */
-    protected $fillable = ['nome', 'ordine'];
+    protected $fillable = ['nome', 'sigla', 'categoria', 'ordine'];
 
     // ==========================================
     // RELAZIONI

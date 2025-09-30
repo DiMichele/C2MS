@@ -509,6 +509,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="fas fa-medkit"></i>
                         <span class="quick-access-text">Idoneità Scadute</span>
                     </a>
+                    <a href="{{ route('pianificazione.index') }}" class="quick-access-item blue">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="quick-access-text">Pianificazione Mensile</span>
+                    </a>
                 </div>
             </div>
         </div>

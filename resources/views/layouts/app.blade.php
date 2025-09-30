@@ -27,6 +27,9 @@
           integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
           crossorigin="anonymous" referrerpolicy="no-referrer" />
     
+    <!-- CSS Custom Radius per coerenza visiva -->
+    <link href="{{ asset('css/custom-radius.css') }}" rel="stylesheet">
+    
     <!-- CSS Sistema - Caricati nell'ordine corretto delle dipendenze -->
     <link rel="stylesheet" href="{{ asset('css/global.css') }}">
     <link rel="stylesheet" href="{{ asset('css/common.css') }}">
@@ -61,7 +64,22 @@
                     </a>
                 </li>
                 
-
+                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('organigramma*') ? 'active' : '' }}">
+                    <a href="#">
+                        Personale
+                    </a>
+                    <ul class="nav-dropdown">
+                        <li class="nav-dropdown-item {{ request()->is('cpt*') ? 'active' : '' }}">
+                            <a href="{{ route('pianificazione.index') }}">CPT</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('anagrafica*') && !request()->is('anagrafica/create') ? 'active' : '' }}">
+                            <a href="{{ route('anagrafica.index') }}">Anagrafica</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
+                            <a href="{{ url('/organigramma') }}">Organigramma</a>
+                        </li>
+                    </ul>
+                </li>
                 
                 <li class="nav-menu-item {{ request()->is('board*') ? 'active' : '' }}">
                     <a href="{{ route('board.index') }}">
@@ -73,20 +91,6 @@
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('board/calendar') ? 'active' : '' }}">
                             <a href="{{ route('board.calendar') }}">Calendario</a>
-                        </li>
-                    </ul>
-                </li>
-                
-                <li class="nav-menu-item {{ request()->is('militare*') || request()->is('organigramma*') ? 'active' : '' }}">
-                    <a href="{{ url('/militare') }}">
-                        Elenco Personale
-                    </a>
-                    <ul class="nav-dropdown">
-                        <li class="nav-dropdown-item {{ request()->is('militare*') && !request()->is('militare/create') ? 'active' : '' }}">
-                            <a href="{{ url('/militare') }}">Forza Effettiva</a>
-                        </li>
-                        <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
-                            <a href="{{ url('/organigramma') }}">Organigramma</a>
                         </li>
                     </ul>
                 </li>
@@ -225,3 +229,6 @@
     </script>
 </body>
 </html>
+
+
+

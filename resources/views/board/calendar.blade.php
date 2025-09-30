@@ -112,7 +112,7 @@
                         <select class="form-control select2" id="militari" name="militari[]" multiple>
                             @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
                             <option value="{{ $militare->id }}">
-                                {{ $militare->grado->abbreviazione }} {{ $militare->cognome }} {{ $militare->nome }}
+                                {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
                                 @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
                             </option>
                             @endforeach

@@ -2,27 +2,26 @@
 
 ## Panoramica
 
-Questa Test Suite completa per il **C2MS (Command and Control Management System)** include test unitari e feature per verificare tutte le funzionalità principali del sistema di gestione militare.
+Suite di test per il **C2MS (Command and Control Management System)** che include test unitari per verificare le funzionalità principali del sistema di gestione militare.
 
 ## 📁 Struttura Test
 
 ```
 tests/
 ├── TestCase.php                    # Classe base per tutti i test
-├── CreatesApplication.php          # Trait per creare l'applicazione
-├── Unit/                          # Test Unitari
+├── CreatesApplication.php          # Trait per creare l'applicazione  
+├── Unit/                          # Test Unitari (5 file)
 │   ├── MilitareModelTest.php      # Test modello Militare
 │   ├── MilitareServiceTest.php    # Test servizio MilitareService
-│   └── AssenzaModelTest.php       # Test modello Assenza
-├── Feature/                       # Test Feature (End-to-End)
-│   ├── MilitareControllerTest.php # Test controller HTTP
-│   └── DashboardControllerTest.php # Test dashboard e API
+│   ├── CertificatiServiceTest.php # Test servizio CertificatiService
+│   ├── EventoModelTest.php        # Test modello Evento
+│   └── GradoModelTest.php         # Test modello Grado
 └── README.md                      # Questa documentazione
 ```
 
 ## 🎯 Copertura Test
 
-### Test Unitari (Unit Tests)
+### Test Unitari Implementati
 
 **MilitareModelTest.php** - 20+ test cases
 - ✅ Relazioni Eloquent (grado, plotone, polo, ruolo, mansione)
@@ -30,6 +29,7 @@ tests/
 - ✅ Metodi business logic (getNomeCompleto, isPresente, hasAssenzaInDate)
 - ✅ Attributi calcolati (media_valutazioni)
 - ✅ Gestione directory e file system
+- ✅ Certificazioni (hasCertificatiValidi, hasIdoneitaValide)
 
 **MilitareServiceTest.php** - 15+ test cases
 - ✅ Filtri avanzati (grado, plotone, presenza)
@@ -38,228 +38,184 @@ tests/
 - ✅ Upload/gestione foto profilo
 - ✅ CRUD operations e validazione
 
-**AssenzaModelTest.php** - 12+ test cases
-- ✅ Scopes temporali (attiveOggi, future, passate)
+**CertificatiServiceTest.php** - 12+ test cases
+- ✅ Logica certificazioni lavoratori
+- ✅ Gestione idoneità operative  
+- ✅ Validazione stati certificati
+- ✅ Query building e filtri
+
+**EventoModelTest.php** - 10+ test cases
+- ✅ Relazioni con militari
+- ✅ Scopes temporali (attivi, futuri, passati)
 - ✅ Controlli sovrapposizione date
-- ✅ Metodi utilità (durata, stato, tipo)
-- ✅ Casting automatico date Carbon
+- ✅ Metodi utilità (durata, stato)
 
-### Test Feature (Integration Tests)
-
-**MilitareControllerTest.php** - 18+ test cases
-- ✅ CRUD completo HTTP (index, show, create, store, edit, update, destroy)
-- ✅ API endpoints (/api/militari, ricerca AJAX)
-- ✅ Upload/gestione foto via HTTP
-- ✅ Filtri e paginazione web
-- ✅ Gestione errori e validazione
-- ✅ Aggiornamenti real-time
-
-**DashboardControllerTest.php** - 12+ test cases
-- ✅ Statistiche accurate (presenti, assenti, eventi)
-- ✅ Performance con large dataset (100+ militari)
-- ✅ Certificati in scadenza
-- ✅ Eventi futuri e filtri temporali
-- ✅ API JSON per dashboard
-- ✅ Gestione dati corrotti/anomali
-- ✅ Cache e ottimizzazioni
+**GradoModelTest.php** - 8+ test cases
+- ✅ Ordinamento gerarchico
+- ✅ Relazioni con militari
+- ✅ Metodi di ricerca
+- ✅ Validazione dati
 
 ## 🚀 Esecuzione Test
 
-### Quick Start
+### Script Automatici
 ```powershell
-# Esegui script automatico (consigliato)
+# Test completi con backup automatico (CONSIGLIATO)
+.\run-tests-safe.ps1
+
+# Test standard con coverage
 .\run-tests.ps1
 ```
 
 ### Comandi Manuali
 
 ```bash
-# Tutti i test con coverage
-vendor/bin/phpunit --coverage-html=coverage
-
-# Solo test unitari
+# Tutti i test unitari
 vendor/bin/phpunit tests/Unit
 
-# Solo test feature
-vendor/bin/phpunit tests/Feature
+# Test specifico con dettagli
+vendor/bin/phpunit tests/Unit/MilitareModelTest.php --testdox
 
-# Test specifico
-vendor/bin/phpunit tests/Unit/MilitareModelTest.php
+# Test con coverage HTML
+vendor/bin/phpunit --coverage-html=coverage
 
-# Con debug verbose
-vendor/bin/phpunit --debug tests/Feature/MilitareControllerTest.php
+# Test con debug verboso
+vendor/bin/phpunit --debug tests/Unit/MilitareServiceTest.php
 ```
 
-### Preparazione Ambiente
+### Preparazione Ambiente Test
 
 ```bash
-# Installa dipendenze
-composer install
+# Configura PHPUnit per SQLite in memoria (già configurato)
+# Verifica configurazione in phpunit.xml:
+# <env name="DB_CONNECTION" value="sqlite"/>
+# <env name="DB_DATABASE" value=":memory:"/>
 
-# Configura ambiente test
-cp .env.example .env.testing
-php artisan key:generate --env=testing
-
-# Migra database test
-php artisan migrate:fresh --env=testing
+# Verifica dipendenze test
+composer install --dev
 ```
 
-## 📊 Metriche e Coverage
+## 📊 Configurazione Test
 
-### Target Coverage
-- **Modelli**: > 95% line coverage
-- **Servizi**: > 90% line coverage  
-- **Controller**: > 85% line coverage
-- **API**: > 90% line coverage
-
-### Performance Benchmarks
-- **Suite completa**: < 60 secondi
-- **Test unitari**: < 20 secondi
-- **Test feature**: < 40 secondi
-- **Dashboard con 100+ militari**: < 2 secondi
-
-## 🧬 Architettura Test
+### Database Test Sicuro
+Il sistema è configurato per utilizzare SQLite in memoria durante i test:
+- **Isolamento completo**: Nessun impatto sul database di produzione
+- **Performance**: Test rapidi senza I/O su disco  
+- **Pulizia automatica**: Database ricreato ad ogni test run
 
 ### TestCase Base
 La classe `TestCase` fornisce:
-- 🗄️ **Database refresh** automatico per ogni test
-- 👤 **Seed dati base** (gradi, plotoni, poli, ruoli, mansioni)
-- 🏭 **Factory methods** per creare militari di test
-- 📅 **Date helpers** per test temporali
-- 🔧 **Utility methods** per assertions comuni
+- 🗄️ **Database refresh** automatico (SQLite in memoria)
+- 👤 **Seed dati base** solo per test (gradi, plotoni, poli)
+- 🏭 **Factory methods** ottimizzati per test
+- 📅 **Date helpers** per scenari temporali
+- 🔧 **Utility methods** per assertions
 
-### Pattern Utilizzati
+### Script di Sicurezza
+`run-tests-safe.ps1` include:
+- Verifica configurazione SQLite
+- Backup automatico database produzione
+- Controlli pre-test
+- Ripristino in caso di problemi
 
-**AAA Pattern** (Arrange-Act-Assert)
+## 🧬 Pattern di Test
+
+### AAA Pattern (Arrange-Act-Assert)
 ```php
 public function test_militare_creation(): void
 {
-    // Arrange
-    $data = ['nome' => 'Mario', 'cognome' => 'Rossi'];
+    // Arrange - Prepara dati
+    $grado = Grado::factory()->create();
+    $data = ['nome' => 'Mario', 'cognome' => 'Rossi', 'grado_id' => $grado->id];
     
-    // Act
-    $militare = $this->createTestMilitare($data);
+    // Act - Esegui azione
+    $militare = Militare::create($data);
     
-    // Assert
+    // Assert - Verifica risultato
     $this->assertEquals('Mario', $militare->nome);
     $this->assertDatabaseHas('militari', $data);
 }
 ```
 
-**Given-When-Then** per feature tests
+### Test di Relazioni
 ```php
-public function test_militare_search(): void
+public function test_militare_relationships(): void
 {
-    // Given - militari esistenti
-    $this->createTestMilitare(['nome' => 'Mario']);
+    $militare = Militare::factory()->create();
     
-    // When - ricerca eseguita
-    $response = $this->get(route('militare.search', ['q' => 'Mar']));
-    
-    // Then - risultati corretti
-    $response->assertJson([['nome' => 'Mario']]);
+    // Verifica che le relazioni siano caricate correttamente
+    $this->assertInstanceOf(Grado::class, $militare->grado);
+    $this->assertInstanceOf(Plotone::class, $militare->plotone);
 }
 ```
 
 ## 🛠️ Strumenti e Tecnologie
 
 - **PHPUnit 11.x** - Framework test principale
-- **Laravel Testing** - Feature HTTP testing
+- **Laravel Testing** - Utilities per test Laravel
+- **SQLite in Memory** - Database test isolato
 - **Faker** - Generazione dati test realistici
-- **RefreshDatabase** - Isolamento database per test
-- **Storage Fake** - Mock file system per upload test
-- **Carbon** - Manipolazione date per test temporali
+- **Factory Pattern** - Creazione modelli per test
 
 ## 🔍 Debug e Troubleshooting
 
 ### Test Falliti
 ```bash
 # Esegui con stop al primo errore
-vendor/bin/phpunit --stop-on-failure
+vendor/bin/phpunit --stop-on-failure tests/Unit/
 
 # Debug specifico test
 vendor/bin/phpunit --debug tests/Unit/MilitareModelTest.php::test_militare_creation
 ```
 
-### Database Issues
+### Database Test Issues
 ```bash
-# Reset completo database test
-php artisan migrate:fresh --env=testing --force
+# Verifica configurazione SQLite
+php -m | grep sqlite
 
-# Verifica connessione
-php artisan tinker --env=testing
->>> DB::connection()->getPdo()
+# Test connessione in memoria
+vendor/bin/phpunit tests/Unit/GradoModelTest.php -v
 ```
 
-### Memory/Performance
+### Performance Test
 ```bash
-# Con memory usage
-vendor/bin/phpunit --debug --verbose
-
-# Profiling specifico
-php -d memory_limit=512M vendor/bin/phpunit tests/Feature/
+# Misurazione tempi
+vendor/bin/phpunit tests/Unit/ --debug --verbose
 ```
 
-## 📝 Best Practices
+## 📈 Metriche Test
 
-### ✅ DO
-- Usa nomi test descrittivi (`test_militare_creation_with_valid_data`)
-- Testa un comportamento per test
-- Usa factory/helper methods per setup
-- Verifica sia stato database che comportamento
-- Mock dipendenze esterne (storage, cache, API)
+### Target Coverage Attuali
+- **Modelli Core**: > 90% (Militare, Grado, Evento)
+- **Servizi**: > 85% (MilitareService, CertificatiService)  
+- **Business Logic**: > 80%
 
-### ❌ DON'T
-- Non testare funzionalità Laravel core
-- Non condividere stato tra test
-- Non usare sleep() per timing
-- Non lasciare test skip/incomplete in produzione
-- Non hardcodare ID/valori specifici
+### Performance Benchmark
+- **Suite completa**: < 30 secondi
+- **Test unitari**: < 15 secondi
+- **Test singolo**: < 2 secondi
 
-## 🔄 Integrazione Continua
+## 🚨 Note Importanti
 
-Il file `run-tests.ps1` può essere integrato in pipeline CI/CD:
+### Sicurezza Test
+- ✅ Database test completamente isolato (SQLite in memoria)
+- ✅ Nessun impatto su dati di produzione
+- ✅ Backup automatico nel script safe
+- ✅ Configurazione verificata automaticamente
 
-```yaml
-# GitHub Actions example
-- name: Run C2MS Test Suite
-  run: |
-    composer install --no-dev --optimize-autoloader
-    powershell -File run-tests.ps1
-    
-- name: Upload Coverage
-  uses: codecov/codecov-action@v1
-  with:
-    file: ./coverage/clover.xml
-```
+### Limitazioni Attuali
+- ❌ **Feature tests HTTP non implementati** (solo unit tests)
+- ❌ Test di integrazione API da sviluppare
+- ❌ Test browser automatizzati non presenti
 
-## 📈 Espansioni Future
+## 📝 Prossimi Sviluppi
 
-### Test Aggiuntivi Pianificati
-- 🔐 **Security Tests** - Autorizzazione e protezione CSRF
-- 📱 **API Tests** - Rest API completo con autenticazione
-- 🌐 **Browser Tests** - Laravel Dusk per UI testing
-- ⚡ **Load Tests** - Performance con 1000+ militari
-- 🔄 **Integration Tests** - Integrazione sistemi esterni
-
-### Miglioramenti
-- 📊 **Real-time Coverage** reporting
-- 🤖 **Auto-test** su file changes
-- 📧 **Email notifications** per fallimenti
-- 🏆 **Quality gates** per deploy
+- [ ] **Feature Tests**: Test HTTP endpoint
+- [ ] **Integration Tests**: Test completi flussi
+- [ ] **Browser Tests**: Test UI automatizzati
+- [ ] **Performance Tests**: Test sotto carico
+- [ ] **API Tests**: Test endpoint REST
 
 ---
 
-## 🎯 Risultati Attesi
-
-Eseguendo questa Test Suite dovresti ottenere:
-
-- ✅ **65+ test cases** tutti passati
-- 📊 **>90% code coverage** sui componenti core
-- ⚡ **<60s execution time** per suite completa
-- 🛡️ **Confidence** per deploy sicuri
-- 📈 **Quality metrics** per continuous improvement
-
----
-
-**Nota**: Questa Test Suite è progettata per essere eseguita in ambiente di sviluppo con database dedicato per i test. Non eseguire mai in produzione. 
+**Suite Test C2MS v2.1.0** - *Test sicuri e affidabili per il sistema di gestione militare* 

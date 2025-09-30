@@ -399,11 +399,14 @@ class MilitareService
         return [
             'nome' => 'required|string|max:255',
             'cognome' => 'required|string|max:255',
-            'grado_id' => 'nullable|exists:gradi,id',
+            'grado_id' => 'required|exists:gradi,id',
             'plotone_id' => 'nullable|exists:plotoni,id',
             'polo_id' => 'nullable|exists:poli,id',
             'ruolo_id' => 'nullable|exists:ruoli,id',
             'mansione_id' => 'nullable|exists:mansioni,id',
+            'anzianita' => 'nullable|string|max:255',
+            'email_istituzionale' => 'nullable|email|max:255',
+            'telefono' => 'nullable|string|max:20',
             'note' => 'nullable|string',
             'certificati_note' => 'nullable|string',
             'idoneita_note' => 'nullable|string'
@@ -499,12 +502,38 @@ class MilitareService
             $query->where('polo_id', $request->polo_id);
         }
         
+        if ($request->filled('nos_status')) {
+            $query->where('nos_status', $request->nos_status);
+        }
+        
         if ($request->filled('mansione_id')) {
             $query->where('mansione_id', $request->mansione_id);
         }
         
         if ($request->filled('ruolo_id')) {
             $query->where('ruolo_id', $request->ruolo_id);
+        }
+        
+        // Filtro per email istituzionale
+        if ($request->filled('email_istituzionale')) {
+            if ($request->email_istituzionale === 'registrata') {
+                $query->whereNotNull('email_istituzionale')->where('email_istituzionale', '!=', '');
+            } elseif ($request->email_istituzionale === 'non_registrata') {
+                $query->where(function($q) {
+                    $q->whereNull('email_istituzionale')->orWhere('email_istituzionale', '');
+                });
+            }
+        }
+        
+        // Filtro per telefono
+        if ($request->filled('telefono')) {
+            if ($request->telefono === 'registrato') {
+                $query->whereNotNull('telefono')->where('telefono', '!=', '');
+            } elseif ($request->telefono === 'non_registrato') {
+                $query->where(function($q) {
+                    $q->whereNull('telefono')->orWhere('telefono', '');
+                });
+            }
         }
         
         if ($request->filled('presenza')) {
@@ -520,7 +549,7 @@ class MilitareService
             }
         }
         
-        $militari = $query->orderByGradoENome()->paginate($perPage)->appends($request->query());
+        $militari = $query->orderByGradoENome()->get();
         
         // Dati per i filtri
         $gradi = Grado::orderBy('ordine')->get();
@@ -531,7 +560,7 @@ class MilitareService
         
         // Calcola filtri attivi
         $activeFilters = [];
-        $filterFields = ['presenza', 'grado_id', 'plotone_id', 'polo_id', 'mansione_id', 'ruolo_id'];
+        $filterFields = ['grado_id', 'plotone_id', 'polo_id', 'nos_status', 'mansione_id', 'ruolo_id', 'email_istituzionale', 'telefono'];
         
         foreach ($filterFields as $field) {
             if ($request->filled($field)) {

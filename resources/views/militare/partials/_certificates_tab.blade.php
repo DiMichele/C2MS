@@ -7,7 +7,7 @@
 | @author Michele Di Gennaro
 --}}
 
-<div class="tab-pane fade" id="certificates" role="tabpanel" aria-labelledby="certificates-tab">
+<div id="certificates">
     
     @php
         $totalCert = $militare->certificatiLavoratori->count();

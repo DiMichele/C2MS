@@ -125,7 +125,7 @@
             </div>
         @endif
         
-        <form method="POST" action="{{ isset($militare) ? route('militare.update', $militare->id) : route('militare.store') }}">
+        <form method="POST" action="{{ isset($militare) ? route('anagrafica.update', $militare->id) : route('anagrafica.store') }}">
             @csrf
             @if(isset($militare))
                 @method('PUT')
@@ -140,7 +140,24 @@
                         </h5>
                         
                         <div class="row">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="grado_id" class="form-label required-field">Grado</label>
+                                    <select class="form-select @error('grado_id') is-invalid @enderror" id="grado_id" name="grado_id" required>
+                                        <option value="">-- Seleziona Grado --</option>
+                                        @foreach($gradi as $grado)
+                                            <option value="{{ $grado->id }}" {{ old('grado_id', $militare->grado_id ?? '') == $grado->id ? 'selected' : '' }}>
+                                                {{ $grado->nome }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('grado_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="cognome" class="form-label required-field">Cognome</label>
                                     <input type="text" class="form-control @error('cognome') is-invalid @enderror" id="cognome" name="cognome" value="{{ old('cognome', $militare->cognome ?? '') }}" required>
@@ -150,7 +167,7 @@
                                 </div>
                             </div>
                             
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="nome" class="form-label required-field">Nome</label>
                                     <input type="text" class="form-control @error('nome') is-invalid @enderror" id="nome" name="nome" value="{{ old('nome', $militare->nome ?? '') }}" required>
@@ -159,21 +176,6 @@
                                     @enderror
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="grado_id" class="form-label">Grado</label>
-                            <select class="form-select @error('grado_id') is-invalid @enderror" id="grado_id" name="grado_id">
-                                <option value="">-- Seleziona Grado --</option>
-                                @foreach($gradi as $grado)
-                                    <option value="{{ $grado->id }}" {{ old('grado_id', $militare->grado_id ?? '') == $grado->id ? 'selected' : '' }}>
-                                        {{ $grado->nome }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('grado_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
                     </div>
                     
@@ -203,9 +205,9 @@
                             
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="polo_id" class="form-label">Polo</label>
+                                    <label for="polo_id" class="form-label">Ufficio</label>
                                     <select class="form-select @error('polo_id') is-invalid @enderror" id="polo_id" name="polo_id">
-                                        <option value="">-- Seleziona Polo --</option>
+                                        <option value="">-- Seleziona Ufficio --</option>
                                         @foreach($poli as $polo)
                                             <option value="{{ $polo->id }}" {{ old('polo_id', $militare->polo_id ?? '') == $polo->id ? 'selected' : '' }}>
                                                 {{ $polo->nome }}
@@ -222,17 +224,16 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="ruolo_id" class="form-label">Ruolo</label>
-                                    <select class="form-select @error('ruolo_id') is-invalid @enderror" id="ruolo_id" name="ruolo_id">
-                                        <option value="">-- Seleziona Ruolo --</option>
-                                        @foreach(\App\Models\Ruolo::all() as $ruolo)
-                                            <option value="{{ $ruolo->id }}" {{ old('ruolo_id', $militare->ruolo_id ?? '') == $ruolo->id ? 'selected' : '' }}>
-                                                {{ $ruolo->nome }}
+                                    <label for="mansione_id" class="form-label">Incarico</label>
+                                    <select class="form-select @error('mansione_id') is-invalid @enderror" id="mansione_id" name="mansione_id">
+                                        <option value="">-- Seleziona Incarico --</option>
+                                        @foreach(\App\Models\Mansione::all() as $mansione)
+                                            <option value="{{ $mansione->id }}" {{ old('mansione_id', $militare->mansione_id ?? '') == $mansione->id ? 'selected' : '' }}>
+                                                {{ $mansione->nome }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div class="form-text">Il ruolo determina i certificati richiesti</div>
-                                    @error('ruolo_id')
+                                    @error('mansione_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -240,17 +241,9 @@
                             
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="mansione_id" class="form-label">Mansione</label>
-                                    <select class="form-select @error('mansione_id') is-invalid @enderror" id="mansione_id" name="mansione_id">
-                                        <option value="">-- Seleziona Mansione --</option>
-                                        @foreach(\App\Models\Mansione::all() as $mansione)
-                                            <option value="{{ $mansione->id }}" {{ old('mansione_id', $militare->mansione_id ?? '') == $mansione->id ? 'selected' : '' }}>
-                                                {{ $mansione->nome }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div class="form-text">La mansione è collegata alle idoneità</div>
-                                    @error('mansione_id')
+                                    <label for="anzianita" class="form-label">Anzianità</label>
+                                    <input type="text" class="form-control @error('anzianita') is-invalid @enderror" id="anzianita" name="anzianita" value="{{ old('anzianita', $militare->anzianita ?? '') }}" placeholder="Es: 2024">
+                                    @error('anzianita')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -258,23 +251,37 @@
                         </div>
                     </div>
                     
-                    <!-- Note -->
+                    <!-- Informazioni di Contatto -->
                     <div class="form-section mb-0">
                         <h5 class="form-section-title">
-                            <i class="fas fa-sticky-note"></i> Note
+                            <i class="fas fa-address-card"></i> Informazioni di Contatto
                         </h5>
                         
-                        <div class="form-group">
-                            <label for="note" class="form-label">Note Generali</label>
-                            <textarea class="form-control @error('note') is-invalid @enderror" id="note" name="note" rows="4">{{ old('note', $militare->note ?? '') }}</textarea>
-                            @error('note')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email_istituzionale" class="form-label">Email Istituzionale</label>
+                                    <input type="email" class="form-control @error('email_istituzionale') is-invalid @enderror" id="email_istituzionale" name="email_istituzionale" value="{{ old('email_istituzionale', $militare->email_istituzionale ?? '') }}" placeholder="esempio@esercito.difesa.it">
+                                    @error('email_istituzionale')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="telefono" class="form-label">Numero di Cellulare</label>
+                                    <input type="tel" class="form-control @error('telefono') is-invalid @enderror" id="telefono" name="telefono" value="{{ old('telefono', $militare->telefono ?? '') }}" placeholder="+39 333 1234567">
+                                    @error('telefono')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="form-footer">
-                        <a href="{{ route('militare.index') }}" class="btn btn-outline-secondary">
+                        <a href="{{ route('anagrafica.index') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-times me-2"></i>Annulla
                         </a>
                         <button type="submit" class="btn btn-primary">

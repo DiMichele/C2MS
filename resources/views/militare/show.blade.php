@@ -879,48 +879,72 @@
             padding: 0.375rem 0.75rem;
         }
     }
+    
+    /* Stili per i pulsanti azione */
+    .action-buttons-center {
+        display: inline-flex;
+        gap: 0.75rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+    
+    .action-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        border: 2px solid;
+        background: white;
+        cursor: pointer;
+        font-size: 1rem;
+        text-decoration: none;
+    }
+    
+    .action-btn-edit {
+        border-color: #ffc107;
+        color: #ffc107;
+    }
+    
+    .action-btn-edit:hover {
+        background: #ffc107;
+        color: #212529;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+    }
+    
+    .action-btn-delete {
+        border-color: #dc3545;
+        color: #dc3545;
+    }
+    
+    .action-btn-delete:hover {
+        background: #dc3545;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+    
+    .action-btn:active {
+        transform: translateY(0);
+    }
 </style>
 @endsection
 
 @section('content')
-<!-- Header professionale senza container -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center">
-        <div class="profile-photo me-4" onclick="openPhotoModal({{ $militare->id }}, '{{ $militare->cognome }} {{ $militare->nome }}')">
-            <img src="{{ route('militare.foto', $militare->id) }}?t={{ time() }}" 
-                 alt="Foto di {{ $militare->cognome }} {{ $militare->nome }}"
-                 class="profile-image"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="photo-fallback" style="display: none;">
-                <i class="fas fa-user-tie"></i>
-            </div>
-            <div class="photo-overlay">
-                <i class="fas fa-camera"></i>
-            </div>
-        </div>
-        
-        <div class="profile-info">
-            <h1 class="profile-title mb-1">{{ $militare->grado->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</h1>
-            @if($valutazioneUtente)
-            <div class="profile-badge mt-1" id="header-valutazione-badge">
-                <span class="badge bg-light text-dark">
-                    <i class="fas fa-star text-warning me-1"></i>
-                    <span id="header-media-value">{{ $militare->media_valutazioni }}</span>
-                </span>
-            </div>
-            @endif
-        </div>
-    </div>
+<!-- Header centralizzato -->
+<div class="text-center mb-5">
+    <h1 class="page-title mb-5">{{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</h1>
     
-    <div class="profile-actions-right">
-        <div class="btn-group">
-            <a href="{{ route('militare.edit', $militare->id) }}" class="btn btn-outline-primary btn-sm">
-                <i class="fas fa-edit me-1"></i>Modifica
-            </a>
-            <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                <i class="fas fa-trash-alt me-1"></i>Elimina
+    <div class="action-buttons-center">
+        <a href="{{ route('anagrafica.edit', $militare->id) }}" class="action-btn action-btn-edit" data-bs-toggle="tooltip" data-bs-placement="top" title="Modifica">
+            <i class="fas fa-edit"></i>
+        </a>
+        <button type="button" class="action-btn action-btn-delete" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-toggle="tooltip" data-bs-placement="top" title="Elimina">
+            <i class="fas fa-trash-alt"></i>
         </button>
-        </div>
     </div>
 </div>
 
@@ -928,43 +952,20 @@
 
 <div class="row g-4">
     <!-- Informazioni Generali -->
-    <div class="col-lg-4">
+    <div class="col-lg-5 col-xl-4">
         @include('militare.partials._info_card')
     </div>
     
-    <!-- Tab per Certificati, Valutazioni e Note -->
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" id="profileTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="certificates-tab" data-bs-toggle="tab" data-bs-target="#certificates" type="button" role="tab" aria-controls="certificates" aria-selected="false">
-                            <i class="fas fa-file-alt me-2"></i>Certificati
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="valutazioni-tab" data-bs-toggle="tab" data-bs-target="#valutazioni" type="button" role="tab" aria-controls="valutazioni" aria-selected="true">
-                            <i class="fas fa-star me-2"></i>Valutazioni
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab" aria-controls="notes" aria-selected="false">
-                            <i class="fas fa-sticky-note me-2"></i>Note
-                        </button>
-                    </li>
-                </ul>
+    <!-- Panoramica Certificati -->
+    <div class="col-lg-7 col-xl-8">
+        <div class="info-card">
+            <div class="info-card-header">
+                <h5 class="info-card-title">
+                    <i class="fas fa-file-alt"></i> Panoramica Certificati
+                </h5>
             </div>
-            <div class="card-body">
-                <div class="tab-content" id="profileTabsContent">
-                    <!-- Tab Certificati -->
+            <div class="info-card-body">
                     @include('militare.partials._certificates_tab')
-                    
-                    <!-- Tab Valutazioni -->
-                    @include('militare.partials._valutazioni_tab')
-                    
-                    <!-- Tab Note -->
-                    @include('militare.partials._notes_tab')
-                </div>
             </div>
         </div>
     </div>
@@ -984,7 +985,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form action="{{ route('militare.destroy', $militare->id) }}" method="POST" style="display: inline;">
+                <form action="{{ route('anagrafica.destroy', $militare->id) }}" method="POST" style="display: inline;">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-danger">Elimina</button>
@@ -994,413 +995,13 @@
     </div>
 </div>
 
-<!-- Modal per gestione foto profilo -->
-<div class="modal fade" id="photoModal" tabindex="-1" aria-labelledby="photoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="photoModalLabel">
-                    <i class="fas fa-camera me-2"></i>Gestione Foto Profilo
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row">
-                    <!-- Anteprima foto corrente -->
-                    <div class="col-md-6">
-                        <h6 class="mb-3">Foto Attuale</h6>
-                        <div class="current-photo-container">
-                            <img id="currentPhoto" class="current-photo" alt="Foto attuale">
-                            <div id="noPhotoPlaceholder" class="no-photo-placeholder" style="display: none;">
-                                <i class="fas fa-user-tie"></i>
-                                <p>Nessuna foto caricata</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Upload nuova foto -->
-                    <div class="col-md-6">
-                        <h6 class="mb-3">Carica Nuova Foto</h6>
-                        <form id="photoUploadForm" enctype="multipart/form-data">
-                            <div class="upload-area" id="uploadArea">
-                                <i class="fas fa-cloud-upload-alt mb-3"></i>
-                                <p>Trascina qui la foto o <strong>clicca per selezionare</strong></p>
-                                <input type="file" id="photoInput" name="photo" accept="image/*" style="display: none;">
-                                <small class="text-muted">Formati supportati: JPG, PNG, GIF (max 5MB)</small>
-                            </div>
-                            
-                            <!-- Anteprima nuova foto -->
-                            <div id="newPhotoPreview" style="display: none;">
-                                <img id="previewImage" class="preview-image" alt="Anteprima">
-                                <div class="preview-actions mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="cancelUpload()">
-                                        <i class="fas fa-times me-1"></i>Annulla
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Progress bar -->
-                            <div id="uploadProgress" class="progress mt-3" style="display: none;">
-                                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Chiudi
-                </button>
-                <button type="button" class="btn btn-danger" id="deletePhotoBtn" onclick="deletePhoto()">
-                    <i class="fas fa-trash me-1"></i>Elimina Foto
-                </button>
-                <button type="button" class="btn btn-primary" id="uploadPhotoBtn" onclick="uploadPhoto()" style="display: none;">
-                    <i class="fas fa-upload me-1"></i>Carica Foto
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-// Definizione delle route per le foto
-const ROUTES = {
-    fotoGet: '/C2MS/public/militare/__ID__/foto',
-    fotoUpload: '/C2MS/public/militare/__ID__/foto/upload',
-    fotoDelete: '/C2MS/public/militare/__ID__/foto/delete'
-};
-
-let currentMilitareId = null;
-let currentMilitareName = '';
-
-// Funzione per ottenere l'URL corretto sostituendo l'ID
-function getRouteUrl(routeTemplate, militareId) {
-    return routeTemplate.replace('__ID__', militareId);
-}
-
-// Funzione per caricare la foto attuale nel modal
-function loadCurrentPhoto() {
-    if (!currentMilitareId) {
-        return;
-    }
-    
-    const photoUrl = getRouteUrl(ROUTES.fotoGet, currentMilitareId) + `?t=${Date.now()}`;
-    const currentPhotoImg = document.getElementById('currentPhoto');
-    
-    if (currentPhotoImg) {
-        currentPhotoImg.onerror = function() {
-            this.src = '/C2MS/public/storage/default-avatar.svg';
-            this.onerror = null; // Previeni loop infiniti
-        };
-        
-        currentPhotoImg.src = photoUrl;
-    }
-}
-
-// Funzione per aggiornare la foto nell'header
-function updateHeaderPhoto() {
-    if (!currentMilitareId) return;
-    
-    const photoUrl = getRouteUrl(ROUTES.fotoGet, currentMilitareId) + `?t=${Date.now()}`;
-    const headerPhoto = document.querySelector('.profile-image');
-    
-    if (headerPhoto) {
-        headerPhoto.onerror = function() {
-            this.src = '/C2MS/public/storage/default-avatar.svg';
-            this.onerror = null; // Previeni loop infiniti
-        };
-        
-        headerPhoto.src = photoUrl;
-    }
-}
-
-// Apri modal foto
-function openPhotoModal(militareId, militareName) {
-    currentMilitareId = militareId;
-    currentMilitareName = militareName;
-    
-    document.getElementById('photoModalLabel').innerHTML = 
-        '<i class="fas fa-camera me-2"></i>Gestione Foto Profilo - ' + militareName;
-    
-    // Carica foto attuale
-    loadCurrentPhoto();
-    
-    // Mostra modal
-    const photoModal = new bootstrap.Modal(document.getElementById('photoModal'));
-    photoModal.show();
-}
-
-// Setup per drag & drop e file input
+// Inizializza i tooltip di Bootstrap
 document.addEventListener('DOMContentLoaded', function() {
-    const uploadArea = document.getElementById('uploadArea');
-    const photoInput = document.getElementById('photoInput');
-    const newPhotoPreview = document.getElementById('newPhotoPreview');
-    const previewImage = document.getElementById('previewImage');
-    const uploadBtn = document.getElementById('uploadPhotoBtn');
-    
-    // Click per selezionare file
-    uploadArea.onclick = function() {
-        photoInput.click();
-    };
-    
-    // Drag & Drop
-    uploadArea.ondragover = function(e) {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    };
-    
-    uploadArea.ondragleave = function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-    };
-    
-    uploadArea.ondrop = function(e) {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFileSelect(files[0]);
-        }
-    };
-    
-    // File input change
-    photoInput.onchange = function(e) {
-        if (e.target.files.length > 0) {
-            handleFileSelect(e.target.files[0]);
-        }
-    };
-    
-    function handleFileSelect(file) {
-        // Validazione file
-        if (!file.type.startsWith('image/')) {
-            showErrorToast('Formato non valido', 'Seleziona un file immagine (JPG, PNG, GIF)');
-            return;
-        }
-        
-        if (file.size > 5 * 1024 * 1024) {
-            const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-            showErrorToast('File troppo grande', `Il file è di ${sizeMB}MB. Dimensione massima consentita: 5MB`);
-            return;
-        }
-        
-        // Mostra anteprima
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            previewImage.src = e.target.result;
-            uploadArea.style.display = 'none';
-            newPhotoPreview.style.display = 'block';
-            uploadBtn.style.display = 'inline-block';
-        };
-        reader.readAsDataURL(file);
-    }
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
-
-// Annulla upload
-function cancelUpload() {
-    document.getElementById('uploadArea').style.display = 'block';
-    document.getElementById('newPhotoPreview').style.display = 'none';
-    document.getElementById('uploadPhotoBtn').style.display = 'none';
-    document.getElementById('photoInput').value = '';
-}
-
-// Upload foto
-function uploadPhoto() {
-    if (!currentMilitareId) {
-        showErrorToast('Errore', 'ID militare non valido');
-        return;
-    }
-    
-    const formData = new FormData();
-    const photoInput = document.getElementById('photoInput');
-    
-    if (photoInput.files.length === 0) {
-        showErrorToast('📷 Nessuna foto selezionata', 'Seleziona prima una foto da caricare');
-        return;
-    }
-    
-    formData.append('foto', photoInput.files[0]);
-    formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
-    
-    const uploadUrl = getRouteUrl(ROUTES.fotoUpload, currentMilitareId);
-    
-    const progressBar = document.querySelector('#uploadProgress .progress-bar');
-    document.getElementById('uploadProgress').style.display = 'block';
-    
-    fetch(uploadUrl, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Forza il ricaricamento delle immagini con timestamp
-            const timestamp = Date.now();
-            
-            // Ricarica foto attuale nel modal
-            const currentPhotoImg = document.getElementById('currentPhoto');
-            if (currentPhotoImg) {
-                const newPhotoUrl = getRouteUrl(ROUTES.fotoGet, currentMilitareId) + `?t=${timestamp}`;
-                
-                // Aggiungi event listener per tracciare il caricamento
-                currentPhotoImg.onload = function() {
-                };
-                currentPhotoImg.onerror = function() {
-                    this.src = '/C2MS/public/storage/default-avatar.svg';
-                    this.onerror = null;
-                };
-                
-                currentPhotoImg.src = newPhotoUrl;
-            }
-            
-            // Aggiorna foto nell'header
-            const headerPhoto = document.querySelector('.profile-image');
-            if (headerPhoto) {
-                const newHeaderUrl = getRouteUrl(ROUTES.fotoGet, currentMilitareId) + `?t=${timestamp}`;
-                
-                // Aggiungi event listener per tracciare il caricamento
-                headerPhoto.onload = function() {
-                };
-                headerPhoto.onerror = function() {
-                    this.src = '/C2MS/public/storage/default-avatar.svg';
-                    this.onerror = null;
-                };
-                
-                headerPhoto.src = newHeaderUrl;
-            }
-            
-            // Chiudi modal
-            bootstrap.Modal.getInstance(document.getElementById('photoModal')).hide();
-            // Mostra toast di successo
-            showSuccessToast('Foto profilo aggiornata', 'La nuova foto è stata caricata e applicata con successo');
-        } else {
-            showErrorToast('Errore caricamento', data.message || 'Si è verificato un errore durante il caricamento della foto');
-        }
-    })
-    .catch(error => {
-        showErrorToast('Errore di rete', 'Impossibile comunicare con il server. Verifica la connessione e riprova.');
-    })
-    .finally(() => {
-        document.getElementById('uploadProgress').style.display = 'none';
-        cancelUpload();
-    });
-}
-
-// Elimina foto
-function deletePhoto() {
-    if (!confirm('Sei sicuro di voler eliminare la foto profilo?')) {
-        return;
-    }
-    
-    fetch(getRouteUrl(ROUTES.fotoDelete, currentMilitareId), {
-        method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Forza il ricaricamento delle immagini con timestamp
-            const timestamp = Date.now();
-            
-            // Ricarica foto attuale nel modal
-            const currentPhotoImg = document.getElementById('currentPhoto');
-            if (currentPhotoImg) {
-                const newPhotoUrl = getRouteUrl(ROUTES.fotoGet, currentMilitareId) + `?t=${timestamp}`;
-                
-                // Aggiungi event listener per tracciare il caricamento
-                currentPhotoImg.onload = function() {
-                };
-                currentPhotoImg.onerror = function() {
-                    this.src = '/C2MS/public/storage/default-avatar.svg';
-                    this.onerror = null;
-                };
-                
-                currentPhotoImg.src = newPhotoUrl;
-            }
-            
-            // Aggiorna foto nell'header
-            const headerPhoto = document.querySelector('.profile-image');
-            if (headerPhoto) {
-                const newHeaderUrl = getRouteUrl(ROUTES.fotoGet, currentMilitareId) + `?t=${timestamp}`;
-                
-                // Aggiungi event listener per tracciare il caricamento
-                headerPhoto.onload = function() {
-                };
-                headerPhoto.onerror = function() {
-                    this.src = '/C2MS/public/storage/default-avatar.svg';
-                    this.onerror = null;
-                };
-                
-                headerPhoto.src = newHeaderUrl;
-            }
-            
-            // Mostra toast di successo
-            showSuccessToast('Foto rimossa', 'La foto profilo è stata eliminata con successo');
-        } else {
-            showErrorToast('Errore eliminazione', data.message || 'Si è verificato un errore durante l\'eliminazione della foto');
-        }
-    })
-    .catch(error => {
-        showErrorToast('Errore di rete', 'Impossibile comunicare con il server per eliminare la foto');
-    });
-}
-
-// Funzioni per i toast notifications
-function showSuccessToast(title, message) {
-    createToast('success', title, message);
-}
-
-function showErrorToast(title, message) {
-    createToast('error', title, message);
-}
-
-function createToast(type, title, message) {
-    const toastContainer = document.querySelector('.toast-container') || createToastContainer();
-    
-    const toastId = 'toast-' + Date.now();
-    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
-    
-    const toastHTML = `
-        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    <strong>${title}</strong><br>
-                    <small>${message}</small>
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        </div>
-    `;
-    
-    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-    
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement, {
-        autohide: true,
-        delay: type === 'success' ? 4000 : 6000
-    });
-    
-    toast.show();
-    
-    // Rimuovi il toast dal DOM dopo che è stato nascosto
-    toastElement.addEventListener('hidden.bs.toast', function() {
-        toastElement.remove();
-    });
-}
-
-function createToastContainer() {
-    const container = document.createElement('div');
-    container.className = 'toast-container position-fixed top-0 end-0 p-3';
-    container.style.zIndex = '1200';
-    document.body.appendChild(container);
-    return container;
-}
 </script>
 @endsection

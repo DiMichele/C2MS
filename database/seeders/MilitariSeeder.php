@@ -25,7 +25,12 @@ class MilitariSeeder extends Seeder
     public function run()
     {
         // Elimina tutti i dati esistenti in ordine inverso rispetto alle dipendenze
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        // SQLite non supporta SET FOREIGN_KEY_CHECKS, usa PRAGMA
+        if (config('database.default') === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF;');
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        }
         
         // Elimina dati dipendenti
         Presenza::truncate();
@@ -43,7 +48,12 @@ class MilitariSeeder extends Seeder
         Ruolo::truncate();
         Grado::truncate();
         
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // Riattiva i foreign key checks
+        if (config('database.default') === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON;');
+        } else {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
         
         // 1. Crea i gradi militari (ordine crescente di importanza)
         $gradi = [
@@ -321,27 +331,30 @@ class MilitariSeeder extends Seeder
             
             foreach ($certificatiDaAssegnare as $certIndex => $tipo) {
                 // Logica realistica per stati certificati:
-                // 70% attivi, 20% in scadenza, 8% scaduti, 2% non presenti
+                // 65% attivi, 25% in scadenza, 8% scaduti, 2% non presenti
                 $rand = rand(1, 100);
                 
                 if ($rand <= 2) {
                     // 2% non presenti - skip questo certificato
                     continue;
                 } elseif ($rand <= 10) {
-                    // 8% scaduti
-                    $dataOttenimento = Carbon::now()->subMonths(rand(60, 72)); // 5-6 anni fa
-                    $dataScadenza = $dataOttenimento->copy()->addYears(5); // Scaduto da tempo
-                    $note = '⚠️ CERTIFICATO SCADUTO - Necessario rinnovo urgente';
-                } elseif ($rand <= 30) {
-                    // 20% in scadenza (prossimi 6 mesi)
-                    $dataOttenimento = Carbon::now()->subMonths(rand(54, 59)); // ~4.5-5 anni fa
-                    $dataScadenza = $dataOttenimento->copy()->addYears(5); // Scade nei prossimi 6 mesi
-                    $note = '🔔 Certificato in scadenza - Programmato rinnovo per ' . $dataScadenza->addMonths(3)->format('M Y');
-                } else {
-                    // 70% attivi
-                    $dataOttenimento = Carbon::now()->subMonths(rand(1, 48)); // Da 1 mese a 4 anni fa
+                    // 8% scaduti (scaduti da 1-12 mesi)
+                    $mesiScaduti = rand(1, 12);
+                    $dataOttenimento = Carbon::now()->subMonths(60 + $mesiScaduti); // 5 anni + mesi scaduti
                     $dataScadenza = $dataOttenimento->copy()->addYears(5);
-                    $note = '✅ Certificato valido fino al ' . $dataScadenza->format('d/m/Y');
+                    $note = '🚨 CERTIFICATO SCADUTO da ' . $mesiScaduti . ' mesi - RINNOVO URGENTE';
+                } elseif ($rand <= 35) {
+                    // 25% in scadenza (prossimi 1-6 mesi)
+                    $mesiAllaScadenza = rand(1, 6);
+                    $dataOttenimento = Carbon::now()->subMonths(60 - $mesiAllaScadenza); // 5 anni - mesi alla scadenza
+                    $dataScadenza = $dataOttenimento->copy()->addYears(5);
+                    $note = '⚠️ Certificato scade tra ' . $mesiAllaScadenza . ' mesi - Programmato rinnovo per ' . $dataScadenza->subMonths(1)->format('M Y');
+                } else {
+                    // 65% attivi (validi per 1-4 anni)
+                    $anniValidi = rand(1, 4);
+                    $dataOttenimento = Carbon::now()->subMonths(60 - ($anniValidi * 12)); // 5 anni - anni validi
+                    $dataScadenza = $dataOttenimento->copy()->addYears(5);
+                    $note = '✅ Certificato valido fino al ' . $dataScadenza->format('d/m/Y') . ' (' . $anniValidi . ' anni rimanenti)';
                 }
                 
                 CertificatiLavoratori::create([
@@ -365,27 +378,30 @@ class MilitariSeeder extends Seeder
                 }
                 
                 // Logica realistica per stati idoneità:
-                // 75% attive, 15% in scadenza, 7% scadute, 3% non presenti
+                // 70% attive, 20% in scadenza, 8% scadute, 2% non presenti
                 $rand = rand(1, 100);
                 
-                if ($rand <= 3) {
-                    // 3% non presenti - skip questa idoneità
+                if ($rand <= 2) {
+                    // 2% non presenti - skip questa idoneità
                     continue;
                 } elseif ($rand <= 10) {
-                    // 7% scadute
-                    $dataOttenimento = Carbon::now()->subMonths(rand(15, 24)); // 15-24 mesi fa
-                    $dataScadenza = $dataOttenimento->copy()->addYear(); // Scaduta
-                    $note = '🚨 IDONEITÀ SCADUTA - Visita medica urgente richiesta';
-                } elseif ($rand <= 25) {
-                    // 15% in scadenza (prossimi 3 mesi)
-                    $dataOttenimento = Carbon::now()->subMonths(rand(9, 11)); // ~9-11 mesi fa
-                    $dataScadenza = $dataOttenimento->copy()->addYear(); // Scade nei prossimi 1-3 mesi
-                    $note = '⏰ Idoneità in scadenza - Prenotare visita medica entro ' . $dataScadenza->format('d/m/Y');
-                } else {
-                    // 75% attive
-                    $dataOttenimento = Carbon::now()->subMonths(rand(1, 8)); // Da 1 a 8 mesi fa
+                    // 8% scadute (scadute da 1-6 mesi)
+                    $mesiScaduti = rand(1, 6);
+                    $dataOttenimento = Carbon::now()->subMonths(12 + $mesiScaduti); // 1 anno + mesi scaduti
                     $dataScadenza = $dataOttenimento->copy()->addYear();
-                    $note = '✅ Idoneità valida fino al ' . $dataScadenza->format('d/m/Y') . ' - Controlli regolari';
+                    $note = '🚨 IDONEITÀ SCADUTA da ' . $mesiScaduti . ' mesi - VISITA MEDICA URGENTE';
+                } elseif ($rand <= 30) {
+                    // 20% in scadenza (prossimi 1-3 mesi)
+                    $mesiAllaScadenza = rand(1, 3);
+                    $dataOttenimento = Carbon::now()->subMonths(12 - $mesiAllaScadenza); // 1 anno - mesi alla scadenza
+                    $dataScadenza = $dataOttenimento->copy()->addYear();
+                    $note = '⏰ Idoneità scade tra ' . $mesiAllaScadenza . ' mesi - Prenotare visita medica entro ' . $dataScadenza->subWeeks(2)->format('d/m/Y');
+                } else {
+                    // 70% attive (valide per 1-11 mesi)
+                    $mesiValidi = rand(1, 11);
+                    $dataOttenimento = Carbon::now()->subMonths(12 - $mesiValidi); // 1 anno - mesi validi
+                    $dataScadenza = $dataOttenimento->copy()->addYear();
+                    $note = '✅ Idoneità valida fino al ' . $dataScadenza->format('d/m/Y') . ' (' . $mesiValidi . ' mesi rimanenti) - Controlli regolari';
                 }
                 
                 Idoneita::create([

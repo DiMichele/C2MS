@@ -15,16 +15,34 @@ class FinalSigeBatDatabase extends Migration
      */
     public function up()
     {
-        // Standard Laravel tables
-        $this->createUsersTable();
-        $this->createPasswordResetTokensTable();
-        $this->createFailedJobsTable();
-        $this->createCacheTable();
-        $this->createCacheLocksTable();
-        $this->createJobsTable();
-        $this->createJobBatchesTable();
-        $this->createPersonalAccessTokensTable();
-        $this->createSessionsTable();
+        // Standard Laravel tables (solo se non esistono)
+        if (!Schema::hasTable('users')) {
+            $this->createUsersTable();
+        }
+        if (!Schema::hasTable('password_reset_tokens')) {
+            $this->createPasswordResetTokensTable();
+        }
+        if (!Schema::hasTable('failed_jobs')) {
+            $this->createFailedJobsTable();
+        }
+        if (!Schema::hasTable('cache')) {
+            $this->createCacheTable();
+        }
+        if (!Schema::hasTable('cache_locks')) {
+            $this->createCacheLocksTable();
+        }
+        if (!Schema::hasTable('jobs')) {
+            $this->createJobsTable();
+        }
+        if (!Schema::hasTable('job_batches')) {
+            $this->createJobBatchesTable();
+        }
+        if (!Schema::hasTable('personal_access_tokens')) {
+            $this->createPersonalAccessTokensTable();
+        }
+        if (!Schema::hasTable('sessions')) {
+            $this->createSessionsTable();
+        }
         
         // Custom application tables
         $this->createGradiTable();

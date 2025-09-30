@@ -190,7 +190,7 @@
                             @foreach($activity->militari as $militare)
                                 <div class="list-group-item d-flex justify-content-between align-items-center">
                                     <div>
-                                        <strong>{{ $militare->grado->abbreviazione }} {{ $militare->cognome }}</strong>
+                                        <strong>{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }}</strong>
                                         <br>
                                         <small>{{ $militare->nome }}</small>
                                     </div>
@@ -205,8 +205,8 @@
                                                 data-bs-toggle="modal" 
                                                 data-bs-target="#removeMilitareModal"
                                                 data-militare-id="{{ $militare->id }}"
-                                                data-militare-nome="{{ $militare->grado->abbreviazione }} {{ $militare->cognome }} {{ $militare->nome }}"
-                                                title="Rimuovi {{ $militare->grado->abbreviazione }} {{ $militare->cognome }} dall'attività"
+                                                data-militare-nome="{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}"
+                                                title="Rimuovi {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} dall'attività"
                                                 aria-label="Rimuovi militare">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
@@ -297,7 +297,7 @@
                                         <div class="col-md-6 mb-2" data-militare-id="{{ $militare->id }}">
                                             <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
                                                 <div class="flex-grow-1">
-                                                    <strong class="d-block">{{ $militare->grado->abbreviazione }} {{ $militare->cognome }}</strong>
+                                                    <strong class="d-block">{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }}</strong>
                                                     <small class="text-muted">{{ $militare->nome }}</small>
                                                     @if($militare->plotone || $militare->polo)
                                                         <div class="mt-1">
@@ -339,7 +339,7 @@
                                         @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
                                             @if(!$activity->militari->contains($militare->id))
                                             <option value="{{ $militare->id }}">
-                                                {{ $militare->grado->abbreviazione }} {{ $militare->cognome }} {{ $militare->nome }}
+                                                {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
                                                 @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
                                             </option>
                                             @endif
@@ -412,7 +412,7 @@
                             @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
                                 @if(!$activity->militari->contains($militare->id))
                                 <option value="{{ $militare->id }}">
-                                    {{ $militare->grado->abbreviazione }} {{ $militare->cognome }} {{ $militare->nome }}
+                                    {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
                                     @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
                                 </option>
                                 @endif

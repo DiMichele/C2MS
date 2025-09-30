@@ -384,11 +384,11 @@ class BoardController extends Controller
                     'id' => $militare->id,
                     'nome' => $militare->nome,
                     'cognome' => $militare->cognome,
-                    'grado' => [
+                    'grado' => $militare->grado ? [
                         'id' => $militare->grado->id,
                         'nome' => $militare->grado->nome,
                         'abbreviazione' => $militare->grado->abbreviazione
-                    ],
+                    ] : null,
                     'plotone' => $militare->plotone ? [
                         'id' => $militare->plotone->id,
                         'nome' => $militare->plotone->nome

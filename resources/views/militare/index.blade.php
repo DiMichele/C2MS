@@ -1,11 +1,11 @@
 @extends('layouts.app')
-@section('title', 'Forza Effettiva - C2MS')
+@section('title', 'Anagrafica - C2MS')
 
 @section('content')
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['grado_id', 'plotone_id', 'polo_id', 'presenza'] as $filter) {
+    foreach(['grado_id', 'plotone_id', 'polo_id', 'nos_status', 'mansione_id', 'email_istituzionale', 'telefono'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $hasActiveFilters = count($activeFilters) > 0;
@@ -13,7 +13,7 @@
 
 <!-- Header Minimal Solo Titolo -->
 <div class="text-center mb-4">
-    <h1 class="page-title">Forza Effettiva</h1>
+    <h1 class="page-title">Anagrafica</h1>
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -54,25 +54,9 @@
             </div>
         </div>
         <div class="card-body p-3">
-            <form id="filtroForm" action="{{ route('militare.index') }}" method="GET">
-                <div class="row">
-                    {{-- Filtro Presenza --}}
-                    <div class="col-md-3">
-                        <label for="presenza" class="form-label">
-                            <i class="fas fa-calendar-check me-1"></i> Presenza
-                        </label>
-                        <div class="select-wrapper">
-                            <select name="presenza" id="presenza" class="form-select filter-select {{ request()->filled('presenza') ? 'applied' : '' }}">
-                                <option value="">Tutti</option>
-                                <option value="Presente" {{ request('presenza') == 'Presente' ? 'selected' : '' }}>Presenti oggi</option>
-                                <option value="Assente" {{ request('presenza') == 'Assente' ? 'selected' : '' }}>Assenti oggi</option>
-                            </select>
-                            @if(request()->filled('presenza'))
-                                <span class="clear-filter" data-filter="presenza" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                    
+            <form id="filtroForm" action="{{ route('anagrafica.index') }}" method="GET">
+                {{-- Prima riga filtri --}}
+                <div class="row mb-3">
                     {{-- Filtro Grado --}}
                     <div class="col-md-3">
                         <label for="grado_id" class="form-label">
@@ -113,14 +97,14 @@
                         </div>
                     </div>
                     
-                    {{-- Filtro Polo --}}
+                    {{-- Filtro Ufficio (Polo) --}}
                     <div class="col-md-3">
                         <label for="polo_id" class="form-label">
-                            <i class="fas fa-building me-1"></i> Polo
+                            <i class="fas fa-building me-1"></i> Ufficio
                         </label>
                         <div class="select-wrapper">
                             <select name="polo_id" id="polo_id" class="form-select filter-select {{ request()->filled('polo_id') ? 'applied' : '' }}">
-                                <option value="">Tutti i poli</option>
+                                <option value="">Tutti gli uffici</option>
                                 @foreach($poli as $polo)
                                     <option value="{{ $polo->id }}" {{ request('polo_id') == $polo->id ? 'selected' : '' }}>
                                         {{ $polo->nome }}
@@ -132,11 +116,85 @@
                             @endif
                         </div>
                     </div>
+                    
+                    {{-- Filtro NOS --}}
+                    <div class="col-md-3">
+                        <label for="nos_status" class="form-label">
+                            <i class="fas fa-check-circle me-1"></i> NOS
+                        </label>
+                        <div class="select-wrapper">
+                            <select name="nos_status" id="nos_status" class="form-select filter-select {{ request()->filled('nos_status') ? 'applied' : '' }}">
+                                <option value="">Tutti</option>
+                                <option value="SI" {{ request('nos_status') == 'SI' ? 'selected' : '' }}>SI</option>
+                                <option value="NO" {{ request('nos_status') == 'NO' ? 'selected' : '' }}>NO</option>
+                            </select>
+                            @if(request()->filled('nos_status'))
+                                <span class="clear-filter" data-filter="nos_status" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
+                {{-- Seconda riga filtri --}}
+                <div class="row">
+                    {{-- Filtro Incarico (Mansione) --}}
+                    <div class="col-md-3">
+                        <label for="mansione_id" class="form-label">
+                            <i class="fas fa-briefcase me-1"></i> Incarico
+                        </label>
+                        <div class="select-wrapper">
+                            <select name="mansione_id" id="mansione_id" class="form-select filter-select {{ request()->filled('mansione_id') ? 'applied' : '' }}">
+                                <option value="">Tutti gli incarichi</option>
+                                @foreach(\App\Models\Mansione::all() as $mansione)
+                                    <option value="{{ $mansione->id }}" {{ request('mansione_id') == $mansione->id ? 'selected' : '' }}>
+                                        {{ $mansione->nome }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if(request()->filled('mansione_id'))
+                                <span class="clear-filter" data-filter="mansione_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    {{-- Filtro Email Istituzionale --}}
+                    <div class="col-md-3">
+                        <label for="email_istituzionale" class="form-label">
+                            <i class="fas fa-envelope me-1"></i> Email Istituzionale
+                        </label>
+                        <div class="select-wrapper">
+                            <select name="email_istituzionale" id="email_istituzionale" class="form-select filter-select {{ request()->filled('email_istituzionale') ? 'applied' : '' }}">
+                                <option value="">Tutte</option>
+                                <option value="registrata" {{ request('email_istituzionale') == 'registrata' ? 'selected' : '' }}>Registrata</option>
+                                <option value="non_registrata" {{ request('email_istituzionale') == 'non_registrata' ? 'selected' : '' }}>Non Registrata</option>
+                            </select>
+                            @if(request()->filled('email_istituzionale'))
+                                <span class="clear-filter" data-filter="email_istituzionale" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                            @endif
+                        </div>
+                    </div>
+                    
+                    {{-- Filtro Cellulare --}}
+                    <div class="col-md-3">
+                        <label for="telefono" class="form-label">
+                            <i class="fas fa-phone me-1"></i> Cellulare
+                        </label>
+                        <div class="select-wrapper">
+                            <select name="telefono" id="telefono" class="form-select filter-select {{ request()->filled('telefono') ? 'applied' : '' }}">
+                                <option value="">Tutti</option>
+                                <option value="registrato" {{ request('telefono') == 'registrato' ? 'selected' : '' }}>Registrato</option>
+                                <option value="non_registrato" {{ request('telefono') == 'non_registrato' ? 'selected' : '' }}>Non Registrato</option>
+                            </select>
+                            @if(request()->filled('telefono'))
+                                <span class="clear-filter" data-filter="telefono" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                            @endif
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="d-flex justify-content-center mt-3">
                     @if($hasActiveFilters)
-                    <a href="{{ route('militare.index') }}" class="btn btn-danger">
+                    <a href="{{ route('anagrafica.index') }}" class="btn btn-danger">
                         <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri ({{ count($activeFilters) }})
                     </a>
                     @endif
@@ -151,71 +209,81 @@
     <table class="table table-striped table-hover table-bordered align-middle">
         <thead>
             <tr>
-                <th scope="col" style="width: 60px">Presenza</th>
                 <th scope="col" style="width: 100px">Grado</th>
-                <th scope="col">Nominativo</th>
+                <th scope="col">Cognome</th>
+                <th scope="col">Nome</th>
                 <th scope="col">Plotone</th>
-                <th scope="col">Polo</th>
-                <th scope="col" class="col-note">Note</th>
+                <th scope="col">Ufficio</th>
+                <th scope="col">Incarico</th>
+                <th scope="col">NOS</th>
+                <th scope="col">Anzianità</th>
+                <th scope="col">Data di Nascita</th>
+                <th scope="col">Email Istituzionale</th>
+                <th scope="col">Cellulare</th>
             </tr>
         </thead>
         <tbody id="militariTableBody">
             @forelse($militari as $m)
                 <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}">
-                    <td class="text-center">
-                        @php
-                            $isPresente = ($m->presenzaOggi && $m->presenzaOggi->stato === 'Presente');
-                        @endphp
-                        <div class="presence-circle {{ $isPresente ? 'presente' : 'assente' }}" 
-                             data-label="{{ $isPresente ? 'Presente' : 'Assente' }}"
-                             role="img" 
-                             aria-label="Stato: {{ $isPresente ? 'Presente' : 'Assente' }}"></div>
+                    <td>
+                        {{ $m->grado->sigla ?? 'N/A' }}
                     </td>
                     <td>
-                        {{ $m->grado->nome ?? 'N/A' }}
-                    </td>
-                    <td>
-                        <a href="{{ route('militare.show', $m->id) }}" class="link-name">
-                            {{ $m->cognome }} {{ $m->nome }}
+                        <a href="{{ route('anagrafica.show', $m->id) }}" class="link-name">
+                            {{ $m->cognome }}
                         </a>
                     </td>
                     <td>
+                        {{ $m->nome }}
+                    </td>
+                    <td>
                         @if($m->plotone)
-                            <span class="entity-text">{{ $m->plotone->nome }}</span>
+                            {{ $m->plotone->nome }}
                         @else
-                            <span class="text-muted">N/A</span>
+                            <span class="text-muted">-</span>
                         @endif
                     </td>
                     <td>
                         @if($m->polo)
-                            <span class="entity-text">{{ $m->polo->nome }}</span>
+                            {{ $m->polo->nome }}
                         @else
-                            <span class="text-muted">N/A</span>
+                            <span class="text-muted">-</span>
                         @endif
                     </td>
                     <td>
-                        <div class="note-wrapper">
-                            <textarea 
-                                class="auto-save-notes" 
-                                data-militare-id="{{ $m->id }}" 
-                                data-field="note" 
-                                data-autosave-url="{{ route('militare.update', $m->id) }}"
-                                data-autosave-field="note"
-                                placeholder="Inserisci le note..." 
-                                aria-label="Note per {{ $m->cognome }} {{ $m->nome }}"
-                            >{{ $m->note ?? '' }}</textarea>
-                            <div class="save-indicator d-none" data-tooltip="Salvataggio in corso"><i class="fas fa-sync-alt fa-spin"></i></div>
-                            <div class="save-status-text d-none"></div>
-                        </div>
+                        {{ $m->mansione->nome ?? '-' }}
+                    </td>
+                    <td class="text-center">
+                        {{ $m->nos_status === 'SI' ? 'SI' : '' }}
+                    </td>
+                    <td>
+                        {{ $m->anzianita ?? '-' }}
+                    </td>
+                    <td>
+                        {{ $m->data_nascita ? \Carbon\Carbon::parse($m->data_nascita)->format('d/m/Y') : '-' }}
+                    </td>
+                    <td>
+                        @if($m->email_istituzionale)
+                            <a href="mailto:{{ $m->email_istituzionale }}" class="text-decoration-none">{{ $m->email_istituzionale }}</a>
+                        @else
+                            <span class="text-muted">-</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($m->telefono)
+                            <a href="tel:{{ $m->telefono }}" class="text-decoration-none">{{ $m->telefono }}</a>
+                        @else
+                            <span class="text-muted">-</span>
+                        @endif
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="11" class="text-center py-5">
                         <div class="d-flex flex-column align-items-center empty-state">
                             <i class="fas fa-search fa-3x mb-3 text-muted"></i>
                             <p class="lead mb-3">Nessun militare trovato.</p>
-                            <a href="{{ route('militare.index') }}" class="btn btn-outline-primary mt-2">
+                            <a href="{{ route('anagrafica.index') }}" class="btn btn-outline-primary mt-2">
                                 <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri
                             </a>
                         </div>
@@ -227,7 +295,7 @@
 </div>
 
 <!-- Floating Action Button -->
-<a href="{{ route('militare.create') }}" class="fab" data-tooltip="Aggiungi Militare" aria-label="Aggiungi Militare">
+<a href="{{ route('anagrafica.create') }}" class="fab" data-tooltip="Aggiungi Militare" aria-label="Aggiungi Militare">
     <i class="fas fa-plus"></i>
 </a>
 

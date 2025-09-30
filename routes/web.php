@@ -11,15 +11,19 @@ use App\Http\Controllers\EventiController;
 
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\BoardController;
+use App\Http\Controllers\PianificazioneController;
 
 
 // Rotta della dashboard (principale)
 Route::get('/', [DashboardController::class, 'index'])
     ->name('dashboard');
 
-// Route per la ricerca (Militare)
-Route::get('/militare/search', [MilitareController::class, 'search'])
-    ->name('militare.search');
+// Redirect da vecchie rotte militare a nuove rotte anagrafica
+Route::redirect('/militare', '/anagrafica', 301);
+
+// Route per la ricerca (Anagrafica)
+Route::get('/anagrafica/search', [MilitareController::class, 'search'])
+    ->name('anagrafica.search');
 
 // API route per ottenere dati militare (per AJAX)
 Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData'])
@@ -30,7 +34,7 @@ Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData']
  | Rotte per la gestione dei militari
  |-------------------------------------------------
 */
-Route::resource('militare', MilitareController::class);
+Route::resource('anagrafica', MilitareController::class)->parameters(['anagrafica' => 'militare']);
 Route::put('militare/{militare}/update-notes', [MilitareController::class, 'updateNotes'])->name('militare.update_notes');
 
 // Rotte per gestione foto profilo
@@ -42,8 +46,8 @@ Route::delete('/militare/{id}/foto/delete', [MilitareController::class, 'deleteF
 Route::post('militare/{militare}/valutazioni', [MilitareController::class, 'storeValutazione'])->name('militare.valutazioni.store');
 Route::post('militare/{militare}/valutazioni/field', [MilitareController::class, 'updateValutazioneField'])->name('militare.valutazioni.field');
 
-// Rotta POST per aggiornamento AJAX del militare
-Route::post('/militare/{id}', [MilitareController::class, 'update']);
+// Rotta POST per aggiornamento AJAX
+Route::post('/anagrafica/{id}', [MilitareController::class, 'update']);
 
 /*
  |-------------------------------------------------
@@ -120,4 +124,54 @@ Route::prefix('board')->group(function () {
     // Rotte per la gestione degli allegati
     Route::post('/activities/{activity}/attachments', [BoardController::class, 'attachFile'])->name('board.activities.attach.file');
     Route::delete('/activities/{activity}/attachments/{attachment}', [BoardController::class, 'deleteAttachment'])->name('board.activities.detach.file');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per il CPT (Controllo Presenza Truppe)
+|-------------------------------------------------
+*/
+Route::prefix('cpt')->name('pianificazione.')->group(function () {
+    Route::get('/', [PianificazioneController::class, 'index'])->name('index');
+    Route::get('/test', function(Request $request) {
+        // Stessa logica del controller principale ma vista semplificata
+        $mese = $request->get('mese', Carbon\Carbon::now()->month);
+        $anno = $request->get('anno', Carbon\Carbon::now()->year);
+        
+        $pianificazioneMensile = App\Models\PianificazioneMensile::where('mese', $mese)
+            ->where('anno', $anno)
+            ->first();
+            
+        if (!$pianificazioneMensile) {
+            $pianificazioneMensile = App\Models\PianificazioneMensile::create([
+                'mese' => $mese,
+                'anno' => $anno,
+                'nome' => Carbon\Carbon::createFromDate($anno, $mese, 1)->format('F Y'),
+                'attiva' => true
+            ]);
+        }
+        
+        $militari = App\Models\Militare::with(['grado', 'plotone', 'pianificazioniGiornaliere'])
+            ->orderByGradoENome()->get();
+        
+        $militariConPianificazione = [];
+        foreach ($militari as $militare) {
+            $pianificazioniPerGiorno = [];
+            foreach ($militare->pianificazioniGiornaliere as $pianificazione) {
+                $pianificazioniPerGiorno[$pianificazione->giorno] = $pianificazione;
+            }
+            $militariConPianificazione[] = [
+                'militare' => $militare,
+                'pianificazioni' => $pianificazioniPerGiorno
+            ];
+        }
+        
+        $giorniMese = range(1, 31);
+        
+        return view('pianificazione.test', compact('militariConPianificazione', 'giorniMese', 'mese', 'anno'));
+    })->name('test');
+    Route::get('/militare/{militare}', [PianificazioneController::class, 'militare'])->name('militare');
+    Route::post('/militare/{militare}/update-giorno', [PianificazioneController::class, 'updateGiorno'])->name('militare.update-giorno');
+    Route::post('/militare/{militare}/update-giorni-range', [PianificazioneController::class, 'updateGiorniRange'])->name('militare.update-giorni-range');
+    Route::get('/export-excel', [PianificazioneController::class, 'exportExcel'])->name('export-excel');
 });

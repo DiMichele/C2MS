@@ -119,7 +119,7 @@
                                     <div class="card-body py-2">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div>
-                                                <h6 class="mb-1 fw-bold">{{ $militare->grado->abbreviazione }} {{ $militare->cognome }}</h6>
+                                                <h6 class="mb-1 fw-bold">{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }}</h6>
                                                 <p class="mb-1 text-muted small">{{ $militare->nome }}</p>
                                                 @if($militare->plotone)
                                                     <span class="badge bg-light text-dark border me-1">{{ $militare->plotone->nome }}</span>
@@ -201,7 +201,7 @@
             <select class="form-control select2" id="militari" name="militari[]" multiple>
               @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
               <option value="{{ $militare->id }}">
-                {{ $militare->grado->abbreviazione }} {{ $militare->cognome }} {{ $militare->nome }}
+                {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
                 @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
               </option>
               @endforeach
