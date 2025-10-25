@@ -10,12 +10,22 @@ use App\Http\Controllers\EventiController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\PianificazioneController;
+use App\Http\Controllers\Auth\LoginController;
 
+/*
+|-------------------------------------------------
+| Rotte di Autenticazione
+|-------------------------------------------------
+*/
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [LoginController::class, 'login']);
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
-// Rotta della dashboard (principale)
-Route::get('/', [DashboardController::class, 'index'])
-    ->name('dashboard');
-
+/*
+|-------------------------------------------------
+| Rotte Pubbliche (solo Anagrafica)
+|-------------------------------------------------
+*/
 // Redirect da vecchie rotte militare a nuove rotte anagrafica
 Route::redirect('/militare', '/anagrafica', 301);
 
@@ -27,36 +37,56 @@ Route::get('/anagrafica/search', [MilitareController::class, 'search'])
 Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData'])
     ->name('api.militari.show');
 
+// Rotte Anagrafica (pubbliche - accessibili senza login)
+Route::get('/anagrafica', [MilitareController::class, 'index'])
+    ->name('militare.index');
+
+Route::get('/anagrafica/{militare}', [MilitareController::class, 'show'])
+    ->name('militare.show');
+
 /*
- |-------------------------------------------------
- | Rotte per la gestione dei militari
- |-------------------------------------------------
+|-------------------------------------------------
+| Rotte Protette (richiedono autenticazione)
+|-------------------------------------------------
 */
-// Rotte che devono essere definite PRIMA della resource route
-Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])->name('anagrafica.export-excel');
+Route::middleware(['auth'])->group(function () {
+    
+    // Rotta della dashboard (principale)
+    Route::get('/', [DashboardController::class, 'index'])
+        ->name('dashboard');
 
-// Resource route
-Route::resource('anagrafica', MilitareController::class)->parameters(['anagrafica' => 'militare']);
+    /*
+     |-------------------------------------------------
+     | Rotte per la gestione dei militari (protette)
+     |-------------------------------------------------
+    */
+    // Rotte che devono essere definite PRIMA della resource route
+    Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])->name('anagrafica.export-excel');
 
-// Altre rotte anagrafica (dopo resource per evitare conflitti)
-Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])->name('anagrafica.update-field');
-Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])->name('anagrafica.patenti.add');
-Route::post('/anagrafica/{militare}/patenti/remove', [MilitareController::class, 'removePatente'])->name('anagrafica.patenti.remove');
+    // Resource route (create, edit, update, destroy protette)
+    Route::resource('anagrafica', MilitareController::class)
+        ->parameters(['anagrafica' => 'militare'])
+        ->except(['index', 'show']); // index e show sono pubbliche
 
-// Altre rotte militare
-Route::put('militare/{militare}/update-notes', [MilitareController::class, 'updateNotes'])->name('militare.update_notes');
+    // Altre rotte anagrafica (dopo resource per evitare conflitti)
+    Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])->name('anagrafica.update-field');
+    Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])->name('anagrafica.patenti.add');
+    Route::post('/anagrafica/{militare}/patenti/remove', [MilitareController::class, 'removePatente'])->name('anagrafica.patenti.remove');
 
-// Rotte per gestione foto profilo
-Route::get('/militare/{id}/foto', [MilitareController::class, 'getFoto'])->name('militare.foto');
-Route::post('/militare/{id}/foto/upload', [MilitareController::class, 'uploadFoto'])->name('militare.foto.upload');
-Route::delete('/militare/{id}/foto/delete', [MilitareController::class, 'deleteFoto'])->name('militare.foto.delete');
+    // Altre rotte militare
+    Route::put('militare/{militare}/update-notes', [MilitareController::class, 'updateNotes'])->name('militare.update_notes');
 
-// Rotte per le valutazioni dei militari
-Route::post('militare/{militare}/valutazioni', [MilitareController::class, 'storeValutazione'])->name('militare.valutazioni.store');
-Route::post('militare/{militare}/valutazioni/field', [MilitareController::class, 'updateValutazioneField'])->name('militare.valutazioni.field');
+    // Rotte per gestione foto profilo
+    Route::get('/militare/{id}/foto', [MilitareController::class, 'getFoto'])->name('militare.foto');
+    Route::post('/militare/{id}/foto/upload', [MilitareController::class, 'uploadFoto'])->name('militare.foto.upload');
+    Route::delete('/militare/{id}/foto/delete', [MilitareController::class, 'deleteFoto'])->name('militare.foto.delete');
 
-// Rotta POST per aggiornamento AJAX
-Route::post('/anagrafica/{id}', [MilitareController::class, 'update']);
+    // Rotte per le valutazioni dei militari
+    Route::post('militare/{militare}/valutazioni', [MilitareController::class, 'storeValutazione'])->name('militare.valutazioni.store');
+    Route::post('militare/{militare}/valutazioni/field', [MilitareController::class, 'updateValutazioneField'])->name('militare.valutazioni.field');
+
+    // Rotta POST per aggiornamento AJAX
+    Route::post('/anagrafica/{id}', [MilitareController::class, 'update']);
 
 /*
  |-------------------------------------------------
@@ -212,16 +242,18 @@ Route::prefix('ruolini')->name('ruolini.')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
 });
 
-// Debug route per tunnel
-Route::get('/debug-headers', function() {
-    return response()->json([
-        'host' => request()->header('Host'),
-        'x-forwarded-host' => request()->header('X-Forwarded-Host'),
-        'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
-        'request_uri' => request()->server('REQUEST_URI'),
-        'url_full' => request()->fullUrl(),
-        'url_current' => url()->current(),
-        'url_root' => url('/'),
-        'config_app_url' => config('app.url'),
-    ]);
-});
+    // Debug route per tunnel
+    Route::get('/debug-headers', function() {
+        return response()->json([
+            'host' => request()->header('Host'),
+            'x-forwarded-host' => request()->header('X-Forwarded-Host'),
+            'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
+            'request_uri' => request()->server('REQUEST_URI'),
+            'url_full' => request()->fullUrl(),
+            'url_current' => url()->current(),
+            'url_root' => url('/'),
+            'config_app_url' => config('app.url'),
+        ]);
+    });
+
+}); // Fine middleware auth

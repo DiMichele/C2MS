@@ -118,8 +118,28 @@
             </ul>
         </nav>
         
-        <!-- Spazio vuoto a destra per bilanciare il layout -->
-        <div class="header-spacer"></div>
+        <!-- Auth Menu a destra -->
+        <div class="header-auth">
+            @auth
+                <div class="user-menu">
+                    <span class="user-name">
+                        <i class="fas fa-user-circle me-2"></i>
+                        {{ Auth::user()->name }}
+                    </span>
+                    <form action="{{ route('logout') }}" method="POST" style="display: inline;">
+                        @csrf
+                        <button type="submit" class="btn-logout" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </form>
+                </div>
+            @else
+                <a href="{{ route('login') }}" class="btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i>
+                    Login
+                </a>
+            @endauth
+        </div>
     </header>
     
     <!-- Main Content -->
