@@ -26,9 +26,6 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 | Rotte Pubbliche (solo Anagrafica)
 |-------------------------------------------------
 */
-// Redirect da vecchie rotte militare a nuove rotte anagrafica
-Route::redirect('/militare', '/anagrafica', 301);
-
 // Route per la ricerca (Anagrafica)
 Route::get('/anagrafica/search', [MilitareController::class, 'search'])
     ->name('anagrafica.search');
@@ -39,10 +36,13 @@ Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData']
 
 // Rotte Anagrafica (pubbliche - accessibili senza login)
 Route::get('/anagrafica', [MilitareController::class, 'index'])
-    ->name('militare.index');
+    ->name('anagrafica.index');
 
 Route::get('/anagrafica/{militare}', [MilitareController::class, 'show'])
-    ->name('militare.show');
+    ->name('anagrafica.show');
+
+// Redirect da vecchie URL militare a anagrafica
+Route::redirect('/militare', '/anagrafica', 301);
 
 /*
 |-------------------------------------------------
@@ -242,18 +242,51 @@ Route::prefix('ruolini')->name('ruolini.')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
 });
 
-    // Debug route per tunnel
-    Route::get('/debug-headers', function() {
-        return response()->json([
-            'host' => request()->header('Host'),
-            'x-forwarded-host' => request()->header('X-Forwarded-Host'),
-            'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
-            'request_uri' => request()->server('REQUEST_URI'),
-            'url_full' => request()->fullUrl(),
-            'url_current' => url()->current(),
-            'url_root' => url('/'),
-            'config_app_url' => config('app.url'),
-        ]);
-    });
+// Debug route per tunnel
+Route::get('/debug-headers', function() {
+    return response()->json([
+        'host' => request()->header('Host'),
+        'x-forwarded-host' => request()->header('X-Forwarded-Host'),
+        'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
+        'request_uri' => request()->server('REQUEST_URI'),
+        'url_full' => request()->fullUrl(),
+        'url_current' => url()->current(),
+        'url_root' => url('/'),
+        'config_app_url' => config('app.url'),
+    ]);
+});
+
+// Debug route per asset CSS
+Route::get('/debug-assets', function() {
+    $cssFiles = [
+        'global.css',
+        'common.css',
+        'components.css',
+        'filters.css',
+        'tooltips.css',
+        'layout.css',
+        'toast-system.css',
+        'dashboard.css',
+    ];
+    
+    $results = [];
+    foreach ($cssFiles as $file) {
+        $path = public_path("css/{$file}");
+        $results[$file] = [
+            'exists' => file_exists($path),
+            'readable' => file_exists($path) && is_readable($path),
+            'size' => file_exists($path) ? filesize($path) : 0,
+            'url' => asset("css/{$file}"),
+            'path' => $path,
+        ];
+    }
+    
+    return response()->json([
+        'public_path' => public_path(),
+        'asset_url' => asset('css/layout.css'),
+        'app_url' => config('app.url'),
+        'css_files' => $results,
+    ], 200, [], JSON_PRETTY_PRINT);
+});
 
 }); // Fine middleware auth

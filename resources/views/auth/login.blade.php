@@ -340,7 +340,7 @@
 
             <!-- Back to anagrafica -->
             <div class="back-link">
-                <a href="{{ route('militare.index') }}">
+                <a href="{{ route('anagrafica.index') }}">
                     <i class="fas fa-arrow-left"></i>
                     Torna all'Anagrafica
                 </a>

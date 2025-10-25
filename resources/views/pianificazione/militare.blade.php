@@ -24,7 +24,7 @@
             <p class="text-muted mb-0">{{ $pianificazioneMensile->nome }}</p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{{ route('militare.show', $militare) }}" class="btn btn-outline-primary">
+            <a href="{{ route('anagrafica.show', $militare) }}" class="btn btn-outline-primary">
                 <i class="fas fa-user me-1"></i>
                 Scheda Militare
             </a>

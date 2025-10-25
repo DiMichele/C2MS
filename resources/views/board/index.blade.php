@@ -128,7 +128,7 @@
                                                     <span class="badge bg-light text-dark border">{{ $militare->polo->nome }}</span>
                                                 @endif
                                             </div>
-                                            <a href="{{ route('militare.show', $militare) }}" class="btn btn-sm btn-outline-primary" title="Visualizza profilo militare">
+                                            <a href="{{ route('anagrafica.show', $militare) }}" class="btn btn-sm btn-outline-primary" title="Visualizza profilo militare">
                                                 <i class="fas fa-user"></i>
                                             </a>
                                         </div>

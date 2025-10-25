@@ -901,7 +901,7 @@
                                                     <span class="stato-presenza {{ $isPresente ? 'presente' : 'assente' }}" data-status="{{ $isPresente ? 'Presente' : 'Assente' }}"></span>
                                                     <div class="militare-info">
                                                         <div class="militare-grado">{{ $militare->grado->nome ?? '' }}</div>
-                                                        <a href="{{ route('militare.show', $militare->id) }}" class="link-name militare-nome">
+                                                        <a href="{{ route('anagrafica.show', $militare->id) }}" class="link-name militare-nome">
                                                             <strong>{{ $militare->cognome }} {{ $militare->nome }}</strong>
                                                         </a>
                                                     </div>
@@ -1006,7 +1006,7 @@
                                                     <span class="stato-presenza {{ $isPresente ? 'presente' : 'assente' }}" data-status="{{ $isPresente ? 'Presente' : 'Assente' }}"></span>
                                                     <div class="militare-info">
                                                         <div class="militare-grado">{{ $militare->grado->nome ?? '' }}</div>
-                                                        <a href="{{ route('militare.show', $militare->id) }}" class="link-name militare-nome">
+                                                        <a href="{{ route('anagrafica.show', $militare->id) }}" class="link-name militare-nome">
                                                             <strong>{{ $militare->cognome }} {{ $militare->nome }}</strong>
                                                         </a>
                                                     </div>

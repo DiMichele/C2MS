@@ -48,7 +48,7 @@
                     </td>
                     <td>
                         <div class="d-flex justify-content-center action-buttons">
-                            <a href="{{ route('militare.show', $militare->id) }}" class="action-btn" data-tooltip="Visualizza" aria-label="Visualizza dettagli">
+                            <a href="{{ route('anagrafica.show', $militare->id) }}" class="action-btn" data-tooltip="Visualizza" aria-label="Visualizza dettagli">
                                 <i class="fas fa-eye"></i>
                             </a>
                             <a href="{{ route('militare.edit', $militare->id) }}" class="action-btn edit" data-tooltip="Modifica" aria-label="Modifica">

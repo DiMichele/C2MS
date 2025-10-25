@@ -28,17 +28,17 @@
           crossorigin="anonymous" referrerpolicy="no-referrer" />
     
     <!-- CSS Custom Radius per coerenza visiva -->
-    <link href="{{ asset('css/custom-radius.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/custom-radius.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
     
     <!-- CSS Sistema - Caricati nell'ordine corretto delle dipendenze -->
-    <link rel="stylesheet" href="{{ asset('css/global.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/common.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/components.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/filters.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/tooltips.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/layout.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/toast-system.css') }}">
-    <link href="{{ asset('css/dashboard.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/global.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/common.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/components.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/filters.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/tooltips.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/layout.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/toast-system.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link href="{{ asset('css/dashboard.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
     
     @yield('styles')
 </head>
@@ -58,35 +58,42 @@
         <!-- Horizontal Navigation al centro -->
         <nav class="nav-center">
             <ul class="nav-menu" id="nav-menu">
+                @auth
                 <li class="nav-menu-item {{ request()->is('/') ? 'active' : '' }}">
                     <a href="{{ url('/') }}">
                         Dashboard
                     </a>
                 </li>
+                @endauth
                 
                 <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('scadenze*') || request()->is('ruolini*') || request()->is('organigramma*') ? 'active' : '' }}">
                     <a href="#">
                         Personale
                     </a>
                     <ul class="nav-dropdown">
+                        @auth
                         <li class="nav-dropdown-item {{ request()->is('cpt*') ? 'active' : '' }}">
                             <a href="{{ route('pianificazione.index') }}">CPT</a>
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('ruolini*') ? 'active' : '' }}">
                             <a href="{{ route('ruolini.index') }}">Ruolini</a>
                         </li>
+                        @endauth
                         <li class="nav-dropdown-item {{ request()->is('anagrafica*') && !request()->is('anagrafica/create') ? 'active' : '' }}">
                             <a href="{{ route('anagrafica.index') }}">Anagrafica</a>
                         </li>
+                        @auth
                         <li class="nav-dropdown-item {{ request()->is('scadenze*') ? 'active' : '' }}">
                             <a href="{{ route('scadenze.index') }}">Scadenze</a>
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
                             <a href="{{ url('/organigramma') }}">Organigramma</a>
                         </li>
+                        @endauth
                     </ul>
                 </li>
                 
+                @auth
                 <li class="nav-menu-item {{ request()->is('board*') ? 'active' : '' }}">
                     <a href="{{ route('board.index') }}">
                         Board Attività
@@ -114,6 +121,7 @@
                         </li>
                     </ul>
                 </li>
+                @endauth
 
             </ul>
         </nav>
