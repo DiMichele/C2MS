@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\TurnoSettimanale;
-// use App\Models\AssegnazioneTurno; // DISABILITATO - tabella non esiste
+use App\Models\AssegnazioneTurno;
 use App\Models\ServizioTurno;
 use App\Models\Militare;
 use App\Models\PianificazioneMensile;
@@ -87,14 +87,6 @@ class TurniService
      */
     public function assegnaMilitare($turnoId, $servizioId, $militareId, $data, $forzaSovrascrizione = false)
     {
-        // DISABILITATO - Tabella assegnazioni_turno non esiste
-        return [
-            'success' => false,
-            'message' => 'Funzionalità disabilitata - tabella assegnazioni_turno non esiste',
-            'warning' => null,
-            'assegnazione' => null
-        ];
-        
         DB::beginTransaction();
         
         try {
@@ -239,12 +231,6 @@ class TurniService
      */
     public function rimuoviAssegnazione($assegnazioneId)
     {
-        // DISABILITATO - Tabella assegnazioni_turno non esiste
-        return [
-            'success' => false,
-            'message' => 'Funzionalità disabilitata - tabella assegnazioni_turno non esiste'
-        ];
-        
         DB::beginTransaction();
         
         try {
@@ -477,13 +463,6 @@ class TurniService
      */
     public function sincronizzaTutteAssegnazioni($turnoId)
     {
-        // DISABILITATO - Tabella assegnazioni_turno non esiste
-        return [
-            'sincronizzate' => 0,
-            'fallite' => 0,
-            'message' => 'Funzionalità disabilitata - tabella assegnazioni_turno non esiste'
-        ];
-        
         $assegnazioni = AssegnazioneTurno::where('turno_settimanale_id', $turnoId)
             ->nonSincronizzate()
             ->get();

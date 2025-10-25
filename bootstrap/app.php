@@ -11,7 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // Trust proxies for ngrok/cloudflare tunnels
+        $middleware->trustProxies(at: '*');
+        
+        // Force correct URL for tunnels (must be first)
+        $middleware->prepend(\App\Http\Middleware\ForceCorrectUrl::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

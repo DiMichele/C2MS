@@ -211,3 +211,17 @@ Route::prefix('scadenze')->name('scadenze.')->group(function () {
 Route::prefix('ruolini')->name('ruolini.')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
 });
+
+// Debug route per tunnel
+Route::get('/debug-headers', function() {
+    return response()->json([
+        'host' => request()->header('Host'),
+        'x-forwarded-host' => request()->header('X-Forwarded-Host'),
+        'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
+        'request_uri' => request()->server('REQUEST_URI'),
+        'url_full' => request()->fullUrl(),
+        'url_current' => url()->current(),
+        'url_root' => url('/'),
+        'config_app_url' => config('app.url'),
+    ]);
+});

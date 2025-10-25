@@ -80,14 +80,16 @@ class TurniController extends Controller
 
     /**
      * API: Rimuovi un'assegnazione
-     * DISABILITATO - Tabella assegnazioni_turno non esiste
      */
     public function rimuovi(Request $request)
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Funzionalità disabilitata - tabella assegnazioni_turno non esiste'
+        $request->validate([
+            'assegnazione_id' => 'required|exists:assegnazioni_turno,id',
         ]);
+
+        $risultato = $this->turniService->rimuoviAssegnazione($request->assegnazione_id);
+
+        return response()->json($risultato);
     }
 
     /**
