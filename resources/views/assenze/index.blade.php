@@ -1,6 +1,61 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+/* Effetto hover sulle righe */
+.table tbody tr:hover {
+    background-color: rgba(10, 35, 66, 0.12) !important;
+}
+
+.table tbody tr:hover td {
+    background-color: transparent !important;
+}
+
+/* Sfondo leggermente off-white per la tabella */
+.table tbody tr {
+    background-color: #fafafa;
+}
+
+.table tbody tr:nth-of-type(odd) {
+    background-color: #ffffff;
+}
+
+/* Bordi leggermente più scuri dell'hover */
+.table-bordered > :not(caption) > * > * {
+    border-color: rgba(10, 35, 66, 0.20) !important;
+}
+
+.table-striped > :not(caption) > * > * {
+    border-color: rgba(10, 35, 66, 0.20) !important;
+}
+
+/* Stili per i link */
+.link-name {
+    color: #0a2342;
+    text-decoration: none;
+    position: relative;
+}
+
+.link-name:hover {
+    color: #0a2342;
+    text-decoration: none;
+}
+
+.link-name::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background-color: #d4af37;
+    transition: width 0.3s ease;
+}
+
+.link-name:hover::after {
+    width: 100%;
+}
+</style>
 
 <div class="container">
     <!-- Header Minimal Solo Titolo -->

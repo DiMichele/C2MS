@@ -62,17 +62,17 @@ document.addEventListener('DOMContentLoaded', function() {
     $assentiOggi = $totalMilitari - $presentiOggi;
     $percentualePresenti = $totalMilitari > 0 ? round(($presentiOggi / $totalMilitari) * 100) : 0;
     
-    // Certificati lavoratori
-    $certificatiValidi = \App\Models\CertificatiLavoratori::where('data_scadenza', '>', now())->count();
-    $certificatiInScadenza = \App\Models\CertificatiLavoratori::whereBetween('data_scadenza', [now(), now()->addDays(30)])->count();
-    $certificatiScaduti = \App\Models\CertificatiLavoratori::where('data_scadenza', '<=', now())->count();
-    $totaleCertificati = $certificatiValidi + $certificatiInScadenza + $certificatiScaduti;
+    // Certificati lavoratori - DEPRECATI - usare Scadenze
+    $certificatiValidi = 0;
+    $certificatiInScadenza = 0;
+    $certificatiScaduti = 0;
+    $totaleCertificati = 0;
     
-    // Idoneità
-    $idoneitaValide = \App\Models\Idoneita::where('data_scadenza', '>', now())->count();
-    $idoneitaInScadenza = \App\Models\Idoneita::whereBetween('data_scadenza', [now(), now()->addDays(30)])->count();
-    $idoneitaScadute = \App\Models\Idoneita::where('data_scadenza', '<=', now())->count();
-    $totaleIdoneita = $idoneitaValide + $idoneitaInScadenza + $idoneitaScadute;
+    // Idoneità - DEPRECATI - usare Scadenze
+    $idoneitaValide = 0;
+    $idoneitaInScadenza = 0;
+    $idoneitaScadute = 0;
+    $totaleIdoneita = 0;
     
     // Percentuali per progress bar
     $percCertValidi = $totaleCertificati > 0 ? round(($certificatiValidi / $totaleCertificati) * 100) : 0;
@@ -274,16 +274,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <!-- Sezione Azioni Compatta -->
                 <div class="cert-actions-section">
                     <div class="row g-2">
-                        <div class="col-sm-6">
-                            <a href="{{ route('certificati.corsi_lavoratori') }}" class="btn btn-primary btn-sm w-100 cert-action-btn">
-                                <i class="fas fa-file-alt me-1"></i>
-                                <span>Gestisci Certificati</span>
-                            </a>
-                        </div>
-                        <div class="col-sm-6">
-                            <a href="{{ route('certificati.idoneita') }}" class="btn btn-success btn-sm w-100 cert-action-btn">
-                                <i class="fas fa-heartbeat me-1"></i>
-                                <span>Gestisci Idoneità</span>
+                        <div class="col-sm-12">
+                            <a href="{{ route('scadenze.index') }}" class="btn btn-primary btn-sm w-100 cert-action-btn">
+                                <i class="fas fa-calendar-check me-1"></i>
+                                <span>Gestisci Scadenze</span>
                             </a>
                         </div>
                     </div>
@@ -316,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                         <div class="alert-action">
-                            <a href="{{ route('certificati.corsi_lavoratori') }}?scaduti=1" class="btn btn-sm btn-outline-danger">
+                            <a href="{{ route('scadenze.index') }}" class="btn btn-sm btn-outline-danger">
                                 Gestisci
                             </a>
                         </div>
@@ -337,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                         <div class="alert-action">
-                            <a href="{{ route('certificati.corsi_lavoratori') }}?in_scadenza=1" class="btn btn-sm btn-outline-warning">
+                            <a href="{{ route('scadenze.index') }}" class="btn btn-sm btn-outline-warning">
                                 Visualizza
                             </a>
                         </div>
@@ -358,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                         <div class="alert-action">
-                            <a href="{{ route('certificati.idoneita') }}?in_scadenza=1" class="btn btn-sm btn-outline-warning">
+                            <a href="{{ route('scadenze.index') }}" class="btn btn-sm btn-outline-warning">
                                 Visualizza
                             </a>
                         </div>
@@ -493,21 +487,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="fas fa-user-slash"></i>
                         <span class="quick-access-text">Assenti Oggi</span>
                     </a>
-                    <a href="{{ route('certificati.corsi_lavoratori') }}?in_scadenza=1" class="quick-access-item amber">
-                        <i class="fas fa-certificate"></i>
-                        <span class="quick-access-text">Certificati in Scadenza</span>
+                    <a href="{{ route('scadenze.index') }}" class="quick-access-item amber">
+                        <i class="fas fa-calendar-check"></i>
+                        <span class="quick-access-text">Gestisci Scadenze</span>
                     </a>
-                    <a href="{{ route('certificati.corsi_lavoratori') }}?scaduti=1" class="quick-access-item red">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span class="quick-access-text">Certificati Scaduti</span>
-                    </a>
-                    <a href="{{ route('certificati.idoneita') }}?in_scadenza=1" class="quick-access-item amber">
-                        <i class="fas fa-heartbeat"></i>
-                        <span class="quick-access-text">Idoneità in Scadenza</span>
-                    </a>
-                    <a href="{{ route('certificati.idoneita') }}?scaduti=1" class="quick-access-item red">
-                        <i class="fas fa-medkit"></i>
-                        <span class="quick-access-text">Idoneità Scadute</span>
+                    <a href="{{ route('anagrafica.index') }}" class="quick-access-item blue">
+                        <i class="fas fa-id-card"></i>
+                        <span class="quick-access-text">Anagrafica Completa</span>
                     </a>
                     <a href="{{ route('pianificazione.index') }}" class="quick-access-item blue">
                         <i class="fas fa-calendar-alt"></i>

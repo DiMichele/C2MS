@@ -24,8 +24,8 @@ class UnifiedSigeBatSeeder extends Seeder
         $this->seedMansioni();
         $this->seedRuoli();
         $this->seedMilitari();
-        $this->seedCertificatiLavoratori();
-        $this->seedIdoneita();
+        // $this->seedCertificatiLavoratori(); // DEPRECATO - tabelle rimosse
+        // $this->seedIdoneita(); // DEPRECATO - tabelle rimosse
     }
 
     /**

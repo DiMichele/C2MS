@@ -9,7 +9,7 @@
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['grado_id', 'plotone_id', 'ufficio_id', 'mansione', 'approntamento_id', 'impegno', 'giorno'] as $filter) {
+    foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'compleanno', 'giorno'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $activeCount = count($activeFilters);
@@ -17,6 +17,24 @@
 @endphp
 
 @component('components.filters.filter-base', ['formAction' => route('pianificazione.index'), 'activeCount' => $activeCount, 'filterActive' => $filterActive])
+    {{-- Filtro Compagnia --}}
+    <div class="col mb-2">
+        <label for="compagnia" class="form-label small">Compagnia</label>
+        <div class="select-wrapper">
+            <select name="compagnia" id="compagnia" class="form-select form-select-sm filter-select {{ request()->filled('compagnia') ? 'applied' : '' }}">
+                <option value="">Tutte</option>
+                <option value="1" {{ request('compagnia') == '1' ? 'selected' : '' }}>1a</option>
+                <option value="2" {{ request('compagnia') == '2' ? 'selected' : '' }}>2a</option>
+                <option value="3" {{ request('compagnia') == '3' ? 'selected' : '' }}>3a</option>
+                <option value="4" {{ request('compagnia') == '4' ? 'selected' : '' }}>4a</option>
+                <option value="5" {{ request('compagnia') == '5' ? 'selected' : '' }}>5a</option>
+            </select>
+            @if(request()->filled('compagnia'))
+                <span class="clear-filter" data-filter="compagnia" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @endif
+        </div>
+    </div>
+
     {{-- Filtro Grado --}}
     <div class="col mb-2">
         <label for="grado_id" class="form-label small">Grado</label>
@@ -57,42 +75,20 @@
         </div>
     </div>
 
-    {{-- Filtro Ufficio --}}
+    {{-- Filtro Patente --}}
     <div class="col mb-2">
-        <label for="ufficio_id" class="form-label small">Ufficio</label>
+        <label for="patente" class="form-label small">Patente</label>
         <div class="select-wrapper">
-            <select name="ufficio_id" id="ufficio_id" class="form-select form-select-sm filter-select {{ request()->filled('ufficio_id') ? 'applied' : '' }}">
-                <option value="">Tutti</option>
-                @if(isset($uffici))
-                    @foreach($uffici as $ufficio)
-                        <option value="{{ $ufficio->id }}" {{ request('ufficio_id') == $ufficio->id ? 'selected' : '' }}>
-                            {{ $ufficio->nome }}
-                        </option>
-                    @endforeach
-                @endif
-            </select>
-            @if(request()->filled('ufficio_id'))
-                <span class="clear-filter" data-filter="ufficio_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-            @endif
-        </div>
-    </div>
-
-    {{-- Filtro Mansione --}}
-    <div class="col mb-2">
-        <label for="mansione" class="form-label small">Mansione</label>
-        <div class="select-wrapper">
-            <select name="mansione" id="mansione" class="form-select form-select-sm filter-select {{ request()->filled('mansione') ? 'applied' : '' }}">
+            <select name="patente" id="patente" class="form-select form-select-sm filter-select {{ request()->filled('patente') ? 'applied' : '' }}">
                 <option value="">Tutte</option>
-                @if(isset($mansioni))
-                    @foreach($mansioni as $mansione)
-                        <option value="{{ $mansione->nome }}" {{ request('mansione') == $mansione->nome ? 'selected' : '' }}>
-                            {{ $mansione->nome }}
-                        </option>
-                    @endforeach
-                @endif
+                <option value="2" {{ request('patente') == '2' ? 'selected' : '' }}>2</option>
+                <option value="3" {{ request('patente') == '3' ? 'selected' : '' }}>3</option>
+                <option value="4" {{ request('patente') == '4' ? 'selected' : '' }}>4</option>
+                <option value="5" {{ request('patente') == '5' ? 'selected' : '' }}>5</option>
+                <option value="6" {{ request('patente') == '6' ? 'selected' : '' }}>6</option>
             </select>
-            @if(request()->filled('mansione'))
-                <span class="clear-filter" data-filter="mansione" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @if(request()->filled('patente'))
+                <span class="clear-filter" data-filter="patente" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
             @endif
         </div>
     </div>
@@ -135,6 +131,22 @@
             </select>
             @if(request()->filled('impegno'))
                 <span class="clear-filter" data-filter="impegno" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @endif
+        </div>
+    </div>
+
+    {{-- Filtro Compleanno --}}
+    <div class="col mb-2">
+        <label for="compleanno" class="form-label small">Compleanno</label>
+        <div class="select-wrapper">
+            <select name="compleanno" id="compleanno" class="form-select form-select-sm filter-select {{ request()->filled('compleanno') ? 'applied' : '' }}">
+                <option value="">Tutti</option>
+                <option value="oggi" {{ request('compleanno') == 'oggi' ? 'selected' : '' }}>Oggi</option>
+                <option value="ultimi_2" {{ request('compleanno') == 'ultimi_2' ? 'selected' : '' }}>Ultimi 2 giorni</option>
+                <option value="prossimi_2" {{ request('compleanno') == 'prossimi_2' ? 'selected' : '' }}>Prossimi 2 giorni</option>
+            </select>
+            @if(request()->filled('compleanno'))
+                <span class="clear-filter" data-filter="compleanno" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
             @endif
         </div>
     </div>

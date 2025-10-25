@@ -6,9 +6,7 @@ use App\Http\Controllers\CertificatiController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\AssenzeController;
 use App\Http\Controllers\EventiController;
-
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\PianificazioneController;
@@ -34,7 +32,18 @@ Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData']
  | Rotte per la gestione dei militari
  |-------------------------------------------------
 */
+// Rotte che devono essere definite PRIMA della resource route
+Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])->name('anagrafica.export-excel');
+
+// Resource route
 Route::resource('anagrafica', MilitareController::class)->parameters(['anagrafica' => 'militare']);
+
+// Altre rotte anagrafica (dopo resource per evitare conflitti)
+Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])->name('anagrafica.update-field');
+Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])->name('anagrafica.patenti.add');
+Route::post('/anagrafica/{militare}/patenti/remove', [MilitareController::class, 'removePatente'])->name('anagrafica.patenti.remove');
+
+// Altre rotte militare
 Route::put('militare/{militare}/update-notes', [MilitareController::class, 'updateNotes'])->name('militare.update_notes');
 
 // Rotte per gestione foto profilo
@@ -61,20 +70,12 @@ Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCach
     ->name('organigramma.refresh');
 
 /*
- |-------------------------------------------------
- | Rotte per i certificati
- |-------------------------------------------------
+|-------------------------------------------------
+| Rotte per i certificati (DEPRECATE - utilizzare Scadenze)
+|-------------------------------------------------
 */
-Route::prefix('certificati')->name('certificati.')->group(function () {
-    Route::get('/corsi-lavoratori', [CertificatiController::class, 'corsiLavoratori'])->name('corsi_lavoratori');
-    Route::get('/idoneita', [CertificatiController::class, 'idoneita'])->name('idoneita');
-    Route::get('/create/{militare}/{tipo}', [CertificatiController::class, 'create'])->name('create');
-    Route::get('/edit/{id}', [CertificatiController::class, 'edit'])->name('edit');
-    Route::post('/upload', [CertificatiController::class, 'upload'])->name('upload');
-    Route::post('/store', [CertificatiController::class, 'store'])->name('store');
-    Route::put('/update/{id}', [CertificatiController::class, 'update'])->name('update');
-    Route::delete('/delete/{id}', [CertificatiController::class, 'destroy'])->name('destroy');
-});
+// Le pagine certificati/corsi-lavoratori e certificati/idoneita sono state rimosse
+// Utilizzare la nuova pagina Scadenze in Personale > Scadenze
 
 // Rotte per le certificazioni - commentate per controller mancante
 // Route::resource('certificati', CertificatoController::class);
@@ -82,18 +83,6 @@ Route::prefix('certificati')->name('certificati.')->group(function () {
 // Rotte per le note
 Route::post('/note/save', [NoteController::class, 'save'])->name('note.save');
 
-
-
-/*
- |-------------------------------------------------
- | Rotte per assenze
- |-------------------------------------------------
-*/
-Route::get('/assenze', [AssenzeController::class, 'index'])->name('assenze.index');
-Route::get('/assenze/create', [AssenzeController::class, 'create'])->name('assenze.create');
-Route::post('/assenze', [AssenzeController::class, 'store'])->name('assenze.store');
-Route::delete('/assenze/{assenza}', [AssenzeController::class, 'destroy'])->name('assenze.destroy');
-Route::put('/assenze/{assenza}', [AssenzeController::class, 'update'])->name('assenze.update');
 
 
 /*
@@ -174,4 +163,51 @@ Route::prefix('cpt')->name('pianificazione.')->group(function () {
     Route::post('/militare/{militare}/update-giorno', [PianificazioneController::class, 'updateGiorno'])->name('militare.update-giorno');
     Route::post('/militare/{militare}/update-giorni-range', [PianificazioneController::class, 'updateGiorniRange'])->name('militare.update-giorni-range');
     Route::get('/export-excel', [PianificazioneController::class, 'exportExcel'])->name('export-excel');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la gestione dei Servizi e Turni
+|-------------------------------------------------
+*/
+Route::prefix('servizi')->name('servizi.')->group(function () {
+    Route::prefix('turni')->name('turni.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TurniController::class, 'index'])->name('index');
+        Route::post('/check-disponibilita', [\App\Http\Controllers\TurniController::class, 'checkDisponibilita'])->name('check-disponibilita');
+        Route::post('/assegna', [\App\Http\Controllers\TurniController::class, 'assegna'])->name('assegna');
+        Route::post('/rimuovi', [\App\Http\Controllers\TurniController::class, 'rimuovi'])->name('rimuovi');
+        Route::post('/copia-settimana', [\App\Http\Controllers\TurniController::class, 'copiaSettimana'])->name('copia-settimana');
+        Route::post('/sincronizza', [\App\Http\Controllers\TurniController::class, 'sincronizza'])->name('sincronizza');
+        Route::get('/export-excel', [\App\Http\Controllers\TurniController::class, 'exportExcel'])->name('export-excel');
+    });
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Trasparenza Servizi
+|-------------------------------------------------
+*/
+Route::prefix('trasparenza')->name('trasparenza.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\TrasparenzaController::class, 'index'])->name('index');
+    Route::get('/export-excel', [\App\Http\Controllers\TrasparenzaController::class, 'exportExcel'])->name('export-excel');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per le Scadenze Certificati
+|-------------------------------------------------
+*/
+Route::prefix('scadenze')->name('scadenze.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ScadenzeController::class, 'index'])->name('index');
+    Route::post('/{militare}/update', [\App\Http\Controllers\ScadenzeController::class, 'update'])->name('update');
+    Route::post('/{militare}/update-singola', [\App\Http\Controllers\ScadenzeController::class, 'updateSingola'])->name('update-singola');
+});
+
+/*
+|-------------------------------------------------
+|| Rotte per i Ruolini
+|-------------------------------------------------
+*/
+Route::prefix('ruolini')->name('ruolini.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
 });

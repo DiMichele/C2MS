@@ -4,8 +4,8 @@ namespace App\Repositories;
 
 use App\Models\Militare;
 use App\Models\Presenza;
-use App\Models\CertificatiLavoratori;
-use App\Models\Idoneita;
+// use App\Models\CertificatiLavoratori; // DEPRECATO - tabelle rimosse
+// use App\Models\Idoneita; // DEPRECATO - tabelle rimosse
 use App\Models\Evento;
 use App\Models\Assenza;
 use Carbon\Carbon;
@@ -82,8 +82,8 @@ class StatisticheRepository
             return [
                 'totale_militari' => Militare::count(),
                 'presenti_oggi' => Presenza::oggi()->presenti()->count(),
-                'certificati_in_scadenza' => CertificatiLavoratori::inScadenza()->count(),
-                'idoneita_in_scadenza' => Idoneita::inScadenza()->count(),
+                'certificati_in_scadenza' => 0, // DEPRECATO - usare Scadenze
+                'idoneita_in_scadenza' => 0, // DEPRECATO - usare Scadenze
                 'eventi_oggi' => Evento::attiviOggi()->count(),
                 'assenze_oggi' => Assenza::attiveOggi()->count(),
             ];
@@ -159,16 +159,8 @@ class StatisticheRepository
      */
     public function getCertificatiInScadenza($limit = 10)
     {
-        $cacheKey = self::CACHE_PREFIX . ".certificati_scadenza.{$limit}";
-        
-        return Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($limit) {
-            return CertificatiLavoratori::with(['militare.grado'])
-                ->where('data_scadenza', '<', now()->addDays(self::GIORNI_SCADENZA))
-                ->where('data_scadenza', '>=', now())
-                ->orderBy('data_scadenza')
-                ->take($limit)
-                ->get();
-        });
+        // DEPRECATO - usare Scadenze
+        return collect();
     }
     
     /**
@@ -179,16 +171,8 @@ class StatisticheRepository
      */
     public function getIdoneitaInScadenza($limit = 10)
     {
-        $cacheKey = self::CACHE_PREFIX . ".idoneita_scadenza.{$limit}";
-        
-        return Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($limit) {
-            return Idoneita::with(['militare.grado'])
-                ->where('data_scadenza', '<', now()->addDays(self::GIORNI_SCADENZA))
-                ->where('data_scadenza', '>=', now())
-                ->orderBy('data_scadenza')
-                ->take($limit)
-                ->get();
-        });
+        // DEPRECATO - usare Scadenze
+        return collect();
     }
     
     // ==========================================

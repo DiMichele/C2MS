@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 /**
  * C2MS: Gestione e Controllo Digitale a Supporto del Comando
@@ -311,8 +312,6 @@ class MilitareService
             'mansione' => $militare->mansione?->nome,
             'note' => $militare->note,
             'foto_url' => $this->getFotoUrl($militare),
-            'certificati_validi' => $militare->hasCertificatiValidi(),
-            'idoneita_valide' => $militare->hasIdoneitaValide(),
             'media_valutazioni' => $militare->media_valutazioni,
             'created_at' => $militare->created_at,
             'updated_at' => $militare->updated_at
@@ -324,6 +323,7 @@ class MilitareService
      * 
      * @param Militare|int $militare
      * @return bool
+     * @throws \Exception Se l'eliminazione fallisce
      */
     public function deleteMilitare($militare)
     {
@@ -333,41 +333,96 @@ class MilitareService
                 $militare = Militare::findOrFail($militare);
             }
             
-            // Elimina la foto se esiste
-            $this->deleteFoto($militare);
+            DB::beginTransaction();
             
-            // Elimina i certificati associati
-            $militare->certificatiLavoratori()->delete();
-            $militare->idoneita()->delete();
-            
-            // Elimina le valutazioni
-            $militare->valutazioni()->delete();
-            
-            // Elimina le presenze
-            $militare->presenze()->delete();
-            
-            // Elimina le assenze
-            $militare->assenze()->delete();
-            
-            // Elimina gli eventi
-            $militare->eventi()->delete();
-            
-            // Elimina il militare
-            $deleted = $militare->delete();
-            
-            if ($deleted) {
+            try {
+                // Prima di tutto, rimuoviamo eventuali riferimenti circolari
+                // Se questo militare è referenziato come ultimo_poligono_id in altri militari
+                DB::table('militari')
+                    ->where('ultimo_poligono_id', function($query) use ($militare) {
+                        $query->select('id')
+                              ->from('poligoni')
+                              ->where('militare_id', $militare->id);
+                    })
+                    ->update(['ultimo_poligono_id' => null]);
+                
+                // Se questo militare è referenziato come approntamento_principale_id
+                DB::table('militari')
+                    ->where('approntamento_principale_id', function($query) use ($militare) {
+                        $query->select('id')
+                              ->from('approntamenti')
+                              ->whereExists(function($subquery) use ($militare) {
+                                  $subquery->select(DB::raw(1))
+                                           ->from('militare_approntamenti')
+                                           ->whereColumn('militare_approntamenti.approntamento_id', 'approntamenti.id')
+                                           ->where('militare_approntamenti.militare_id', $militare->id);
+                              });
+                    })
+                    ->update(['approntamento_principale_id' => null]);
+                
+                // Ora elimina la foto se esiste
+                $this->deleteFoto($militare);
+                
+                // Elimina i poligoni PRIMA (perché militari.ultimo_poligono_id li referenzia)
+                DB::table('poligoni')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina i certificati associati (hanno ON DELETE CASCADE)
+                // Ma per sicurezza li eliminiamo esplicitamente
+                DB::table('certificati_lavoratori')->where('militare_id', $militare->id)->delete();
+                DB::table('idoneita')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina le valutazioni
+                DB::table('militare_valutazioni')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina le presenze (esiste nel DB)
+                DB::table('presenze')->where('militare_id', $militare->id)->delete();
+                
+                // NOTA: La tabella 'assenze' NON ESISTE nel database, quindi non la eliminiamo
+                
+                // Elimina gli eventi
+                DB::table('eventi')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina le pianificazioni giornaliere (CPT) - nome corretto della tabella
+                DB::table('pianificazioni_giornaliere')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina le patenti
+                DB::table('patenti_militari')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina le note
+                DB::table('notas')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina eventuali relazioni con approntamenti (tabella pivot)
+                DB::table('militare_approntamenti')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina eventuali associazioni con attività del board
+                DB::table('activity_militare')->where('militare_id', $militare->id)->delete();
+                
+                // Elimina il militare
+                $deleted = $militare->delete();
+                
+                if (!$deleted) {
+                    throw new \Exception('L\'eliminazione del militare ha fallito senza eccezione');
+                }
+                
+                DB::commit();
+                
                 $this->invalidateCache($militare->id);
+                
+                return true;
+                
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
-            
-            return $deleted;
             
         } catch (\Exception $e) {
             Log::error('Errore durante l\'eliminazione del militare', [
                 'militare_id' => is_object($militare) ? $militare->id : $militare,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return false;
+            throw new \Exception('Impossibile eliminare il militare: ' . $e->getMessage(), 0, $e);
         }
     }
 
@@ -487,7 +542,7 @@ class MilitareService
      */
     public function getFilteredMilitari(Request $request, $perPage = 20)
     {
-        $query = Militare::with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'presenzaOggi']);
+        $query = Militare::with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'presenzaOggi', 'patenti']);
         
         // Filtri
         if ($request->filled('grado_id')) {
@@ -502,12 +557,51 @@ class MilitareService
             $query->where('polo_id', $request->polo_id);
         }
         
+        if ($request->filled('compagnia')) {
+            $query->where('compagnia', $request->compagnia);
+        }
+        
         if ($request->filled('nos_status')) {
             $query->where('nos_status', $request->nos_status);
         }
         
         if ($request->filled('mansione_id')) {
             $query->where('mansione_id', $request->mansione_id);
+        }
+        
+        // Filtro per compleanno
+        if ($request->filled('compleanno')) {
+            $oggi = now();
+            
+            switch ($request->compleanno) {
+                case 'oggi':
+                    $query->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month]);
+                    break;
+                    
+                case 'ultimi_2':
+                    // Compleanno negli ultimi 2 giorni (ieri e l'altro ieri)
+                    $ieri = $oggi->copy()->subDay();
+                    $altroIeri = $oggi->copy()->subDays(2);
+                    
+                    $query->where(function($q) use ($oggi, $ieri, $altroIeri) {
+                        $q->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$ieri->day, $ieri->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$altroIeri->day, $altroIeri->month]);
+                    });
+                    break;
+                    
+                case 'prossimi_2':
+                    // Compleanno nei prossimi 2 giorni (domani e dopodomani)
+                    $domani = $oggi->copy()->addDay();
+                    $dopodomani = $oggi->copy()->addDays(2);
+                    
+                    $query->where(function($q) use ($oggi, $domani, $dopodomani) {
+                        $q->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$domani->day, $domani->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$dopodomani->day, $dopodomani->month]);
+                    });
+                    break;
+            }
         }
         
         if ($request->filled('ruolo_id')) {
@@ -560,7 +654,7 @@ class MilitareService
         
         // Calcola filtri attivi
         $activeFilters = [];
-        $filterFields = ['grado_id', 'plotone_id', 'polo_id', 'nos_status', 'mansione_id', 'ruolo_id', 'email_istituzionale', 'telefono'];
+        $filterFields = ['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'ruolo_id', 'email_istituzionale', 'telefono'];
         
         foreach ($filterFields as $field) {
             if ($request->filled($field)) {

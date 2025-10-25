@@ -36,11 +36,8 @@ use Carbon\Carbon;
  * @property-read \App\Models\Polo|null $polo
  * @property-read \App\Models\Ruolo|null $ruoloCertificati
  * @property-read \App\Models\Mansione|null $mansione
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\CertificatiLavoratori[] $certificatiLavoratori
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Idoneita[] $idoneita
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Presenza[] $presenze
  * @property-read \App\Models\Presenza|null $presenzaOggi
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Assenza[] $assenze
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Evento[] $eventi
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\MilitareValutazione[] $valutazioni
  * @property-read float $media_valutazioni
@@ -69,6 +66,7 @@ class Militare extends Model
         'nome',
         'plotone_id',
         'polo_id',
+        'compagnia',
         'ruolo_id',
         'mansione_id',
         'approntamento_principale_id',
@@ -235,6 +233,16 @@ class Militare extends Model
     }
 
     /**
+     * Relazione con la compagnia del militare
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function compagnia()
+    {
+        return $this->belongsTo(Compagnia::class, 'compagnia_id');
+    }
+
+    /**
      * Relazione con il ruolo del militare
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -285,34 +293,15 @@ class Militare extends Model
         return $this->belongsTo(Mansione::class, 'mansione_id');
     }
 
-    /**
-     * Relazione con i certificati lavoratori del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function certificatiLavoratori()
-    {
-        return $this->hasMany(CertificatiLavoratori::class, 'militare_id');
-    }
-
-    /**
-     * Relazione con le idoneità del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function idoneita()
-    {
-        return $this->hasMany(Idoneita::class, 'militare_id');
-    }
     
     /**
-     * Relazione con le assenze del militare
+     * Relazione con le note del militare
      * 
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-    public function assenze()
+    public function note()
     {
-        return $this->hasMany(Assenza::class, 'militare_id');
+        return $this->hasMany(Nota::class, 'militare_id');
     }
     
     /**
@@ -375,6 +364,55 @@ class Militare extends Model
     public function patenti()
     {
         return $this->hasMany(PatenteMilitare::class);
+    }
+
+    /**
+     * Relazione con le scadenze
+     */
+    public function scadenza()
+    {
+        return $this->hasOne(ScadenzaMilitare::class, 'militare_id');
+    }
+
+    // Relazione assegnazioniTurno rimossa - tabella non esistente
+
+    /**
+     * Verifica se il militare è disponibile per una data specifica
+     * Controlla sia il CPT che i turni già assegnati
+     * 
+     * @param string $data Data nel formato Y-m-d
+     * @return array ['disponibile' => bool, 'motivo' => string|null, 'conflitto' => object|null]
+     */
+    public function isDisponibile($data)
+    {
+        // Controlla se ha un impegno nel CPT
+        $dataObj = \Carbon\Carbon::parse($data);
+        $impegnoCpt = $this->pianificazioniGiornaliere()
+            ->whereYear('created_at', $dataObj->year)
+            ->whereMonth('created_at', $dataObj->month)
+            ->whereHas('pianificazioneMensile', function($q) use ($dataObj) {
+                $q->where('mese', $dataObj->month)
+                  ->where('anno', $dataObj->year);
+            })
+            ->where('giorno', $dataObj->day)
+            ->with('tipoServizio')
+            ->first();
+
+        if ($impegnoCpt && $impegnoCpt->tipoServizio) {
+            return [
+                'disponibile' => false,
+                'motivo' => 'Impegnato nel CPT: ' . $impegnoCpt->tipoServizio->codice,
+                'conflitto' => $impegnoCpt,
+                'tipo' => 'cpt'
+            ];
+        }
+
+        return [
+            'disponibile' => true,
+            'motivo' => null,
+            'conflitto' => null,
+            'tipo' => null
+        ];
     }
 
     /**
@@ -448,59 +486,6 @@ class Militare extends Model
         return $presenzaOggi && $presenzaOggi->stato === 'Presente';
     }
 
-    /**
-     * Verifica se il militare ha tutti i certificati lavoratori validi
-     * 
-     * @return bool
-     */
-    public function hasCertificatiValidi()
-    {
-        $tipiRichiesti = ['corsi_lavoratori_4h', 'corsi_lavoratori_8h', 'corsi_lavoratori_preposti', 'corsi_lavoratori_dirigenti'];
-        $today = Carbon::today();
-
-        foreach ($tipiRichiesti as $tipo) {
-            $certificato = $this->certificatiLavoratori()
-                ->where('tipo', $tipo)
-                ->where(function($query) use ($today) {
-                    $query->whereNull('data_scadenza')
-                          ->orWhere('data_scadenza', '>', $today);
-                })
-                ->first();
-
-            if (!$certificato) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Verifica se il militare ha tutte le idoneità valide
-     * 
-     * @return bool
-     */
-    public function hasIdoneitaValide()
-    {
-        $tipiRichiesti = ['idoneita_mansione', 'idoneita_smi', 'idoneita'];
-        $today = Carbon::today();
-
-        foreach ($tipiRichiesti as $tipo) {
-            $idoneita = $this->idoneita()
-                ->where('tipo', $tipo)
-                ->where(function($query) use ($today) {
-                    $query->whereNull('data_scadenza')
-                          ->orWhere('data_scadenza', '>', $today);
-                })
-                ->first();
-
-            if (!$idoneita) {
-                return false;
-            }
-        }
-
-        return true;
-    }
 
     /**
      * Ottiene il nome completo del militare
@@ -517,27 +502,6 @@ class Militare extends Model
         }
         
         return $nome;
-    }
-
-    /**
-     * Verifica se il militare ha assenze in un periodo specifico
-     * 
-     * @param string $dataInizio Data di inizio periodo
-     * @param string $dataFine Data di fine periodo
-     * @return bool
-     */
-    public function hasAssenzaInDate($dataInizio, $dataFine)
-    {
-        return $this->assenze()
-            ->where(function($query) use ($dataInizio, $dataFine) {
-                $query->whereBetween('data_inizio', [$dataInizio, $dataFine])
-                      ->orWhereBetween('data_fine', [$dataInizio, $dataFine])
-                      ->orWhere(function($q) use ($dataInizio, $dataFine) {
-                          $q->where('data_inizio', '<=', $dataInizio)
-                            ->where('data_fine', '>=', $dataFine);
-                      });
-            })
-            ->exists();
     }
 
     /**
@@ -561,30 +525,6 @@ class Militare extends Model
             ->exists();
     }
 
-    /**
-     * Ottiene l'ultimo certificato di un tipo specifico
-     * 
-     * @param string $tipo Tipo di certificato
-     * @return \App\Models\CertificatiLavoratori|\App\Models\Idoneita|null
-     */
-    public function getLatestCertificateByType($tipo)
-    {
-        // Cerca nei certificati lavoratori
-        $certificato = $this->certificatiLavoratori()
-            ->where('tipo', $tipo)
-            ->orderBy('data_ottenimento', 'desc')
-            ->first();
-
-        if ($certificato) {
-            return $certificato;
-        }
-
-        // Cerca nelle idoneità
-        return $this->idoneita()
-            ->where('tipo', $tipo)
-            ->orderBy('data_ottenimento', 'desc')
-            ->first();
-    }
 
     // ============================================
     // GESTIONE CARTELLE MILITARE
@@ -673,25 +613,6 @@ class Militare extends Model
         }
     }
 
-    /**
-     * Ottiene il percorso per salvare i certificati lavoratori
-     * 
-     * @return string
-     */
-    public function getCertificatiLavoratoriPath()
-    {
-        return $this->getFolderPath() . '/certificati_lavoratori';
-    }
-
-    /**
-     * Ottiene il percorso per salvare le idoneità
-     * 
-     * @return string
-     */
-    public function getIdoneitaPath()
-    {
-        return $this->getFolderPath() . '/idoneita';
-    }
 
     /**
      * Ottiene il percorso per salvare la foto profilo

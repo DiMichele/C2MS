@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Militare;
-use App\Models\CertificatiLavoratori;
-use App\Models\Idoneita;
+// use App\Models\CertificatiLavoratori; // DEPRECATO - tabelle rimosse
+// use App\Models\Idoneita; // DEPRECATO - tabelle rimosse
 use Illuminate\Support\Facades\Storage;
 
 class MigrateMilitariFiles extends Command

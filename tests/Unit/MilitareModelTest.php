@@ -13,7 +13,7 @@ use App\Models\Mansione;
 use App\Models\Presenza;
 use App\Models\Assenza;
 use App\Models\Evento;
-use App\Models\CertificatiLavoratori;
+// use App\Models\CertificatiLavoratori; // DEPRECATO - tabelle rimosse
 use App\Models\MilitareValutazione;
 use Carbon\Carbon;
 

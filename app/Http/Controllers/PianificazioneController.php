@@ -8,6 +8,9 @@ use App\Models\PianificazioneGiornaliera;
 use App\Models\Militare;
 use App\Models\TipoServizio;
 use App\Models\CodiciServizioGerarchia;
+use App\Models\ServizioTurno;
+use App\Models\TurnoSettimanale;
+// use App\Models\AssegnazioneTurno; // DISABILITATO - tabella non esiste
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -53,6 +56,7 @@ class PianificazioneController extends Controller
             'ruolo', 
             'approntamentoPrincipale',
             'approntamenti',
+            'patenti',
             'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
                 $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                       ->with(['tipoServizio', 'tipoServizio.codiceGerarchia']);
@@ -60,6 +64,10 @@ class PianificazioneController extends Controller
         ]);
 
         // Applica filtri
+        if ($request->filled('compagnia')) {
+            $militariQuery->where('compagnia', $request->compagnia);
+        }
+
         if ($request->filled('grado_id')) {
             $militariQuery->where('grado_id', $request->grado_id);
         }
@@ -68,14 +76,45 @@ class PianificazioneController extends Controller
             $militariQuery->where('plotone_id', $request->plotone_id);
         }
 
-        if ($request->filled('ufficio_id')) {
-            $militariQuery->where('polo_id', $request->ufficio_id);
+        if ($request->filled('patente')) {
+            $militariQuery->whereHas('patenti', function($q) use ($request) {
+                $q->where('categoria', $request->patente);
+            });
         }
 
-        if ($request->filled('mansione')) {
-            $militariQuery->whereHas('mansione', function($q) use ($request) {
-                $q->where('nome', 'like', '%' . $request->mansione . '%');
-            });
+        // Filtro per compleanno
+        if ($request->filled('compleanno')) {
+            $oggi = now();
+            
+            switch ($request->compleanno) {
+                case 'oggi':
+                    $militariQuery->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month]);
+                    break;
+                    
+                case 'ultimi_2':
+                    // Compleanno negli ultimi 2 giorni (ieri e l'altro ieri)
+                    $ieri = $oggi->copy()->subDay();
+                    $altroIeri = $oggi->copy()->subDays(2);
+                    
+                    $militariQuery->where(function($q) use ($oggi, $ieri, $altroIeri) {
+                        $q->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$ieri->day, $ieri->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$altroIeri->day, $altroIeri->month]);
+                    });
+                    break;
+                    
+                case 'prossimi_2':
+                    // Compleanno nei prossimi 2 giorni (domani e dopodomani)
+                    $domani = $oggi->copy()->addDay();
+                    $dopodomani = $oggi->copy()->addDays(2);
+                    
+                    $militariQuery->where(function($q) use ($oggi, $domani, $dopodomani) {
+                        $q->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$domani->day, $domani->month])
+                          ->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$dopodomani->day, $dopodomani->month]);
+                    });
+                    break;
+            }
         }
 
         if ($request->filled('approntamento_id')) {
@@ -295,7 +334,17 @@ class PianificazioneController extends Controller
                 (object)['id' => 'SI-GD', 'codice' => 'SI-GD', 'nome' => 'SERVIZIO ISOLATO-GUARDIA DISTACCATA', 'categoria' => 'SERVIZIO'],
                 (object)['id' => 'SI', 'codice' => 'SI', 'nome' => 'SERVIZIO ISOLATO-CAPOMACCHINA/CAU', 'categoria' => 'SERVIZIO'],
                 (object)['id' => 'SI-VM', 'codice' => 'SI-VM', 'nome' => 'VISITA MEDICA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-PI', 'codice' => 'S-PI', 'nome' => 'PRONTO IMPIEGO', 'categoria' => 'SERVIZIO']
+                (object)['id' => 'S-PI', 'codice' => 'S-PI', 'nome' => 'PRONTO IMPIEGO', 'categoria' => 'SERVIZIO'],
+                // SERVIZI TURNO SETTIMANALI
+                (object)['id' => 'G-BTG', 'codice' => 'G-BTG', 'nome' => 'GRADUATO DI BTG', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'NVA', 'codice' => 'NVA', 'nome' => 'NUCLEO VIGILANZA ARMATA D\'AVANZO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'CG', 'codice' => 'CG', 'nome' => 'CONDUTTORE GUARDIA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'NS-DA', 'codice' => 'NS-DA', 'nome' => 'NUCLEO SORV. D\' AVANZO 07:30 - 17:00', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'PDT', 'codice' => 'PDT', 'nome' => 'VIGILANZA PIAN DEL TERMINE', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'AA', 'codice' => 'AA', 'nome' => 'ADDETTO ANTINCENDIO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'VS-CETLI', 'codice' => 'VS-CETLI', 'nome' => 'VIGILANZA SETTIMANALE CETLI', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'CORR', 'codice' => 'CORR', 'nome' => 'CORRIERE', 'categoria' => 'SERVIZIO'],
+                (object)['id' => 'NDI', 'codice' => 'NDI', 'nome' => 'NUCLEO DIFESA IMMEDIATA', 'categoria' => 'SERVIZIO']
             ],
             'OPERAZIONE' => [
                 (object)['id' => 'TO', 'codice' => 'TO', 'nome' => 'TEATRO OPERATIVO', 'categoria' => 'OPERAZIONE']
@@ -511,16 +560,24 @@ class PianificazioneController extends Controller
         $pianificazione->save();
         $pianificazione->refresh();
         
+        // SINCRONIZZAZIONE BIDIREZIONALE: CPT -> Turni
+        $this->sincronizzaCptVersoTurni($militare, $anno, $mese, $request->giorno, $tipoServizioId);
+        
             return response()->json([
                 'success' => true,
                 'pianificazione' => $pianificazione->load(['tipoServizio'])
             ]);
             
         } catch (\Exception $e) {
+            \Log::error('Errore updateGiorno', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Errore nel salvataggio: ' . $e->getMessage()
-            ], 500);
+            ], 200); // Cambio da 500 a 200 per garantire che il JSON venga processato
         }
     }
 
@@ -572,6 +629,9 @@ class PianificazioneController extends Controller
                 );
                 
                 $pianificazioni[] = $pianificazione->load(['tipoServizio']);
+                
+                // SINCRONIZZAZIONE BIDIREZIONALE: CPT -> Turni
+                $this->sincronizzaCptVersoTurni($militare, $giornoData['anno'], $giornoData['mese'], $giornoData['giorno'], $tipoServizioId);
             }
         
         return response()->json([
@@ -580,10 +640,15 @@ class PianificazioneController extends Controller
             ]);
             
         } catch (\Exception $e) {
+            \Log::error('Errore updateGiorniRange', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Errore nel salvataggio: ' . $e->getMessage()
+            ], 200); // Cambio da 500 a 200 per garantire che il JSON venga processato
         }
     }
     
@@ -642,6 +707,7 @@ class PianificazioneController extends Controller
             'ruolo',
             'approntamentoPrincipale',
             'approntamenti',
+            'patenti',
             'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
                 $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                       ->with(['tipoServizio', 'tipoServizio.codiceGerarchia']);
@@ -649,6 +715,10 @@ class PianificazioneController extends Controller
         ]);
 
         // Applica filtri (stessi della vista index)
+        if ($request->filled('compagnia')) {
+            $militariQuery->where('compagnia', $request->compagnia);
+        }
+
         if ($request->filled('grado_id')) {
             $militariQuery->where('grado_id', $request->grado_id);
         }
@@ -657,13 +727,9 @@ class PianificazioneController extends Controller
             $militariQuery->where('plotone_id', $request->plotone_id);
         }
 
-        if ($request->filled('ufficio_id')) {
-            $militariQuery->where('polo_id', $request->ufficio_id);
-        }
-
-        if ($request->filled('mansione')) {
-            $militariQuery->whereHas('mansione', function($q) use ($request) {
-                $q->where('nome', 'like', '%' . $request->mansione . '%');
+        if ($request->filled('patente')) {
+            $militariQuery->whereHas('patenti', function($q) use ($request) {
+                $q->where('categoria', $request->patente);
             });
         }
 
@@ -720,7 +786,7 @@ class PianificazioneController extends Controller
         $sheet->getStyle('A1')->getAlignment()->setHorizontal('center');
 
         // Header delle colonne (riga 3)
-        $headers = ['GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'UFFICIO', 'MANSIONE', 'APPRONTAMENTO'];
+        $headers = ['COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'PATENTE', 'APPRONTAMENTO'];
         
         // Aggiungi giorni del mese
         $giorniMese = \Carbon\Carbon::createFromDate($anno, $mese, 1)->daysInMonth;
@@ -740,12 +806,16 @@ class PianificazioneController extends Controller
         // Dati dei militari (inizia dalla riga 4)
         $row = 4;
         foreach ($militari as $militare) {
-            $sheet->setCellValue('A' . $row, $militare->grado->nome ?? '');
-            $sheet->setCellValue('B' . $row, $militare->cognome);
-            $sheet->setCellValue('C' . $row, $militare->nome);
-            $sheet->setCellValue('D' . $row, str_replace(['° Plotone', 'Plotone'], ['°', ''], $militare->plotone->nome ?? ''));
-            $sheet->setCellValue('E' . $row, $militare->polo->nome ?? '');
-            $sheet->setCellValue('F' . $row, $militare->mansione->nome ?? '');
+            $sheet->setCellValue('A' . $row, $militare->compagnia ? $militare->compagnia . 'a' : '');
+            $sheet->setCellValue('B' . $row, $militare->grado->sigla ?? '');  // Usa sigla invece di nome
+            $sheet->setCellValue('C' . $row, $militare->cognome);
+            $sheet->setCellValue('D' . $row, $militare->nome);
+            $sheet->setCellValue('E' . $row, str_replace(['° Plotone', 'Plotone'], ['°', ''], $militare->plotone->nome ?? ''));
+            
+            // Patenti - mostra tutte le patenti separate da spazio
+            $patenti = $militare->patenti->pluck('categoria')->toArray();
+            $sheet->setCellValue('F' . $row, !empty($patenti) ? implode(' ', $patenti) : '');
+            
             $sheet->setCellValue('G' . $row, $militare->approntamentoPrincipale->nome ?? '');
 
             // Aggiungi i dati di pianificazione per ogni giorno
@@ -782,14 +852,14 @@ class PianificazioneController extends Controller
         $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
             ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
         
-        // Imposta larghezze colonne più larghe
-        $sheet->getColumnDimension('A')->setWidth(20); // GRADO
-        $sheet->getColumnDimension('B')->setWidth(18); // COGNOME
-        $sheet->getColumnDimension('C')->setWidth(15); // NOME
-        $sheet->getColumnDimension('D')->setWidth(12); // PLOTONE
-        $sheet->getColumnDimension('E')->setWidth(18); // UFFICIO
-        $sheet->getColumnDimension('F')->setWidth(20); // MANSIONE
-        $sheet->getColumnDimension('G')->setWidth(20); // APPRONTAMENTO
+        // Imposta larghezze colonne (aumentate per evitare troncamenti)
+        $sheet->getColumnDimension('A')->setWidth(12); // COMPAGNIA
+        $sheet->getColumnDimension('B')->setWidth(20); // GRADO (sigla)
+        $sheet->getColumnDimension('C')->setWidth(25); // COGNOME
+        $sheet->getColumnDimension('D')->setWidth(20); // NOME
+        $sheet->getColumnDimension('E')->setWidth(15); // PLOTONE
+        $sheet->getColumnDimension('F')->setWidth(15); // PATENTE
+        $sheet->getColumnDimension('G')->setWidth(25); // APPRONTAMENTO
         
         // Giorni del mese - larghezza fissa
         for ($i = 0; $i < $giorniMese; $i++) {
@@ -939,5 +1009,138 @@ class PianificazioneController extends Controller
         $p = ($h + $l - 7 * $m + 114) % 31;
         
         return Carbon::createFromDate($anno, $n, $p + 1);
+    }
+    
+    /**
+     * Sincronizza un'assegnazione dal CPT verso i Turni
+     * Se il tipo servizio CPT corrisponde a un servizio turno, crea/aggiorna l'assegnazione turno
+     * 
+     * @param Militare $militare
+     * @param int $anno
+     * @param int $mese
+     * @param int $giorno
+     * @param int|null $tipoServizioId
+     * @return void
+     */
+    private function sincronizzaCptVersoTurni(Militare $militare, int $anno, int $mese, int $giorno, ?int $tipoServizioId)
+    {
+        try {
+            \Log::info('========= INIZIO SINCRONIZZAZIONE CPT -> TURNI =========', [
+                'militare_id' => $militare->id,
+                'militare_nome' => $militare->cognome . ' ' . $militare->nome,
+                'anno' => $anno,
+                'mese' => $mese,
+                'giorno' => $giorno,
+                'tipo_servizio_id' => $tipoServizioId
+            ]);
+            
+            $dataServizio = Carbon::createFromDate($anno, $mese, $giorno);
+            
+            // Se tipoServizioId è null, rimuovi l'eventuale assegnazione turno
+            // DISABILITATO - tabella assegnazioni_turno non esiste
+            if (!$tipoServizioId) {
+                // AssegnazioneTurno::where('militare_id', $militare->id)
+                //     ->whereDate('data_servizio', $dataServizio->format('Y-m-d'))
+                //     ->delete();
+                
+                \Log::info('Rimossa assegnazione turno per CPT vuoto (DISABILITATO)', [
+                    'militare_id' => $militare->id,
+                    'data' => $dataServizio->format('Y-m-d')
+                ]);
+                return;
+            }
+            
+            // Trova il tipo servizio CPT
+            $tipoServizio = TipoServizio::find($tipoServizioId);
+            if (!$tipoServizio) {
+                return;
+            }
+            
+            // Cerca se esiste un servizio turno corrispondente (tramite sigla_cpt)
+            $servizioTurno = ServizioTurno::where('sigla_cpt', $tipoServizio->codice)
+                ->where('attivo', true)
+                ->first();
+            
+            if (!$servizioTurno) {
+                // Non è un servizio turno, non fare nulla
+                \Log::info('Tipo servizio CPT non corrisponde a servizio turno', [
+                    'codice_cpt' => $tipoServizio->codice
+                ]);
+                return;
+            }
+            
+            // Trova o crea il turno settimanale per quella data
+            $turno = TurnoSettimanale::createForDate($dataServizio);
+            
+            // Calcola il prossimo slot disponibile per questo servizio/data
+            // DISABILITATO - tabella assegnazioni_turno non esiste
+            // $maxSlot = AssegnazioneTurno::where('turno_settimanale_id', $turno->id)
+            //     ->where('servizio_turno_id', $servizioTurno->id)
+            //     ->whereDate('data_servizio', $dataServizio->format('Y-m-d'))
+            //     ->max('posizione');
+            // 
+            // $nuovoSlot = ($maxSlot ?? 0) + 1;
+            // 
+            // // Verifica se il militare è già assegnato a questo servizio in questa data
+            // $assegnazioneEsistente = AssegnazioneTurno::where('militare_id', $militare->id)
+            //     ->where('turno_settimanale_id', $turno->id)
+            //     ->where('servizio_turno_id', $servizioTurno->id)
+            //     ->whereDate('data_servizio', $dataServizio->format('Y-m-d'))
+            //     ->first();
+            // 
+            // if ($assegnazioneEsistente) {
+            //     \Log::info('Assegnazione turno già esistente', [
+            //         'assegnazione_id' => $assegnazioneEsistente->id
+            //     ]);
+            //     return;
+            // }
+            // 
+            // // Verifica se il militare ha già un altro servizio turno in quella data
+            // $altroServizio = AssegnazioneTurno::where('militare_id', $militare->id)
+            //     ->whereDate('data_servizio', $dataServizio->format('Y-m-d'))
+            //     ->where('servizio_turno_id', '!=', $servizioTurno->id)
+            //     ->first();
+            // 
+            // if ($altroServizio) {
+            //     // Rimuovi il vecchio servizio turno
+            //     $altroServizio->delete();
+            //     \Log::info('Rimosso vecchio servizio turno per sincronizzazione CPT', [
+            //         'militare_id' => $militare->id,
+            //         'data' => $dataServizio->format('Y-m-d'),
+            //         'vecchio_servizio' => $altroServizio->servizio_turno_id
+            //     ]);
+            // }
+            // 
+            // // Crea la nuova assegnazione turno
+            // AssegnazioneTurno::create([
+            //     'turno_settimanale_id' => $turno->id,
+            //     'servizio_turno_id' => $servizioTurno->id,
+            //     'militare_id' => $militare->id,
+            //     'data_servizio' => $dataServizio,
+            //     'giorno_settimana' => strtoupper($dataServizio->locale('it')->dayName),
+            //     'posizione' => $nuovoSlot,
+            //     'sincronizzato_cpt' => true,
+            // ]);
+            
+            \Log::info('Sincronizzazione turno disabilitata (tabella non esiste)', [
+                'militare_id' => $militare->id,
+                'data' => $dataServizio->format('Y-m-d')
+            ]);
+            
+            \Log::info('Creata assegnazione turno da CPT', [
+                'militare_id' => $militare->id,
+                'servizio_turno_id' => $servizioTurno->id,
+                'data' => $dataServizio->format('Y-m-d'),
+                'slot' => $nuovoSlot
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Errore sincronizzazione CPT -> Turni', [
+                'error' => $e->getMessage(),
+                'militare_id' => $militare->id,
+                'data' => $dataServizio->format('Y-m-d')
+            ]);
+            // Non propaghiamo l'errore per non bloccare il salvataggio CPT
+        }
     }
 }

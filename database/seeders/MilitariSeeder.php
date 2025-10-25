@@ -10,8 +10,8 @@ use App\Models\Polo;
 use App\Models\Ruolo;
 use App\Models\Mansione;
 use App\Models\Militare;
-use App\Models\CertificatiLavoratori;
-use App\Models\Idoneita;
+// use App\Models\CertificatiLavoratori; // DEPRECATO - tabelle rimosse
+// use App\Models\Idoneita; // DEPRECATO - tabelle rimosse
 use App\Models\MilitareValutazione;
 use App\Models\Evento;
 use App\Models\Presenza;

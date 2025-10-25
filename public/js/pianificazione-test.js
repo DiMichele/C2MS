@@ -327,7 +327,7 @@ function setupSaveButton() {
 
 // Funzione per salvare un singolo giorno
 function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizioId, mese = null, anno = null) {
-    const updateUrl = window.location.origin + '/C2MS/public/pianificazione/militare/' + militareId + '/update-giorno';
+    const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorno';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     
     const requestData = {
@@ -355,7 +355,7 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
 
 // Funzione per salvare un range di giorni (nuovo endpoint batch)
 function saveDaysRange(militareId, giorniDaSalvare, tipoServizioId) {
-    const updateUrl = window.location.origin + '/C2MS/public/pianificazione/militare/' + militareId + '/update-giorni-range';
+    const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorni-range';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     
     const bodyData = {

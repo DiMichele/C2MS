@@ -18,8 +18,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Militare;
 use App\Models\Presenza;
-use App\Models\CertificatiLavoratori;
-use App\Models\Idoneita;
+// use App\Models\CertificatiLavoratori; // DEPRECATO - tabelle rimosse
+// use App\Models\Idoneita; // DEPRECATO - tabelle rimosse
 use App\Models\Plotone;
 use App\Models\Polo;
 use Carbon\Carbon;
@@ -66,8 +66,8 @@ class DashboardController extends Controller
             return [
                 'totale_militari' => Militare::count(),
                 'presenti_oggi' => Presenza::oggi()->presenti()->count(),
-                'certificati_in_scadenza' => CertificatiLavoratori::inScadenza()->count(),
-                'idoneita_in_scadenza' => Idoneita::inScadenza()->count(),
+                'certificati_in_scadenza' => 0, // DEPRECATO - usare Scadenze
+                'idoneita_in_scadenza' => 0, // DEPRECATO - usare Scadenze
             ];
         });
         
@@ -87,23 +87,9 @@ class DashboardController extends Controller
                    ->get();
         });
         
-        // Certificati recentemente scaduti o in scadenza (con caching ridotto)
-        $certificati = Cache::remember('dashboard.certificati', self::CACHE_DURATION / 2, function () {
-            return CertificatiLavoratori::with(['militare.grado'])
-                                      ->where('data_scadenza', '<', now()->addDays(30))
-                                      ->orderBy('data_scadenza')
-                                      ->take(5)
-                                      ->get();
-        });
-
-        // Idoneità in scadenza (con caching ridotto)
-        $idoneita = Cache::remember('dashboard.idoneita', self::CACHE_DURATION / 2, function () {
-            return Idoneita::with(['militare.grado'])
-                         ->where('data_scadenza', '<', now()->addDays(30))
-                         ->orderBy('data_scadenza')
-                         ->take(5)
-                         ->get();
-        });
+        // DEPRECATO - usare Scadenze
+        $certificati = collect();
+        $idoneita = collect();
         
         // Presenti e assenti oggi (cache dinamica)
         $presentiOggiCount = Cache::remember('dashboard.presenti_oggi_count', self::CACHE_DURATION_DYNAMIC, function () {

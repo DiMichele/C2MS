@@ -224,6 +224,23 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
+                                    <label for="compagnia" class="form-label">Compagnia</label>
+                                    <select class="form-select @error('compagnia') is-invalid @enderror" id="compagnia" name="compagnia">
+                                        <option value="">-- Seleziona Compagnia --</option>
+                                        <option value="110" {{ old('compagnia', $militare->compagnia ?? '') == '110' ? 'selected' : '' }}>110</option>
+                                        <option value="124" {{ old('compagnia', $militare->compagnia ?? '') == '124' ? 'selected' : '' }}>124</option>
+                                        <option value="127" {{ old('compagnia', $militare->compagnia ?? '') == '127' ? 'selected' : '' }}>127</option>
+                                    </select>
+                                    @error('compagnia')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
                                     <label for="mansione_id" class="form-label">Incarico</label>
                                     <select class="form-select @error('mansione_id') is-invalid @enderror" id="mansione_id" name="mansione_id">
                                         <option value="">-- Seleziona Incarico --</option>
@@ -244,6 +261,25 @@
                                     <label for="anzianita" class="form-label">Anzianità</label>
                                     <input type="text" class="form-control @error('anzianita') is-invalid @enderror" id="anzianita" name="anzianita" value="{{ old('anzianita', $militare->anzianita ?? '') }}" placeholder="Es: 2024">
                                     @error('anzianita')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="nos_status" class="form-label">NOS</label>
+                                    <select class="form-select @error('nos_status') is-invalid @enderror" id="nos_status" name="nos_status">
+                                        <option value="">-- Seleziona NOS --</option>
+                                        <option value="si" {{ old('nos_status', $militare->nos_status ?? '') == 'si' ? 'selected' : '' }}>SI</option>
+                                        <option value="no" {{ old('nos_status', $militare->nos_status ?? '') == 'no' ? 'selected' : '' }}>NO</option>
+                                        <option value="da richiedere" {{ old('nos_status', $militare->nos_status ?? '') == 'da richiedere' ? 'selected' : '' }}>Da Richiedere</option>
+                                        <option value="non previsto" {{ old('nos_status', $militare->nos_status ?? '') == 'non previsto' ? 'selected' : '' }}>Non Previsto</option>
+                                        <option value="in attesa" {{ old('nos_status', $militare->nos_status ?? '') == 'in attesa' ? 'selected' : '' }}>In Attesa</option>
+                                    </select>
+                                    @error('nos_status')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>

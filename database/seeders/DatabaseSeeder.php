@@ -14,8 +14,20 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call([
+            // Struttura organizzativa
+            GradiSeeder::class,
+            CompagniePlotoniSeeder::class,
+            MansioniRuoliSeeder::class,
+            
+            // Militari e dati completi
+            MilitariCompletiSeeder::class,
+            
+            // Servizi e impegni
+            ServiziTurnoSeeder::class,
+            ImpegniServiziSeeder::class,
+            
+            // Utenti e board
             UsersSeeder::class,
-            MilitariSeeder::class,
             BoardColumnSeeder::class,
             BoardActivitiesSeeder::class,
         ]);

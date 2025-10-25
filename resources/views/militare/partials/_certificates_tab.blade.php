@@ -2,118 +2,121 @@
 |--------------------------------------------------------------------------
 | Dashboard Statistiche Certificazioni
 |--------------------------------------------------------------------------
-| Analisi completa dello stato certificativo senza elenchi dettagliati
-| @version 6.0 - Statistics Only
+| Analisi completa dello stato certificativo basato su scadenze_militari
+| @version 7.0 - Scadenze Integration
 | @author Michele Di Gennaro
 --}}
 
 <div id="certificates">
     
     @php
-        $totalCert = $militare->certificatiLavoratori->count();
-        $validCert = $militare->certificatiLavoratori->filter(fn($c) => !$c->isScaduto())->count();
-        $expiringCert = $militare->certificatiLavoratori->filter(fn($c) => $c->isInScadenza())->count();
-        $expiredCert = $militare->certificatiLavoratori->filter(fn($c) => $c->isScaduto())->count();
+        $scadenza = $militare->scadenza;
         
-        $totalIdon = $militare->idoneita->count();
-        $validIdon = $militare->idoneita->filter(fn($i) => !$i->isScaduto())->count();
-        $expiringIdon = $militare->idoneita->filter(fn($i) => $i->isInScadenza())->count();
-        $expiredIdon = $militare->idoneita->filter(fn($i) => $i->isScaduto())->count();
+        // Campi certificati da verificare
+        $campiScadenze = [
+            'pefo', 
+            'idoneita_mans', 
+            'idoneita_smi', 
+            'lavoratore_4h', 
+            'lavoratore_8h', 
+            'preposto', 
+            'dirigenti', 
+            'poligono_approntamento', 
+            'poligono_mantenimento'
+        ];
         
-        // Calcolo percentuali
-        $certValidPerc = $totalCert > 0 ? round(($validCert / $totalCert) * 100) : 0;
-        $idonValidPerc = $totalIdon > 0 ? round(($validIdon / $totalIdon) * 100) : 0;
+        $totali = 0;
+        $validi = 0;
+        $inScadenza = 0;
+        $scaduti = 0;
+        
+        if ($scadenza) {
+            foreach ($campiScadenze as $campo) {
+                $dataConseguimento = $scadenza->{$campo . '_data_conseguimento'};
+                
+                if ($dataConseguimento) {
+                    $totali++;
+                    $stato = $scadenza->verificaStato($campo);
+                    
+                    if ($stato === 'valido') {
+                        $validi++;
+                    } elseif ($stato === 'in_scadenza') {
+                        $inScadenza++;
+                    } elseif ($stato === 'scaduto') {
+                        $scaduti++;
+                    }
+                }
+            }
+        }
+        
+        // Calcolo percentuale
+        $validoPerc = $totali > 0 ? round(($validi / $totali) * 100) : 0;
     @endphp
 
 
 
     <!-- Statistiche Principali -->
     <div class="stats-grid">
-        <!-- Certificati Lavoratori -->
-        <div class="stat-card">
+        <!-- Card Unica Certificazioni -->
+        <div class="stat-card stat-card-full">
             <div class="stat-header">
-                <h6 class="stat-title">Certificati Lavoratori</h6>
-                <span class="stat-percentage {{ $certValidPerc >= 80 ? 'excellent' : ($certValidPerc >= 60 ? 'good' : 'warning') }}">
-                    {{ $certValidPerc }}%
+                <h6 class="stat-title">Certificazioni e Scadenze</h6>
+                <span class="stat-percentage {{ $validoPerc >= 80 ? 'excellent' : ($validoPerc >= 60 ? 'good' : 'warning') }}">
+                    {{ $validoPerc }}%
                 </span>
             </div>
             <div class="stat-details">
                 <div class="detail-row">
                     <span class="detail-label">Totali</span>
-                    <span class="detail-value">{{ $totalCert }}</span>
+                    <span class="detail-value">{{ $totali }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Validi</span>
-                    <span class="detail-value valid">{{ $validCert }}</span>
+                    <span class="detail-value valid">{{ $validi }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">In scadenza</span>
-                    <span class="detail-value warning">{{ $expiringCert }}</span>
+                    <span class="detail-value warning">{{ $inScadenza }}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Scaduti</span>
-                    <span class="detail-value expired">{{ $expiredCert }}</span>
+                    <span class="detail-value expired">{{ $scaduti }}</span>
                 </div>
-
             </div>
         </div>
-
-        <!-- Idoneità -->
-        <div class="stat-card">
-            <div class="stat-header">
-                <h6 class="stat-title">Idoneità</h6>
-                <span class="stat-percentage {{ $idonValidPerc >= 80 ? 'excellent' : ($idonValidPerc >= 60 ? 'good' : 'warning') }}">
-                    {{ $idonValidPerc }}%
-                </span>
-            </div>
-            <div class="stat-details">
-                <div class="detail-row">
-                    <span class="detail-label">Totali</span>
-                    <span class="detail-value">{{ $totalIdon }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Valide</span>
-                    <span class="detail-value valid">{{ $validIdon }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">In scadenza</span>
-                    <span class="detail-value warning">{{ $expiringIdon }}</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Scadute</span>
-                    <span class="detail-value expired">{{ $expiredIdon }}</span>
-                </div>
-
-            </div>
-        </div>
-
-
     </div>
 
     <!-- Riepilogo Azioni -->
-    @if(($expiredCert + $expiredIdon + $expiringCert + $expiringIdon) > 0)
+    @if(($scaduti + $inScadenza) > 0)
     <div class="action-summary">
         <h6 class="action-title">Azioni Richieste</h6>
         <div class="action-items">
-            @if($expiredCert + $expiredIdon > 0)
+            @if($scaduti > 0)
             <div class="action-item urgent">
                 <span class="action-icon">⚠️</span>
                 <span class="action-text">
-                    <strong>{{ $expiredCert + $expiredIdon }} certificazioni scadute</strong> - Rinnovo urgente richiesto
+                    <strong>{{ $scaduti }} certificazioni scadute</strong> - Rinnovo urgente richiesto
                 </span>
             </div>
             @endif
-            @if($expiringCert + $expiringIdon > 0)
+            @if($inScadenza > 0)
             <div class="action-item warning">
                 <span class="action-icon">📅</span>
                 <span class="action-text">
-                    <strong>{{ $expiringCert + $expiringIdon }} certificazioni in scadenza</strong> - Pianificare rinnovo
+                    <strong>{{ $inScadenza }} certificazioni in scadenza</strong> - Pianificare rinnovo
                 </span>
             </div>
             @endif
         </div>
     </div>
     @endif
+    
+    <!-- Link alla pagina scadenze -->
+    <div class="text-center mt-4">
+        <a href="{{ route('scadenze.index') }}" class="btn btn-outline-primary">
+            <i class="fas fa-calendar-alt me-2"></i> Vedi tutte le scadenze
+        </a>
+    </div>
 
 </div>
 
@@ -123,7 +126,7 @@
     /* Grid Statistiche */
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: 1fr;
         gap: 2rem;
         margin-top: 1rem;
         margin-bottom: 2rem;
@@ -136,6 +139,10 @@
         padding: 1.5rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         transition: transform 0.2s ease;
+    }
+    
+    .stat-card-full {
+        grid-column: 1 / -1;
     }
     
     .stat-card:hover {

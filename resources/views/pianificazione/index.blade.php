@@ -15,7 +15,7 @@ window.pageData = {
     }
 };
 </script>
-<script src="{{ asset('js/pianificazione-test.js') }}"></script>
+<script src="{{ asset('js/pianificazione-test.js') }}?v={{ time() }}"></script>
 
 <div class="container-fluid" style="position: relative; z-index: 1;">
     <!-- Header con controlli -->
@@ -34,7 +34,7 @@ window.pageData = {
                 <div class="col-12">
                     <div class="d-flex justify-content-center">
                         <form method="GET" class="d-flex gap-2 align-items-center">
-                    <select name="mese" class="date-selectors" onchange="this.form.submit()" style="border-radius: 6px !important;">
+                    <select name="mese" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 140px; border-radius: 6px !important;">
                     @php
                         $mesiItaliani = [
                             1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile',
@@ -48,7 +48,7 @@ window.pageData = {
                         </option>
                     @endfor
                 </select>
-                    <select name="anno" class="date-selectors" onchange="this.form.submit()" style="border-radius: 6px !important;">
+                    <select name="anno" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 100px; border-radius: 6px !important;">
                         @for($a = 2025; $a <= 2030; $a++)
                         <option value="{{ $a }}" {{ $anno == $a ? 'selected' : '' }}>{{ $a }}</option>
                     @endfor
@@ -74,7 +74,7 @@ window.pageData = {
         @php
             // Check if any filters are active
             $activeFilters = [];
-            foreach(['grado_id', 'plotone_id', 'ufficio_id', 'mansione', 'approntamento_id', 'impegno', 'giorno'] as $filter) {
+            foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'compleanno', 'giorno'] as $filter) {
                 if(request()->filled($filter)) $activeFilters[] = $filter;
             }
             $hasActiveFilters = count($activeFilters) > 0;
@@ -117,17 +117,17 @@ window.pageData = {
             <div class="table-container" style="border: 1px solid #dee2e6;">
                 <!-- Header fisso -->
             <div class="table-header-fixed">
-                <table class="table table-sm table-bordered mb-0" style="width: 3122px; min-width: 3122px; table-layout: fixed;">
+                <table class="table table-sm table-bordered mb-0" style="width: 3032px; min-width: 3032px; table-layout: fixed;">
                         <thead class="table-dark">
                         <tr>
                             <!-- Colonne fisse per info militare -->
-                        <th class="bg-dark text-white" style="width: 180px;">Grado</th>
-                        <th class="bg-dark text-white" style="width: 180px;">Cognome</th>
-                        <th class="bg-dark text-white" style="width: 180px;">Nome</th>
-                            <th class="bg-dark text-white" style="width: 130px;">Plotone</th>
-                            <th class="bg-dark text-white" style="width: 132px; padding-left: 12px;">Ufficio</th>
-                            <th class="bg-dark text-white" style="width: 160px;">Mansione</th>
-                            <th class="bg-dark text-white" style="width: 160px;">Approntamento</th>
+                        <th class="bg-dark text-white" style="width: 160px;">Compagnia</th>
+                        <th class="bg-dark text-white" style="width: 200px;">Grado</th>
+                        <th class="bg-dark text-white" style="width: 230px;">Cognome</th>
+                        <th class="bg-dark text-white" style="width: 170px;">Nome</th>
+                            <th class="bg-dark text-white" style="width: 120px;">Plotone</th>
+                            <th class="bg-dark text-white" style="width: 112px;">Patente</th>
+                            <th class="bg-dark text-white" style="width: 120px;">Approntamento</th>
                             
                             <!-- Colonne per ogni giorno del mese -->
                             @foreach($giorniMese as $giorno)
@@ -160,35 +160,38 @@ window.pageData = {
                 
                 <!-- Body scrollabile -->
                 <div class="table-body-scroll" style="max-height: 60vh; overflow: auto;">
-                    <table class="table table-sm table-bordered mb-0" id="pianificazioneTable" style="width: 3122px; min-width: 3122px; table-layout: fixed;">
+                    <table class="table table-sm table-bordered mb-0" id="pianificazioneTable" style="width: 3032px; min-width: 3032px; table-layout: fixed;">
                         <tbody>
                         @forelse($militariConPianificazione as $index => $item)
                             <tr class="militare-row" data-militare-id="{{ $item['militare']->id }}">
                                 <!-- Info militare (colonne fisse) -->
-                                <td class="fw-bold" style="width: 180px; padding: 4px 6px;">
+                                <td class="fw-bold text-center" style="width: 160px; padding: 4px 6px;">
+                                    {{ $item['militare']->compagnia ? $item['militare']->compagnia . 'a' : '-' }}
+                                </td>
+                                <td class="fw-bold" style="width: 200px; padding: 4px 6px;">
                                     <span title="{{ $item['militare']->grado->nome ?? '-' }}">
                                         {{ $item['militare']->grado->sigla ?? '-' }}
                                     </span>
                                 </td>
-                                <td style="width: 180px; padding: 4px 6px;">
-                                    <a href="{{ route('pianificazione.militare', $item['militare']) }}?mese={{ $mese }}&anno={{ $anno }}" 
-                                       class="text-decoration-none fw-bold">
+                                <td style="width: 230px; padding: 4px 6px;">
+                                    <a href="{{ route('anagrafica.show', $item['militare']->id) }}"
+                                       class="link-name">
                                         {{ $item['militare']->cognome }}
                                     </a>
                                 </td>
-                                <td style="width: 180px; padding: 4px 6px;">
+                                <td style="width: 170px; padding: 4px 6px;">
                                     {{ $item['militare']->nome }}
                                 </td>
-                                <td style="width: 130px; padding: 4px 6px;">
+                                <td class="text-center" style="width: 120px; padding: 4px 6px;">
                                     {{ str_replace(['° Plotone', 'Plotone'], ['°', ''], $item['militare']->plotone->nome ?? '-') }}
                                 </td>
-                                <td style="width: 132px; padding: 4px 6px;">
-                                    <small>{{ $item['militare']->polo->nome ?? '-' }}</small>
+                                <td class="text-center" style="width: 112px; padding: 4px 2px; font-size: 0.85rem;">
+                                    @php
+                                        $patenti = $item['militare']->patenti->pluck('categoria')->toArray();
+                                    @endphp
+                                    {{ !empty($patenti) ? implode(' ', $patenti) : '-' }}
                                 </td>
-                                <td style="width: 160px; padding: 4px 6px;">
-                                    <small>{{ $item['militare']->mansione->nome ?? '-' }}</small>
-                                </td>
-                                <td style="width: 160px; padding: 4px 6px;">
+                                <td style="width: 120px; padding: 4px 6px;">
                                     <small>{{ $item['militare']->approntamentoPrincipale->nome ?? '-' }}</small>
                                 </td>
                                 
@@ -215,8 +218,9 @@ window.pageData = {
                                                 // PROVVEDIMENTI MEDICO SANITARI - Rosso
                                                 'RMD', 'LC', 'IS' => 'cpt-rosso',
                                                 
-                                                // SERVIZIO - Verde
-                                                'S-G1', 'S-G2', 'S-SA', 'S-CD1', 'S-CD2', 'S-SG', 'S-CG', 'S-UI', 'S-UP', 'S-AE', 'S-ARM', 'SI-GD', 'SI', 'SI-VM', 'S-PI' => 'cpt-verde',
+                                                // SERVIZIO - Verde (include nuovi servizi turno)
+                                                'S-G1', 'S-G2', 'S-SA', 'S-CD1', 'S-CD2', 'S-SG', 'S-CG', 'S-UI', 'S-UP', 'S-AE', 'S-ARM', 'SI-GD', 'SI', 'SI-VM', 'S-PI',
+                                                'G-BTG', 'NVA', 'CG', 'NS-DA', 'PDT', 'AA', 'VS-CETLI', 'CORR', 'NDI', 'PDT1', 'S-SI' => 'cpt-verde',
                                                 
                                                 // OPERAZIONE - Rosso
                                                 'TO' => 'cpt-rosso',
@@ -370,7 +374,7 @@ window.pageData = {
 @endsection
 
 @push('styles')
-<style>
+<style id="cpt-custom-styles-{{ time() }}">
 /* Stili per la tabella con header fisso */
 .table-container {
     display: flex;
@@ -390,6 +394,56 @@ window.pageData = {
     display: none; /* Chrome, Safari, Opera */
 }
 
+/* Sfondo alternato per la tabella */
+.table tbody tr {
+    background-color: #fafafa;
+}
+
+.table tbody tr:nth-of-type(odd) {
+    background-color: #ffffff;
+}
+
+/* Hover effect */
+.table tbody tr:hover {
+    background-color: rgba(10, 35, 66, 0.12) !important;
+}
+
+.table tbody tr:hover td {
+    background-color: transparent !important;
+}
+
+/* Bordi leggermente più scuri dell'hover */
+.table-bordered > :not(caption) > * > * {
+    border-color: rgba(10, 35, 66, 0.20) !important;
+}
+
+/* Stili per i link con sottolineatura d'oro */
+.link-name {
+    color: #0a2342;
+    text-decoration: none;
+    position: relative;
+}
+
+.link-name:hover {
+    color: #0a2342;
+    text-decoration: none;
+}
+
+.link-name::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background-color: #d4af37;
+    transition: width 0.3s ease;
+}
+
+.link-name:hover::after {
+    width: 100%;
+}
+
 .table-body-scroll {
     flex: 1;
     overflow: auto;
@@ -402,8 +456,8 @@ window.pageData = {
 .table-header-fixed table,
 .table-body-scroll table {
     table-layout: fixed;
-    width: 3000px; /* Larghezza fissa per garantire scroll */
-    min-width: 3000px;
+    width: 3032px; /* Larghezza fissa per garantire scroll */
+    min-width: 3032px;
     border-collapse: separate;
     border-spacing: 0;
 }
@@ -416,13 +470,13 @@ window.pageData = {
 }
 
 /* Larghezza specifica per ogni colonna per allineamento perfetto (header/body) */
-.table-header-fixed table th:nth-child(1), .table-body-scroll table td:nth-child(1) { width: 160px; min-width: 160px; max-width: 160px; } /* Grado */
-.table-header-fixed table th:nth-child(2), .table-body-scroll table td:nth-child(2) { width: 140px; min-width: 140px; max-width: 140px; } /* Cognome */
-.table-header-fixed table th:nth-child(3), .table-body-scroll table td:nth-child(3) { width: 120px; min-width: 120px; max-width: 120px; } /* Nome */
-.table-header-fixed table th:nth-child(4), .table-body-scroll table td:nth-child(4) { width: 100px; min-width: 100px; max-width: 100px; } /* Plotone */
-.table-header-fixed table th:nth-child(5), .table-body-scroll table td:nth-child(5) { width: 140px; min-width: 140px; max-width: 140px; } /* Ufficio */
-.table-header-fixed table th:nth-child(6), .table-body-scroll table td:nth-child(6) { width: 120px; min-width: 120px; max-width: 120px; } /* Incarico */
-.table-header-fixed table th:nth-child(7), .table-body-scroll table td:nth-child(7) { width: 150px; min-width: 150px; max-width: 150px; } /* Approntamento */
+.table-header-fixed table th:nth-child(1), .table-body-scroll table td:nth-child(1) { width: 160px; min-width: 160px; max-width: 160px; } /* Compagnia */
+.table-header-fixed table th:nth-child(2), .table-body-scroll table td:nth-child(2) { width: 200px; min-width: 200px; max-width: 200px; } /* Grado */
+.table-header-fixed table th:nth-child(3), .table-body-scroll table td:nth-child(3) { width: 230px; min-width: 230px; max-width: 230px; } /* Cognome */
+.table-header-fixed table th:nth-child(4), .table-body-scroll table td:nth-child(4) { width: 170px; min-width: 170px; max-width: 170px; } /* Nome */
+.table-header-fixed table th:nth-child(5), .table-body-scroll table td:nth-child(5) { width: 120px; min-width: 120px; max-width: 120px; } /* Plotone */
+.table-header-fixed table th:nth-child(6), .table-body-scroll table td:nth-child(6) { width: 112px; min-width: 112px; max-width: 112px; } /* Patente */
+.table-header-fixed table th:nth-child(7), .table-body-scroll table td:nth-child(7) { width: 120px; min-width: 120px; max-width: 120px; } /* Approntamento */
 
 /* Colonne giorni - larghezza fissa */
 .table-header-fixed table th:nth-child(n+8), .table-body-scroll table td:nth-child(n+8) { 
@@ -712,51 +766,7 @@ table.table thead th.today-column div,
     /* Non modificare i colori dei badge durante l'hover */
 }
 
-/* Stili moderni e professionali per i selettori mese/anno */
-        .date-selectors, select.date-selectors {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid #d1d5db;
-            font-size: 0.875rem;
-            color: #374151;
-            padding: 8px 20px 8px 12px;
-            border-radius: 6px !important;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            min-width: 120px;
-            cursor: pointer;
-            font-weight: 500;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 8px center;
-            background-repeat: no-repeat;
-            background-size: 16px;
-        }
-
-        .date-selectors:hover {
-            border-color: #9ca3af;
-            background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-            transform: translateY(-1px);
-        }
-
-        .date-selectors:focus {
-            border-color: #3b82f6;
-            background: #ffffff;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            outline: none;
-        }
-
-        .date-selectors:active {
-            transform: translateY(0);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-        }
-
-        .date-selectors option {
-            padding: 8px 12px;
-            background-color: #ffffff;
-            font-weight: 500;
-            color: #374151;
-        }
+/* Usa gli stili Bootstrap standard per i selettori */
 
 /* Stili minimal per l'anteprima del range */
 #rangePreview {
@@ -796,8 +806,17 @@ html, body {
 {{-- JavaScript spostato nel file pianificazione-test.js --}}
 
 <script>
-// Gestione hover manuale per le righe della tabella pianificazione
+// Gestione hover manuale e tooltip per le righe della tabella pianificazione
 document.addEventListener('DOMContentLoaded', function() {
+    
+    // ===== INIZIALIZZA TOOLTIP BOOTSTRAP =====
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    console.log('✓ Tooltip Bootstrap inizializzati:', tooltipList.length);
+    
+    // ===== GESTIONE HOVER RIGHE =====
     const table = document.getElementById('pianificazioneTable');
     if (!table) return;
     

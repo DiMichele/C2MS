@@ -86,11 +86,21 @@ class Compagnia extends Model
     }
 
     /**
+     * Relazione diretta con i militari della compagnia
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function militari()
+    {
+        return $this->hasMany(Militare::class, 'compagnia_id');
+    }
+
+    /**
      * Relazione con tutti i militari della compagnia (attraverso plotoni)
      * 
      * @return \Illuminate\Database\Eloquent\Relations\HasManyThrough
      */
-    public function militari()
+    public function militariPerPlotone()
     {
         return $this->hasManyThrough(
             Militare::class,

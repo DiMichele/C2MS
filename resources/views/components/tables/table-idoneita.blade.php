@@ -32,7 +32,7 @@
                             {{ $m->grado->nome ?? 'N/A' }}
                         </td>
                         <td>
-                            <a href="{{ route('militare.show', $m->id) }}" class="link-name">
+                            <a href="{{ route('anagrafica.show', $m->id) }}" class="link-name">
                                 {{ $m->cognome }} {{ $m->nome }}
                             </a>
                         </td>
@@ -410,7 +410,7 @@
                             {{ $m->grado->nome ?? 'N/A' }}
                         </td>
                         <td>
-                            <a href="{{ route('militare.show', $m->id) }}" class="link-name">
+                            <a href="{{ route('anagrafica.show', $m->id) }}" class="link-name">
                                 {{ $m->cognome }} {{ $m->nome }}
                             </a>
                         </td>

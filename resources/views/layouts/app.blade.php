@@ -64,7 +64,7 @@
                     </a>
                 </li>
                 
-                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('organigramma*') ? 'active' : '' }}">
+                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('scadenze*') || request()->is('ruolini*') || request()->is('organigramma*') ? 'active' : '' }}">
                     <a href="#">
                         Personale
                     </a>
@@ -72,8 +72,14 @@
                         <li class="nav-dropdown-item {{ request()->is('cpt*') ? 'active' : '' }}">
                             <a href="{{ route('pianificazione.index') }}">CPT</a>
                         </li>
+                        <li class="nav-dropdown-item {{ request()->is('ruolini*') ? 'active' : '' }}">
+                            <a href="{{ route('ruolini.index') }}">Ruolini</a>
+                        </li>
                         <li class="nav-dropdown-item {{ request()->is('anagrafica*') && !request()->is('anagrafica/create') ? 'active' : '' }}">
                             <a href="{{ route('anagrafica.index') }}">Anagrafica</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('scadenze*') ? 'active' : '' }}">
+                            <a href="{{ route('scadenze.index') }}">Scadenze</a>
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
                             <a href="{{ url('/organigramma') }}">Organigramma</a>
@@ -95,19 +101,20 @@
                     </ul>
                 </li>
                 
-                <li class="nav-menu-item {{ request()->is('certificati*') ? 'active' : '' }}">
-                    <a href="{{ route('certificati.corsi_lavoratori') }}">
-                        Gestione Certificati
+                <li class="nav-menu-item {{ request()->is('servizi*') || request()->is('trasparenza*') ? 'active' : '' }}">
+                    <a href="#">
+                        Servizi
                     </a>
                     <ul class="nav-dropdown">
-                        <li class="nav-dropdown-item {{ request()->is('certificati/corsi-lavoratori*') ? 'active' : '' }}">
-                            <a href="{{ route('certificati.corsi_lavoratori') }}">Corsi Lavoratori</a>
+                        <li class="nav-dropdown-item {{ request()->is('servizi/turni*') ? 'active' : '' }}">
+                            <a href="{{ route('servizi.turni.index') }}">Turni Settimanali</a>
                         </li>
-                        <li class="nav-dropdown-item {{ request()->is('certificati/idoneita*') ? 'active' : '' }}">
-                            <a href="{{ route('certificati.idoneita') }}">Idoneità</a>
+                        <li class="nav-dropdown-item {{ request()->is('trasparenza*') ? 'active' : '' }}">
+                            <a href="{{ route('trasparenza.index') }}">Trasparenza Servizi</a>
                         </li>
                     </ul>
                 </li>
+
             </ul>
         </nav>
         

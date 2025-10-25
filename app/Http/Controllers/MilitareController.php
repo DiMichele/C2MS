@@ -25,6 +25,11 @@ use App\Models\Mansione;
 use App\Models\RuoloCertificati;
 use App\Services\MilitareService;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 /**
  * Controller per la gestione dei militari
@@ -96,8 +101,7 @@ class MilitareController extends Controller
                 'polo', 
                 'mansione', 
                 'ruolo',
-                'certificatiLavoratori',
-                'idoneita',
+                'scadenza',
                 'valutazioni'
                 // 'assenze', // Tabella non esiste
                 // 'eventi'   // Controllare se esiste
@@ -114,7 +118,7 @@ class MilitareController extends Controller
                 'error' => $e->getMessage()
             ]);
             
-            return redirect()->route('militare.index')
+            return redirect()->route('anagrafica.index')
                 ->withErrors(['error' => 'Errore nel caricamento del militare: ' . $e->getMessage()]);
         }
     }
@@ -142,7 +146,7 @@ class MilitareController extends Controller
         try {
             $this->militareService->createMilitare($request->all());
             
-            return redirect()->route('militare.index')
+            return redirect()->route('anagrafica.index')
                 ->with('success', 'Militare creato con successo!');
                 
         } catch (\Exception $e) {
@@ -213,24 +217,41 @@ class MilitareController extends Controller
     /**
      * Elimina un militare dal database
      * 
-     * @param int $id ID del militare da eliminare
+     * @param Militare $militare Il militare da eliminare (model binding)
      * @return \Illuminate\Http\RedirectResponse Redirect con messaggio di successo o errore
      */
-    public function destroy($id)
+    public function destroy(Militare $militare)
     {
         try {
-            $this->militareService->deleteMilitare($id);
+            Log::info('Tentativo di eliminazione militare', [
+                'militare_id' => $militare->id,
+                'militare_nome' => $militare->cognome . ' ' . $militare->nome
+            ]);
             
-            return redirect()->route('militare.index')
+            $result = $this->militareService->deleteMilitare($militare);
+            
+            if (!$result) {
+                Log::error('Eliminazione militare fallita - servizio ha ritornato false', [
+                    'militare_id' => $militare->id
+                ]);
+                
+                return redirect()->route('anagrafica.index')
+                    ->withErrors(['error' => 'Impossibile eliminare il militare. Controlla i log per i dettagli.']);
+            }
+            
+            Log::info('Militare eliminato con successo', ['militare_id' => $militare->id]);
+            
+            return redirect()->route('anagrafica.index')
                 ->with('success', 'Militare eliminato con successo.');
                 
         } catch (\Exception $e) {
             Log::error('Errore nell\'eliminazione del militare', [
-                'militare_id' => $id,
-                'error' => $e->getMessage()
+                'militare_id' => $militare->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
-            return redirect()->route('militare.index')
+            return redirect()->route('anagrafica.index')
                 ->withErrors(['error' => 'Errore durante l\'eliminazione: ' . $e->getMessage()]);
         }
     }
@@ -488,6 +509,303 @@ class MilitareController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Errore nel recupero dati'
+            ], 500);
+        }
+    }
+
+    /**
+     * Esporta i militari in Excel con i filtri applicati
+     * 
+     * @param Request $request Richiesta HTTP
+     * @return \Illuminate\Http\Response File Excel
+     */
+    public function exportExcel(Request $request)
+    {
+        try {
+            Log::info('Export Excel Anagrafica iniziato');
+            
+            // Ottieni i militari filtrati usando lo stesso servizio dell'index
+            $data = $this->militareService->getFilteredMilitari($request);
+            $militari = $data['militari'];
+            
+            Log::info('Militari recuperati: ' . $militari->count());
+            
+            // Crea un nuovo spreadsheet
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            
+            // Imposta il titolo del foglio
+            $sheet->setTitle('Anagrafica Militari');
+            
+            // Intestazioni
+            $headers = [
+                'A1' => 'Compagnia',
+                'B1' => 'Grado',
+                'C1' => 'Cognome', 
+                'D1' => 'Nome',
+                'E1' => 'Plotone',
+                'F1' => 'Ufficio',
+                'G1' => 'Incarico',
+                'H1' => 'Patenti',
+                'I1' => 'NOS',
+                'J1' => 'Anzianità',
+                'K1' => 'Data di Nascita',
+                'L1' => 'Email Istituzionale',
+                'M1' => 'Cellulare'
+            ];
+            
+            // Imposta le intestazioni
+            foreach ($headers as $cell => $value) {
+                $sheet->setCellValue($cell, $value);
+            }
+            
+            // Stile per le intestazioni
+            $headerStyle = [
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => 'FFFFFF']
+                ],
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '2C3E50']
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['rgb' => '000000']
+                    ]
+                ]
+            ];
+            
+            $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
+            
+            // Dati dei militari
+            $row = 2;
+            foreach ($militari as $militare) {
+                $sheet->setCellValue('A' . $row, $militare->compagnia ? $militare->compagnia . 'a' : '');
+                $sheet->setCellValue('B' . $row, $militare->grado->sigla ?? '');  // Usa sigla invece di nome
+                $sheet->setCellValue('C' . $row, $militare->cognome);
+                $sheet->setCellValue('D' . $row, $militare->nome);
+                $sheet->setCellValue('E' . $row, $militare->plotone->nome ?? '');
+                $sheet->setCellValue('F' . $row, $militare->polo->nome ?? '');
+                $sheet->setCellValue('G' . $row, $militare->mansione->nome ?? '');
+                
+                // Patenti - mostra tutte le patenti separate da spazio
+                $patenti = $militare->patenti->pluck('categoria')->toArray();
+                $sheet->setCellValue('H' . $row, !empty($patenti) ? implode(' ', $patenti) : '');
+                
+                $sheet->setCellValue('I' . $row, $militare->nos_status ? ucfirst($militare->nos_status) : '');
+                $sheet->setCellValue('J' . $row, $militare->anzianita ?? '');
+                $sheet->setCellValue('K' . $row, $militare->data_nascita ? $militare->data_nascita->format('d/m/Y') : '');
+                $sheet->setCellValue('L' . $row, $militare->email_istituzionale ?? '');
+                $sheet->setCellValue('M' . $row, $militare->telefono ?? '');
+                
+                $row++;
+            }
+            
+            // Stile per i dati
+            $dataStyle = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => Border::BORDER_THIN,
+                        'color' => ['rgb' => 'CCCCCC']
+                    ]
+                ],
+                'alignment' => [
+                    'vertical' => Alignment::VERTICAL_CENTER
+                ]
+            ];
+            
+            if ($row > 2) {
+                $sheet->getStyle('A2:M' . ($row - 1))->applyFromArray($dataStyle);
+            }
+            
+            // Imposta la larghezza delle colonne (aumentate per evitare troncamenti)
+            $columnWidths = [
+                'A' => 12,  // Compagnia
+                'B' => 20,  // Grado (sigla)
+                'C' => 25,  // Cognome
+                'D' => 20,  // Nome
+                'E' => 18,  // Plotone
+                'F' => 30,  // Ufficio
+                'G' => 30,  // Incarico
+                'H' => 15,  // Patenti
+                'I' => 10,  // NOS
+                'J' => 12,  // Anzianità
+                'K' => 18,  // Data di Nascita
+                'L' => 35,  // Email
+                'M' => 20   // Cellulare
+            ];
+            
+            foreach ($columnWidths as $column => $width) {
+                $sheet->getColumnDimension($column)->setWidth($width);
+            }
+            
+            // Crea il writer
+            $writer = new Xlsx($spreadsheet);
+            
+            // Nome del file
+            $filename = 'anagrafica_militari_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+            
+            // Crea il file e invia come download
+            $tempFile = tempnam(sys_get_temp_dir(), 'anagrafica_');
+            $writer->save($tempFile);
+            
+            return response()->download($tempFile, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ])->deleteFileAfterSend(true);
+                
+        } catch (\Exception $e) {
+            Log::error('Errore nell\'export Excel anagrafica', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()->with('error', 'Errore durante l\'esportazione del file Excel.');
+        }
+    }
+
+    /**
+     * Aggiorna un singolo campo di un militare via AJAX
+     * 
+     * @param Request $request Richiesta HTTP
+     * @param Militare $militare Modello del militare
+     * @return \Illuminate\Http\JsonResponse Risposta JSON
+     */
+    public function updateField(Request $request, Militare $militare)
+    {
+        try {
+            $field = $request->input('field');
+            $value = $request->input('value');
+            
+            // Lista dei campi consentiti per l'aggiornamento
+            $allowedFields = [
+                'compagnia', 'grado_id', 'cognome', 'nome', 'plotone_id', 
+                'polo_id', 'mansione_id', 'nos_status', 'anzianita', 
+                'data_nascita', 'email_istituzionale', 'telefono'
+            ];
+            
+            if (!in_array($field, $allowedFields)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Campo non consentito'
+                ], 400);
+            }
+            
+            // Aggiorna il campo
+            $militare->$field = $value;
+            $militare->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Campo aggiornato con successo'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Errore nell\'aggiornamento campo militare', [
+                'militare_id' => $militare->id,
+                'field' => $request->input('field'),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante l\'aggiornamento'
+            ], 500);
+        }
+    }
+
+    /**
+     * Aggiunge una patente a un militare
+     * 
+     * @param Request $request Richiesta HTTP
+     * @param Militare $militare Militare (model binding)
+     * @return \Illuminate\Http\JsonResponse Risposta JSON
+     */
+    public function addPatente(Request $request, Militare $militare)
+    {
+        try {
+            $patente = $request->input('patente');
+            
+            // Verifica che la patente sia valida
+            if (!in_array($patente, ['2', '3', '4', '5', '6'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Patente non valida'
+                ], 400);
+            }
+            
+            // Verifica se la patente esiste già
+            $exists = $militare->patenti()->where('categoria', $patente)->exists();
+            
+            if ($exists) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Patente già presente'
+                ]);
+            }
+            
+            // Crea la patente
+            $militare->patenti()->create([
+                'categoria' => $patente,
+                'tipo' => 'MIL',
+                'data_ottenimento' => now(),
+                'data_scadenza' => now()->addYears(10)
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Patente aggiunta con successo'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Errore nell\'aggiunta patente', [
+                'militare_id' => $militare->id,
+                'patente' => $request->input('patente'),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante l\'aggiunta: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Rimuove una patente da un militare
+     * 
+     * @param Request $request Richiesta HTTP
+     * @param Militare $militare Militare (model binding)
+     * @return \Illuminate\Http\JsonResponse Risposta JSON
+     */
+    public function removePatente(Request $request, Militare $militare)
+    {
+        try {
+            $patente = $request->input('patente');
+            
+            // Elimina la patente
+            $deleted = $militare->patenti()->where('categoria', $patente)->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => $deleted > 0 ? 'Patente rimossa con successo' : 'Patente non trovata'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Errore nella rimozione patente', [
+                'militare_id' => $militare->id,
+                'patente' => $request->input('patente'),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante la rimozione: ' . $e->getMessage()
             ], 500);
         }
     }

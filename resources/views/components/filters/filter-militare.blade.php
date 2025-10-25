@@ -16,7 +16,7 @@
     $filterActive = $activeCount > 0;
 @endphp
 
-@component('components.filters.filter-base', ['formAction' => route('militare.index'), 'activeCount' => $activeCount, 'filterActive' => $filterActive])
+@component('components.filters.filter-base', ['formAction' => route('anagrafica.index'), 'activeCount' => $activeCount, 'filterActive' => $filterActive])
     {{-- Filtro Grado --}}
     <div class="col-md-3 mb-3">
         <label for="grado" class="form-label">

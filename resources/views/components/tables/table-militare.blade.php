@@ -34,7 +34,7 @@
                         </span>
                     </td>
                     <td>
-                        <a href="{{ route('militare.show', $militare->id) }}" class="link-name">
+                        <a href="{{ route('anagrafica.show', $militare->id) }}" class="link-name">
                             {{ $militare->cognome }} {{ $militare->nome }}
                         </a>
                     </td>
@@ -70,7 +70,7 @@
                         <div class="d-flex flex-column align-items-center empty-state">
                             <i class="fas fa-search fa-3x mb-3 text-muted"></i>
                             <p class="lead mb-3">Nessun militare trovato con i filtri selezionati.</p>
-                            <a href="{{ route('militare.index') }}" class="btn btn-outline-primary mt-2">
+                            <a href="{{ route('anagrafica.index') }}" class="btn btn-outline-primary mt-2">
                                 <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri
                             </a>
                         </div>

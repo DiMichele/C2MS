@@ -5,8 +5,8 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use App\Services\CertificatiService;
 use App\Models\Militare;
-use App\Models\CertificatiLavoratori;
-use App\Models\Idoneita;
+// use App\Models\CertificatiLavoratori; // DEPRECATO - tabelle rimosse
+// use App\Models\Idoneita; // DEPRECATO - tabelle rimosse
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
