@@ -55,7 +55,10 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'codice_fiscale',
         'password',
+        'must_change_password',
+        'last_password_change',
     ];
 
     /**
@@ -75,6 +78,82 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_password_change' => 'datetime',
         'password' => 'hashed',
+        'must_change_password' => 'boolean',
     ];
+
+    /**
+     * Ruoli dell'utente
+     */
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class, 'role_user')
+            ->withTimestamps();
+    }
+
+    /**
+     * Verifica se l'utente ha un determinato ruolo
+     */
+    public function hasRole(string $roleName): bool
+    {
+        return $this->roles()->where('name', $roleName)->exists();
+    }
+
+    /**
+     * Verifica se l'utente ha uno qualsiasi dei ruoli specificati
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('name', $roles)->exists();
+    }
+
+    /**
+     * Verifica se l'utente ha un determinato permesso
+     */
+    public function hasPermission(string $permissionName): bool
+    {
+        foreach ($this->roles as $role) {
+            if ($role->hasPermission($permissionName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Assegna un ruolo all'utente
+     */
+    public function assignRole(Role $role): void
+    {
+        $this->roles()->syncWithoutDetaching([$role->id]);
+    }
+
+    /**
+     * Rimuove un ruolo dall'utente
+     */
+    public function removeRole(Role $role): void
+    {
+        $this->roles()->detach($role->id);
+    }
+
+    /**
+     * Verifica se l'utente è amministratore
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    /**
+     * Ottieni tutti i permessi dell'utente
+     */
+    public function getAllPermissions()
+    {
+        $permissions = collect();
+        foreach ($this->roles as $role) {
+            $permissions = $permissions->merge($role->permissions);
+        }
+        return $permissions->unique('id');
+    }
 } 
