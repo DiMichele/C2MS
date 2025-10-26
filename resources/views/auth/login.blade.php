@@ -270,29 +270,32 @@
             <form method="POST" action="{{ route('login') }}" id="loginForm">
                 @csrf
 
-                <!-- Email -->
+                <!-- Username -->
                 <div class="mb-3">
-                    <label for="email" class="form-label">
-                        <i class="fas fa-envelope me-1"></i> Email
+                    <label for="username" class="form-label">
+                        <i class="fas fa-user me-1"></i> Username
                     </label>
                     <div class="input-group">
                         <span class="input-group-text">
-                            <i class="fas fa-user"></i>
+                            <i class="fas fa-id-badge"></i>
                         </span>
-                        <input 
-                            type="email" 
-                            class="form-control @error('email') is-invalid @enderror" 
-                            id="email" 
-                            name="email" 
-                            value="{{ old('email') }}" 
-                            placeholder="inserisci@email.com"
-                            required 
+                        <input
+                            type="text"
+                            class="form-control @error('username') is-invalid @enderror"
+                            id="username"
+                            name="username"
+                            placeholder="nome.cognome"
+                            value="{{ old('username') }}"
+                            required
                             autofocus
                         >
                     </div>
-                    @error('email')
+                    @error('username')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
+                    <small class="form-text text-muted">
+                        Inserisci il tuo username nel formato: nome.cognome
+                    </small>
                 </div>
 
                 <!-- Password -->

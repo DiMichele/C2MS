@@ -54,8 +54,11 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'codice_fiscale',
+        'compagnia_id',
+        'role_type',
         'password',
         'must_change_password',
         'last_password_change',
@@ -82,6 +85,14 @@ class User extends Authenticatable
         'password' => 'hashed',
         'must_change_password' => 'boolean',
     ];
+
+    /**
+     * Compagnia dell'utente
+     */
+    public function compagnia()
+    {
+        return $this->belongsTo(\App\Models\Compagnia::class);
+    }
 
     /**
      * Ruoli dell'utente

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -25,34 +27,42 @@ class LoginController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|email',
+            'username' => 'required|string',
             'password' => 'required',
         ], [
-            'email.required' => 'L\'email è obbligatoria',
-            'email.email' => 'Inserisci un\'email valida',
+            'username.required' => 'Lo username è obbligatorio',
             'password.required' => 'La password è obbligatoria',
         ]);
 
-        // Rate limiting per proteggere da brute force
+        // Rate limiting
         $this->ensureIsNotRateLimited($request);
 
-        // Tentativo di autenticazione
-        if (Auth::attempt(
-            $request->only('email', 'password'),
-            $request->filled('remember')
-        )) {
-            $request->session()->regenerate();
-            RateLimiter::clear($this->throttleKey($request));
+        // Trova l'utente per username
+        $user = User::where('username', $request->username)->first();
 
-            return redirect()->intended(route('dashboard'))
-                ->with('success', 'Benvenuto, ' . Auth::user()->name . '!');
+        // Se l'utente non esiste
+        if (!$user) {
+            RateLimiter::hit($this->throttleKey($request));
+            throw ValidationException::withMessages([
+                'username' => 'Username non trovato.',
+            ]);
         }
 
-        RateLimiter::hit($this->throttleKey($request));
+        // Verifica password
+        if (!Hash::check($request->password, $user->password)) {
+            RateLimiter::hit($this->throttleKey($request));
+            throw ValidationException::withMessages([
+                'password' => 'Password errata.',
+            ]);
+        }
 
-        throw ValidationException::withMessages([
-            'email' => 'Le credenziali inserite non sono corrette.',
-        ]);
+        // Login
+        Auth::login($user, $request->filled('remember'));
+        $request->session()->regenerate();
+        RateLimiter::clear($this->throttleKey($request));
+
+        return redirect()->intended(route('dashboard'))
+            ->with('success', 'Benvenuto, ' . $user->name . '!');
     }
 
     /**
@@ -81,7 +91,7 @@ class LoginController extends Controller
         $seconds = RateLimiter::availableIn($this->throttleKey($request));
 
         throw ValidationException::withMessages([
-            'email' => 'Troppi tentativi di login. Riprova tra ' . ceil($seconds / 60) . ' minuti.',
+            'password' => 'Troppi tentativi di login. Riprova tra ' . ceil($seconds / 60) . ' minuti.',
         ]);
     }
 
@@ -90,6 +100,6 @@ class LoginController extends Controller
      */
     protected function throttleKey(Request $request)
     {
-        return Str::transliterate(Str::lower($request->input('email')) . '|' . $request->ip());
+        return Str::transliterate($request->input('username') . '|' . $request->ip());
     }
 }

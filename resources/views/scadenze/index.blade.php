@@ -413,11 +413,13 @@ table.table td,
                     </td>
                     
                     <!-- PEFO -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->pefo_data_conseguimento) style="{{ $scadenza->getColore('pefo') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="pefo"
-                        onclick="apriModalData({{ $m->id }}, 'pefo', '{{ $scadenza->pefo_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'pefo', '{{ $scadenza->pefo_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->pefo_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->pefo_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('pefo') }}</strong>
@@ -427,11 +429,13 @@ table.table td,
                     </td>
 
                     <!-- Idoneità Mansione -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->idoneita_mans_data_conseguimento) style="{{ $scadenza->getColore('idoneita_mans') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="idoneita_mans"
-                        onclick="apriModalData({{ $m->id }}, 'idoneita_mans', '{{ $scadenza->idoneita_mans_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'idoneita_mans', '{{ $scadenza->idoneita_mans_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->idoneita_mans_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->idoneita_mans_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('idoneita_mans') }}</strong>
@@ -441,11 +445,13 @@ table.table td,
                     </td>
 
                     <!-- Idoneità SMI -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->idoneita_smi_data_conseguimento) style="{{ $scadenza->getColore('idoneita_smi') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="idoneita_smi"
-                        onclick="apriModalData({{ $m->id }}, 'idoneita_smi', '{{ $scadenza->idoneita_smi_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'idoneita_smi', '{{ $scadenza->idoneita_smi_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->idoneita_smi_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->idoneita_smi_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('idoneita_smi') }}</strong>
@@ -455,11 +461,13 @@ table.table td,
                     </td>
 
                     <!-- Lavoratore 4h -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->lavoratore_4h_data_conseguimento) style="{{ $scadenza->getColore('lavoratore_4h') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="lavoratore_4h"
-                        onclick="apriModalData({{ $m->id }}, 'lavoratore_4h', '{{ $scadenza->lavoratore_4h_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'lavoratore_4h', '{{ $scadenza->lavoratore_4h_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->lavoratore_4h_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->lavoratore_4h_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('lavoratore_4h') }}</strong>
@@ -469,11 +477,13 @@ table.table td,
                     </td>
 
                     <!-- Lavoratore 8h -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->lavoratore_8h_data_conseguimento) style="{{ $scadenza->getColore('lavoratore_8h') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="lavoratore_8h"
-                        onclick="apriModalData({{ $m->id }}, 'lavoratore_8h', '{{ $scadenza->lavoratore_8h_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'lavoratore_8h', '{{ $scadenza->lavoratore_8h_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->lavoratore_8h_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->lavoratore_8h_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('lavoratore_8h') }}</strong>
@@ -483,11 +493,13 @@ table.table td,
                     </td>
 
                     <!-- Preposto -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->preposto_data_conseguimento) style="{{ $scadenza->getColore('preposto') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="preposto"
-                        onclick="apriModalData({{ $m->id }}, 'preposto', '{{ $scadenza->preposto_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'preposto', '{{ $scadenza->preposto_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->preposto_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->preposto_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('preposto') }}</strong>
@@ -497,11 +509,13 @@ table.table td,
                     </td>
 
                     <!-- Dirigenti -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->dirigenti_data_conseguimento) style="{{ $scadenza->getColore('dirigenti') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="dirigenti"
-                        onclick="apriModalData({{ $m->id }}, 'dirigenti', '{{ $scadenza->dirigenti_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'dirigenti', '{{ $scadenza->dirigenti_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->dirigenti_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->dirigenti_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('dirigenti') }}</strong>
@@ -511,11 +525,13 @@ table.table td,
                     </td>
 
                     <!-- Poligono Approntamento -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->poligono_approntamento_data_conseguimento) style="{{ $scadenza->getColore('poligono_approntamento') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="poligono_approntamento"
-                        onclick="apriModalData({{ $m->id }}, 'poligono_approntamento', '{{ $scadenza->poligono_approntamento_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'poligono_approntamento', '{{ $scadenza->poligono_approntamento_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->poligono_approntamento_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->poligono_approntamento_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('poligono_approntamento') }}</strong>
@@ -525,11 +541,13 @@ table.table td,
                     </td>
 
                     <!-- Poligono Mantenimento -->
-                    <td class="text-center scadenza-cell" 
+                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->poligono_mantenimento_data_conseguimento) style="{{ $scadenza->getColore('poligono_mantenimento') }}" @endif
+                        @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="poligono_mantenimento"
-                        onclick="apriModalData({{ $m->id }}, 'poligono_mantenimento', '{{ $scadenza->poligono_mantenimento_data_conseguimento ?? '' }}')">
+                        onclick="apriModalData({{ $m->id }}, 'poligono_mantenimento', '{{ $scadenza->poligono_mantenimento_data_conseguimento ?? '' }}')"
+                        @endif>
                         @if($scadenza && $scadenza->poligono_mantenimento_data_conseguimento)
                             <small class="d-block">Cons: {{ \Carbon\Carbon::parse($scadenza->poligono_mantenimento_data_conseguimento)->format('d/m/Y') }}</small>
                             <strong>Scad: {{ $scadenza->formatScadenza('poligono_mantenimento') }}</strong>

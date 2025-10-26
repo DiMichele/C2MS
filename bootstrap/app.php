@@ -16,6 +16,15 @@ return Application::configure(basePath: dirname(__DIR__))
         
         // Force correct URL for tunnels (must be first)
         $middleware->prepend(\App\Http\Middleware\ForceCorrectUrl::class);
+        
+        // Middleware per controllo cambio password obbligatorio
+        $middleware->append(\App\Http\Middleware\MustChangePassword::class);
+        
+        // Middleware con alias per routes
+        $middleware->alias([
+            'role' => \App\Http\Middleware\CheckRole::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

@@ -53,7 +53,44 @@ Route::middleware(['auth'])->group(function () {
     
     // Rotta della dashboard (principale)
     Route::get('/', [DashboardController::class, 'index'])
+        ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    /*
+     |-------------------------------------------------
+     | Rotte Profilo Utente
+     |-------------------------------------------------
+    */
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'index'])->name('profile.index');
+    Route::post('/profile/change-password', [\App\Http\Controllers\ProfileController::class, 'changePassword'])->name('profile.change-password');
+
+    /*
+     |-------------------------------------------------
+     | Rotte Pannello Admin (solo per Admin e Amministratore)
+     |-------------------------------------------------
+    */
+    Route::middleware(['permission:admin.access'])->prefix('admin')->name('admin.')->group(function () {
+        // Dashboard admin (redirect)
+        Route::get('/', [\App\Http\Controllers\AdminController::class, 'index'])->name('index');
+        
+        // Gestione Utenti
+        Route::get('/utenti', [\App\Http\Controllers\AdminController::class, 'usersIndex'])->name('users.index');
+        Route::get('/utenti/nuovo', [\App\Http\Controllers\AdminController::class, 'create'])->name('create');
+        Route::post('/utenti', [\App\Http\Controllers\AdminController::class, 'store'])->name('store');
+        Route::get('/utenti/{user}/modifica', [\App\Http\Controllers\AdminController::class, 'edit'])->name('edit');
+        Route::put('/utenti/{user}', [\App\Http\Controllers\AdminController::class, 'update'])->name('update');
+        Route::delete('/utenti/{user}', [\App\Http\Controllers\AdminController::class, 'destroy'])->name('destroy');
+        Route::post('/utenti/{user}/reset-password', [\App\Http\Controllers\AdminController::class, 'resetPassword'])->name('reset-password');
+        
+        // Gestione Permessi
+        Route::get('/permessi', [\App\Http\Controllers\AdminController::class, 'permissionsIndex'])->name('permissions.index');
+        Route::post('/permessi/ruoli/{role}', [\App\Http\Controllers\AdminController::class, 'updatePermissions'])->name('roles.permissions.update');
+        
+        // Gestione Ruoli
+        Route::get('/ruoli/nuovo', [\App\Http\Controllers\AdminController::class, 'createRole'])->name('roles.create');
+        Route::post('/ruoli', [\App\Http\Controllers\AdminController::class, 'storeRole'])->name('roles.store');
+        Route::delete('/ruoli/{role}', [\App\Http\Controllers\AdminController::class, 'destroyRole'])->name('roles.destroy');
+    });
 
     /*
      |-------------------------------------------------
@@ -61,17 +98,26 @@ Route::middleware(['auth'])->group(function () {
      |-------------------------------------------------
     */
     // Rotte che devono essere definite PRIMA della resource route
-    Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])->name('anagrafica.export-excel');
+    Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('anagrafica.export-excel');
 
     // Resource route (create, edit, update, destroy protette)
     Route::resource('anagrafica', MilitareController::class)
+        ->middleware('permission:anagrafica.edit')
         ->parameters(['anagrafica' => 'militare'])
         ->except(['index', 'show']); // index e show sono pubbliche
 
     // Altre rotte anagrafica (dopo resource per evitare conflitti)
-    Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])->name('anagrafica.update-field');
-    Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])->name('anagrafica.patenti.add');
-    Route::post('/anagrafica/{militare}/patenti/remove', [MilitareController::class, 'removePatente'])->name('anagrafica.patenti.remove');
+    Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('anagrafica.update-field');
+    Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('anagrafica.patenti.add');
+    Route::post('/anagrafica/{militare}/patenti/remove', [MilitareController::class, 'removePatente'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('anagrafica.patenti.remove');
 
     // Altre rotte militare
     Route::put('militare/{militare}/update-notes', [MilitareController::class, 'updateNotes'])->name('militare.update_notes');
@@ -94,9 +140,11 @@ Route::middleware(['auth'])->group(function () {
  |-------------------------------------------------
 */
 Route::get('/organigramma', [OrganigrammaController::class, 'index'])
+    ->middleware('permission:anagrafica.view')
     ->name('organigramma');
 
 Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCache'])
+    ->middleware('permission:anagrafica.view')
     ->name('organigramma.refresh');
 
 /*
@@ -125,7 +173,7 @@ Route::get('/eventi/create', [EventiController::class, 'create'])->name('eventi.
 Route::post('/eventi', [EventiController::class, 'store'])->name('eventi.store');
 Route::delete('/eventi/{evento}', [EventiController::class, 'destroy'])->name('eventi.destroy');
 
-Route::prefix('board')->group(function () {
+Route::prefix('board')->middleware('permission:board.view')->group(function () {
     Route::get('/', [BoardController::class, 'index'])->name('board.index');
     Route::get('/calendar', [BoardController::class, 'calendar'])->name('board.calendar');
     Route::get('/activities/{activity}', [BoardController::class, 'show'])->name('board.activities.show');
@@ -150,7 +198,7 @@ Route::prefix('board')->group(function () {
 | Rotte per il CPT (Controllo Presenza Truppe)
 |-------------------------------------------------
 */
-Route::prefix('cpt')->name('pianificazione.')->group(function () {
+Route::prefix('cpt')->name('pianificazione.')->middleware('permission:cpt.view')->group(function () {
     Route::get('/', [PianificazioneController::class, 'index'])->name('index');
     Route::get('/test', function(Request $request) {
         // Stessa logica del controller principale ma vista semplificata
@@ -200,7 +248,7 @@ Route::prefix('cpt')->name('pianificazione.')->group(function () {
 | Rotte per la gestione dei Servizi e Turni
 |-------------------------------------------------
 */
-Route::prefix('servizi')->name('servizi.')->group(function () {
+Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view')->group(function () {
     Route::prefix('turni')->name('turni.')->group(function () {
         Route::get('/', [\App\Http\Controllers\TurniController::class, 'index'])->name('index');
         Route::post('/check-disponibilita', [\App\Http\Controllers\TurniController::class, 'checkDisponibilita'])->name('check-disponibilita');
@@ -217,7 +265,7 @@ Route::prefix('servizi')->name('servizi.')->group(function () {
 | Rotte per la Trasparenza Servizi
 |-------------------------------------------------
 */
-Route::prefix('trasparenza')->name('trasparenza.')->group(function () {
+Route::prefix('trasparenza')->name('trasparenza.')->middleware('permission:servizi.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\TrasparenzaController::class, 'index'])->name('index');
     Route::get('/export-excel', [\App\Http\Controllers\TrasparenzaController::class, 'exportExcel'])->name('export-excel');
 });
@@ -227,7 +275,7 @@ Route::prefix('trasparenza')->name('trasparenza.')->group(function () {
 | Rotte per le Scadenze Certificati
 |-------------------------------------------------
 */
-Route::prefix('scadenze')->name('scadenze.')->group(function () {
+Route::prefix('scadenze')->name('scadenze.')->middleware('permission:scadenze.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\ScadenzeController::class, 'index'])->name('index');
     Route::post('/{militare}/update', [\App\Http\Controllers\ScadenzeController::class, 'update'])->name('update');
     Route::post('/{militare}/update-singola', [\App\Http\Controllers\ScadenzeController::class, 'updateSingola'])->name('update-singola');
@@ -238,7 +286,7 @@ Route::prefix('scadenze')->name('scadenze.')->group(function () {
 || Rotte per i Ruolini
 |-------------------------------------------------
 */
-Route::prefix('ruolini')->name('ruolini.')->group(function () {
+Route::prefix('ruolini')->name('ruolini.')->middleware('permission:anagrafica.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
 });
 

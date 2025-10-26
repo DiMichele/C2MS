@@ -33,7 +33,10 @@ class ScadenzeController extends Controller
             $militari = $this->applicaFiltri($militari, $filtri);
         }
 
-        return view('scadenze.index', compact('militari', 'filtri'));
+        // Verifica se l'utente può modificare le scadenze
+        $canEdit = auth()->user()->hasPermission('scadenze.edit');
+
+        return view('scadenze.index', compact('militari', 'filtri', 'canEdit'));
     }
 
     /**
@@ -81,6 +84,14 @@ class ScadenzeController extends Controller
      */
     public function update(Request $request, $militareId)
     {
+        // Verifica permessi
+        if (!auth()->user()->hasPermission('scadenze.edit')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non hai i permessi per modificare le scadenze'
+            ], 403);
+        }
+
         try {
             $militare = Militare::findOrFail($militareId);
             
@@ -119,6 +130,14 @@ class ScadenzeController extends Controller
      */
     public function updateSingola(Request $request, $militareId)
     {
+        // Verifica permessi
+        if (!auth()->user()->hasPermission('scadenze.edit')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non hai i permessi per modificare le scadenze'
+            ], 403);
+        }
+
         try {
             $militare = Militare::findOrFail($militareId);
             $tipo = $request->input('tipo');

@@ -197,6 +197,25 @@ class Militare extends Model
             });
         });
     }
+
+    /**
+     * Scope: Filtra militari per compagnia dell'utente corrente
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeForCurrentUser($query)
+    {
+        $user = auth()->user();
+        
+        // Se non c'è utente o è admin/comandante/rssp, mostra tutto
+        if (!$user || !$user->compagnia_id) {
+            return $query;
+        }
+
+        // Filtra per compagnia dell'utente
+        return $query->where('compagnia_id', $user->compagnia_id);
+    }
     
     // ============================================
     // RELAZIONI ELOQUENT

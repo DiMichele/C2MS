@@ -16,19 +16,25 @@ class UsersSeeder extends Seeder
     {
         $users = [
             [
-                'name' => 'Amministratore',
+                'name' => 'Amministratore Sistema',
+                'username' => 'admin.sistema',
                 'email' => 'admin@sige.it',
                 'password' => 'admin123',
+                'role_type' => 'amministratore',
             ],
             [
-                'name' => 'Comandante',
+                'name' => 'Mario Rossi',
+                'username' => 'mario.rossi',
                 'email' => 'comandante@sige.it',
                 'password' => 'coman123',
+                'role_type' => 'comandante',
             ],
             [
-                'name' => 'Operatore',
+                'name' => 'Luigi Bianchi',
+                'username' => 'luigi.bianchi',
                 'email' => 'operatore@sige.it',
                 'password' => 'oper123',
+                'role_type' => 'ufficio_compagnia',
             ],
         ];
 
@@ -41,12 +47,16 @@ class UsersSeeder extends Seeder
 
             User::create([
                 'name' => $userData['name'],
+                'username' => $userData['username'],
                 'email' => $userData['email'],
                 'password' => Hash::make($userData['password']),
                 'email_verified_at' => now(),
+                'role_type' => $userData['role_type'] ?? null,
+                'compagnia_id' => $userData['compagnia_id'] ?? null,
             ]);
 
-            $this->command->info("✅ Creato utente: {$userData['name']} ({$userData['email']})");
+            $this->command->info("✅ Creato utente: {$userData['name']}");
+            $this->command->info("   Username: {$userData['username']}");
             $this->command->info("   Password: {$userData['password']}");
         }
 
@@ -54,7 +64,8 @@ class UsersSeeder extends Seeder
         $this->command->info('📋 CREDENZIALI DI ACCESSO:');
         $this->command->info('================================');
         foreach ($users as $userData) {
-            $this->command->info("Email: {$userData['email']}");
+            $this->command->info("Nome: {$userData['name']}");
+            $this->command->info("Username: {$userData['username']}");
             $this->command->info("Password: {$userData['password']}");
             $this->command->info('--------------------------------');
         }

@@ -11,6 +11,7 @@ class Role extends Model
         'name',
         'display_name',
         'description',
+        'compagnia_id',
     ];
 
     /**

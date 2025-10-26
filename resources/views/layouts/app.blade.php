@@ -59,11 +59,13 @@
         <nav class="nav-center">
             <ul class="nav-menu" id="nav-menu">
                 @auth
+                @if(Auth::user()->hasPermission('dashboard.view'))
                 <li class="nav-menu-item {{ request()->is('/') ? 'active' : '' }}">
                     <a href="{{ url('/') }}">
                         Dashboard
                     </a>
                 </li>
+                @endif
                 @endauth
                 
                 <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('scadenze*') || request()->is('ruolini*') || request()->is('organigramma*') ? 'active' : '' }}">
@@ -72,28 +74,37 @@
                     </a>
                     <ul class="nav-dropdown">
                         @auth
+                        @if(Auth::user()->hasPermission('cpt.view'))
                         <li class="nav-dropdown-item {{ request()->is('cpt*') ? 'active' : '' }}">
                             <a href="{{ route('pianificazione.index') }}">CPT</a>
                         </li>
+                        @endif
+                        @if(Auth::user()->hasPermission('anagrafica.view'))
                         <li class="nav-dropdown-item {{ request()->is('ruolini*') ? 'active' : '' }}">
                             <a href="{{ route('ruolini.index') }}">Ruolini</a>
                         </li>
+                        @endif
                         @endauth
                         <li class="nav-dropdown-item {{ request()->is('anagrafica*') && !request()->is('anagrafica/create') ? 'active' : '' }}">
                             <a href="{{ route('anagrafica.index') }}">Anagrafica</a>
                         </li>
                         @auth
+                        @if(Auth::user()->hasPermission('scadenze.view'))
                         <li class="nav-dropdown-item {{ request()->is('scadenze*') ? 'active' : '' }}">
                             <a href="{{ route('scadenze.index') }}">Scadenze</a>
                         </li>
+                        @endif
+                        @if(Auth::user()->hasPermission('anagrafica.view'))
                         <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
                             <a href="{{ url('/organigramma') }}">Organigramma</a>
                         </li>
+                        @endif
                         @endauth
                     </ul>
                 </li>
                 
                 @auth
+                @if(Auth::user()->hasPermission('board.view'))
                 <li class="nav-menu-item {{ request()->is('board*') ? 'active' : '' }}">
                     <a href="{{ route('board.index') }}">
                         Board Attività
@@ -107,7 +118,9 @@
                         </li>
                     </ul>
                 </li>
+                @endif
                 
+                @if(Auth::user()->hasPermission('servizi.view'))
                 <li class="nav-menu-item {{ request()->is('servizi*') || request()->is('trasparenza*') ? 'active' : '' }}">
                     <a href="#">
                         Servizi
@@ -121,6 +134,23 @@
                         </li>
                     </ul>
                 </li>
+                @endif
+                
+                @if(Auth::user()->hasPermission('admin.access'))
+                <li class="nav-menu-item {{ request()->is('admin*') ? 'active' : '' }}">
+                    <a href="#">
+                        Admin
+                    </a>
+                    <ul class="nav-dropdown">
+                        <li class="nav-dropdown-item {{ request()->is('admin/utenti*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.users.index') }}">Gestione Utenti</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('admin/permessi*') || request()->is('admin/ruoli*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.permissions.index') }}">Gestione Ruoli</a>
+                        </li>
+                    </ul>
+                </li>
+                @endif
                 @endauth
 
             </ul>
@@ -130,10 +160,10 @@
         <div class="header-auth">
             @auth
                 <div class="user-menu">
-                    <span class="user-name">
-                        <i class="fas fa-user-circle me-2"></i>
+                    <button onclick="window.location='{{ route('profile.index') }}'" class="btn-profile" title="Il Mio Profilo">
+                        <i class="fas fa-user-circle me-1"></i>
                         {{ Auth::user()->name }}
-                    </span>
+                    </button>
                     <form action="{{ route('logout') }}" method="POST" style="display: inline;">
                         @csrf
                         <button type="submit" class="btn-logout" title="Logout">

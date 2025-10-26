@@ -148,6 +148,22 @@
     transform: translateY(-2px);
 }
 
+.btn-profile {
+    background: transparent;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-profile:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 /* Horizontal Navigation */
 .nav-menu {
     display: flex;

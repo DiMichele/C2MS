@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\Permission;
+use App\Models\Compagnia;
 use Illuminate\Database\Seeder;
 
 class RolesAndPermissionsSeeder extends Seeder
@@ -13,6 +14,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // Pulisci tabelle
         \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         \DB::table('permission_role')->truncate();
+        \DB::table('role_user')->truncate();
         \DB::table('permissions')->truncate();
         \DB::table('roles')->truncate();
         \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
@@ -44,6 +46,9 @@ class RolesAndPermissionsSeeder extends Seeder
         $permissions['board.view'] = Permission::create(['name' => 'board.view', 'display_name' => 'Visualizza Board', 'category' => 'board', 'type' => 'read']);
         $permissions['board.edit'] = Permission::create(['name' => 'board.edit', 'display_name' => 'Modifica Board', 'category' => 'board', 'type' => 'write']);
         
+        // SERVIZI (generale)
+        $permissions['servizi.view'] = Permission::create(['name' => 'servizi.view', 'display_name' => 'Visualizza Servizi', 'category' => 'servizi', 'type' => 'read']);
+        
         // SERVIZI - Turni
         $permissions['turni.view'] = Permission::create(['name' => 'turni.view', 'display_name' => 'Visualizza Turni', 'category' => 'servizi', 'type' => 'read']);
         $permissions['turni.edit'] = Permission::create(['name' => 'turni.edit', 'display_name' => 'Modifica Turni', 'category' => 'servizi', 'type' => 'write']);
@@ -59,24 +64,26 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->command->info('');
         $this->command->info('👥 Creazione ruoli...');
         
-        // RUOLO: Amministratore
+        // RUOLO: Admin (pannello gestione utenti)
         $admin = Role::create([
             'name' => 'admin',
-            'display_name' => 'Amministratore',
-            'description' => 'Accesso completo al pannello admin, può gestire utenti e ruoli. NON può accedere alle altre sezioni operative.'
+            'display_name' => 'Admin',
+            'description' => 'Accesso completo al pannello admin.',
+            'compagnia_id' => null
         ]);
         $admin->permissions()->attach([
             $permissions['admin.access']->id,
             $permissions['admin.users']->id,
         ]);
         
-        // RUOLO: Comandante
-        $comandante = Role::create([
-            'name' => 'comandante',
-            'display_name' => 'Comandante',
-            'description' => 'Accesso completo a tutte le sezioni tranne Admin. Può visualizzare e modificare tutto.'
+        // RUOLO: Amministratore (gestionale completo)
+        $amministratore = Role::create([
+            'name' => 'amministratore',
+            'display_name' => 'Amministratore',
+            'description' => 'Accesso completo a tutto il gestionale + pannello admin + modifica scadenze.',
+            'compagnia_id' => null
         ]);
-        $comandante->permissions()->attach([
+        $amministratore->permissions()->attach([
             $permissions['dashboard.view']->id,
             $permissions['cpt.view']->id,
             $permissions['cpt.edit']->id,
@@ -88,18 +95,22 @@ class RolesAndPermissionsSeeder extends Seeder
             $permissions['organigramma.view']->id,
             $permissions['board.view']->id,
             $permissions['board.edit']->id,
+            $permissions['servizi.view']->id,
             $permissions['turni.view']->id,
             $permissions['turni.edit']->id,
             $permissions['trasparenza.view']->id,
+            $permissions['admin.access']->id,
+            $permissions['admin.users']->id,
         ]);
         
-        // RUOLO: Furiere
-        $furiere = Role::create([
-            'name' => 'furiere',
-            'display_name' => 'Furiere',
-            'description' => 'Accesso a Personale e Servizi con permessi di lettura e scrittura.'
+        // RUOLO: Comandante (globale, vede tutte le compagnie)
+        $comandante = Role::create([
+            'name' => 'comandante',
+            'display_name' => 'Comandante',
+            'description' => 'Accesso completo a tutte le compagnie (solo visualizzazione scadenze).',
+            'compagnia_id' => null
         ]);
-        $furiere->permissions()->attach([
+        $comandante->permissions()->attach([
             $permissions['dashboard.view']->id,
             $permissions['cpt.view']->id,
             $permissions['cpt.edit']->id,
@@ -107,69 +118,75 @@ class RolesAndPermissionsSeeder extends Seeder
             $permissions['anagrafica.view']->id,
             $permissions['anagrafica.edit']->id,
             $permissions['scadenze.view']->id,
-            $permissions['scadenze.edit']->id,
+            // NOTA: scadenze.edit rimosso - solo RSSP e Amministratore
             $permissions['organigramma.view']->id,
+            $permissions['board.view']->id,
+            $permissions['board.edit']->id,
+            $permissions['servizi.view']->id,
             $permissions['turni.view']->id,
             $permissions['turni.edit']->id,
             $permissions['trasparenza.view']->id,
         ]);
         
-        // RUOLO: RSSP
+        // RUOLO: RSSP (globale, vede tutte le scadenze)
         $rssp = Role::create([
             'name' => 'rssp',
             'display_name' => 'RSSP',
-            'description' => 'Responsabile Sicurezza: accesso solo alla pagina Scadenze con permessi di modifica.'
+            'description' => 'Responsabile Sicurezza: accesso scadenze di tutte le compagnie.',
+            'compagnia_id' => null
         ]);
         $rssp->permissions()->attach([
             $permissions['scadenze.view']->id,
             $permissions['scadenze.edit']->id,
         ]);
         
-        // RUOLO: Operatore
-        $operatore = Role::create([
-            'name' => 'operatore',
-            'display_name' => 'Operatore',
-            'description' => 'Accesso a Dashboard, Personale e Servizi con permessi di lettura e scrittura limitati.'
-        ]);
-        $operatore->permissions()->attach([
-            $permissions['dashboard.view']->id,
-            $permissions['cpt.view']->id,
-            $permissions['ruolini.view']->id,
-            $permissions['anagrafica.view']->id,
-            $permissions['scadenze.view']->id,
-            $permissions['organigramma.view']->id,
-            $permissions['board.view']->id,
-            $permissions['turni.view']->id,
-            $permissions['trasparenza.view']->id,
-        ]);
-        
-        // RUOLO: Visualizzatore
-        $visualizzatore = Role::create([
-            'name' => 'visualizzatore',
-            'display_name' => 'Visualizzatore',
-            'description' => 'Accesso in sola lettura a tutte le sezioni (tranne Admin).'
-        ]);
-        $visualizzatore->permissions()->attach([
-            $permissions['dashboard.view']->id,
-            $permissions['cpt.view']->id,
-            $permissions['ruolini.view']->id,
-            $permissions['anagrafica.view']->id,
-            $permissions['scadenze.view']->id,
-            $permissions['organigramma.view']->id,
-            $permissions['board.view']->id,
-            $permissions['turni.view']->id,
-            $permissions['trasparenza.view']->id,
-        ]);
-        
-        $this->command->info('✅ 6 ruoli creati');
+        // RUOLI UFFICIO COMPAGNIA per ciascuna compagnia
+        $compagnie = Compagnia::all();
         $this->command->info('');
-        $this->command->info('📋 RIEPILOGO RUOLI:');
+        $this->command->info('🏢 Creazione ruoli Ufficio Compagnia...');
+        
+        foreach ($compagnie as $compagnia) {
+            $roleUfficio = Role::create([
+                'name' => 'ufficio_compagnia_' . $compagnia->id,
+                'display_name' => 'Ufficio ' . $compagnia->nome,
+                'description' => 'Gestione completa della ' . $compagnia->nome,
+                'compagnia_id' => $compagnia->id
+            ]);
+            
+            // Permessi: tutto tranne admin e scadenze.edit, ma solo per la propria compagnia
+            $roleUfficio->permissions()->attach([
+                $permissions['dashboard.view']->id,
+                $permissions['cpt.view']->id,
+                $permissions['cpt.edit']->id,
+                $permissions['ruolini.view']->id,
+                $permissions['anagrafica.view']->id,
+                $permissions['anagrafica.edit']->id,
+                $permissions['scadenze.view']->id,
+                // NOTA: scadenze.edit rimosso - solo RSSP e Amministratore
+                $permissions['organigramma.view']->id,
+                $permissions['board.view']->id,
+                $permissions['board.edit']->id,
+                $permissions['servizi.view']->id,
+                $permissions['turni.view']->id,
+                $permissions['turni.edit']->id,
+                $permissions['trasparenza.view']->id,
+            ]);
+            
+            $this->command->info('  ✓ ' . $roleUfficio->display_name);
+        }
+        
+        $this->command->info('');
+        $this->command->info('✅ Ruoli creati con successo!');
+        $this->command->info('');
+        $this->command->info('📋 RIEPILOGO:');
         $this->command->info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        $this->command->info('👑 Admin: Solo pannello Admin');
-        $this->command->info('⭐ Comandante: Tutto tranne Admin');
-        $this->command->info('📝 Furiere: Personale + Servizi (R/W)');
-        $this->command->info('🛡️  RSSP: Solo Scadenze (R/W)');
-        $this->command->info('🔧 Operatore: Dashboard + Personale + Servizi (R)');
-        $this->command->info('👁️  Visualizzatore: Tutto in sola lettura');
+        $this->command->info('👑 Admin: Pannello amministrazione');
+        $this->command->info('🔧 Amministratore: Tutto + modifica scadenze');
+        $this->command->info('⭐ Comandante: Tutte le compagnie (scadenze READ-ONLY)');
+        $this->command->info('🛡️  RSSP: Scadenze tutte le compagnie (READ-WRITE)');
+        $this->command->info('🏢 Ufficio Compagnia: Solo la propria compagnia (scadenze READ-ONLY)');
+        $this->command->info('   - Ufficio 110^ Compagnia');
+        $this->command->info('   - Ufficio 124^ Compagnia');
+        $this->command->info('   - Ufficio 127^ Compagnia');
     }
 }

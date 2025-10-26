@@ -3,15 +3,15 @@
 ## Credenziali di Accesso
 
 ### 👤 Amministratore
-- **Email:** `admin@sige.it`
+- **Username:** `admin.sistema`
 - **Password:** `admin123`
 
 ### 👤 Comandante
-- **Email:** `comandante@sige.it`
+- **Username:** `mario.rossi`
 - **Password:** `coman123`
 
 ### 👤 Operatore
-- **Email:** `operatore@sige.it`
+- **Username:** `luigi.bianchi`
 - **Password:** `oper123`
 
 ---
