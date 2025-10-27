@@ -40,6 +40,11 @@ class MilitareService
      */
     public function applyFilters($query, Request $request)
     {
+        // Filtro per compagnia
+        if ($request->filled('compagnia')) {
+            $query->where('compagnia_id', $request->input('compagnia'));
+        }
+        
         // Filtro per grado
         if ($request->filled('grado_id')) {
             $query->where('grado_id', $request->input('grado_id'));

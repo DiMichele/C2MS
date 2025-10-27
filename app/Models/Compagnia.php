@@ -60,6 +60,20 @@ class Compagnia extends Model
      * @var array<string>
      */
     protected $fillable = ['nome'];
+    
+    /**
+     * Accessor per ottenere il numero della compagnia dal nome
+     * Estrae il numero (es. da "124^ Compagnia" ottiene "124")
+     * 
+     * @return string|null
+     */
+    public function getNumeroAttribute()
+    {
+        if (preg_match('/^(\d+)/', $this->nome, $matches)) {
+            return $matches[1];
+        }
+        return null;
+    }
 
     // ==========================================
     // RELAZIONI

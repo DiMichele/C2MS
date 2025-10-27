@@ -197,9 +197,16 @@ table.table td,
                         <div class="select-wrapper">
                             <select name="compagnia" id="compagnia" class="form-select filter-select {{ request()->filled('compagnia') ? 'applied' : '' }}">
                                 <option value="">Tutte le compagnie</option>
-                                <option value="110" {{ request('compagnia') == '110' ? 'selected' : '' }}>110</option>
-                                <option value="124" {{ request('compagnia') == '124' ? 'selected' : '' }}>124</option>
-                                <option value="127" {{ request('compagnia') == '127' ? 'selected' : '' }}>127</option>
+                                @php
+                                    $compagnieMap = [
+                                        1 => '124',
+                                        2 => '110',
+                                        3 => '127'
+                                    ];
+                                @endphp
+                                @foreach($compagnieMap as $compagniaId => $compagniaNumero)
+                                    <option value="{{ $compagniaId }}" {{ request('compagnia') == $compagniaId ? 'selected' : '' }}>{{ $compagniaNumero }}</option>
+                                @endforeach
                             </select>
                             @if(request()->filled('compagnia'))
                                 <span class="clear-filter" data-filter="compagnia" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
@@ -425,9 +432,16 @@ table.table td,
                     <td class="text-center">
                         <select class="form-select form-select-sm editable-field compagnia-select" data-field="compagnia" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;">
                             <option value="">--</option>
-                            <option value="110" {{ $m->compagnia_id == '110' ? 'selected' : '' }}>110</option>
-                            <option value="124" {{ $m->compagnia_id == '124' ? 'selected' : '' }}>124</option>
-                            <option value="127" {{ $m->compagnia_id == '127' ? 'selected' : '' }}>127</option>
+                            @php
+                                $compagnieMap = [
+                                    1 => '124',
+                                    2 => '110', 
+                                    3 => '127'
+                                ];
+                            @endphp
+                            @foreach($compagnieMap as $compagniaId => $compagniaNumero)
+                                <option value="{{ $compagniaId }}" {{ $m->compagnia_id == $compagniaId ? 'selected' : '' }}>{{ $compagniaNumero }}</option>
+                            @endforeach
                         </select>
                     </td>
                     <td class="text-center">
@@ -435,7 +449,7 @@ table.table td,
                             <option value="">--</option>
                             @foreach($gradi as $grado)
                                 <option value="{{ $grado->id }}" {{ $m->grado_id == $grado->id ? 'selected' : '' }}>
-                                    {{ $grado->sigla }}
+                                    {{ $grado->abbreviazione ?? $grado->nome }}
                                 </option>
                             @endforeach
                         </select>
