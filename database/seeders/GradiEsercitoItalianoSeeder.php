@@ -22,10 +22,9 @@ class GradiEsercitoItalianoSeeder extends Seeder
         
         $gradi = [
             // UFFICIALI GENERALI
-            ['nome' => 'Generale', 'abbreviazione' => 'Gen.', 'ordine' => 110],
-            ['nome' => 'Generale di Corpo d\'Armata', 'abbreviazione' => 'Gen. C.A.', 'ordine' => 105],
-            ['nome' => 'Generale di Divisione', 'abbreviazione' => 'Gen. D.', 'ordine' => 100],
-            ['nome' => 'Generale di Brigata', 'abbreviazione' => 'Gen. B.', 'ordine' => 95],
+            ['nome' => 'Generale di Corpo d\'Armata', 'abbreviazione' => 'Gen. C.A.', 'ordine' => 110],
+            ['nome' => 'Generale di Divisione', 'abbreviazione' => 'Gen. D.', 'ordine' => 105],
+            ['nome' => 'Generale di Brigata', 'abbreviazione' => 'Gen. B.', 'ordine' => 100],
             
             // UFFICIALI SUPERIORI
             ['nome' => 'Colonnello', 'abbreviazione' => 'Col.', 'ordine' => 90],
@@ -35,30 +34,35 @@ class GradiEsercitoItalianoSeeder extends Seeder
             // UFFICIALI INFERIORI
             ['nome' => 'Capitano', 'abbreviazione' => 'Cap.', 'ordine' => 75],
             ['nome' => 'Tenente', 'abbreviazione' => 'Ten.', 'ordine' => 70],
-            ['nome' => 'Sottotenente', 'abbreviazione' => 'S.Ten.', 'ordine' => 65],
+            ['nome' => 'Sottotenente', 'abbreviazione' => 'S. Ten.', 'ordine' => 65],
+            
+            // SOTTUFFICIALI - LUOGOTENENTI
+            ['nome' => 'Primo Luogotenente', 'abbreviazione' => '1° Lgt.', 'ordine' => 62],
+            ['nome' => 'Luogotenente', 'abbreviazione' => 'Lgt.', 'ordine' => 61],
             
             // SOTTUFFICIALI - MARESCIALLI
-            ['nome' => 'Primo Luogotenente', 'abbreviazione' => '1° Lgt.', 'ordine' => 60],
-            ['nome' => 'Luogotenente', 'abbreviazione' => 'Lgt.', 'ordine' => 59],
-            ['nome' => 'Maresciallo Maggiore', 'abbreviazione' => 'Mar. Magg.', 'ordine' => 58],
-            ['nome' => 'Maresciallo Ordinario', 'abbreviazione' => 'Mar. Ord.', 'ordine' => 57],
-            ['nome' => 'Maresciallo Capo', 'abbreviazione' => 'Mar. Ca.', 'ordine' => 56],
-            ['nome' => 'Maresciallo', 'abbreviazione' => 'Mar.', 'ordine' => 55],
+            ['nome' => 'Primo Maresciallo', 'abbreviazione' => '1° Mar.', 'ordine' => 60],
+            ['nome' => 'Maresciallo Capo', 'abbreviazione' => 'Mar. Ca.', 'ordine' => 59],
+            ['nome' => 'Maresciallo Ordinario', 'abbreviazione' => 'Mar. Ord.', 'ordine' => 58],
+            ['nome' => 'Maresciallo', 'abbreviazione' => 'Mar.', 'ordine' => 57],
             
             // SOTTUFFICIALI - SERGENTI
-            ['nome' => 'Sergente Maggiore Capo', 'abbreviazione' => 'Serg. Magg. Ca.', 'ordine' => 50],
-            ['nome' => 'Sergente Maggiore', 'abbreviazione' => 'Serg. Magg.', 'ordine' => 49],
-            ['nome' => 'Sergente', 'abbreviazione' => 'Serg.', 'ordine' => 48],
+            ['nome' => 'Sergente Maggiore Aiutante', 'abbreviazione' => 'Serg. Magg. Aiut.', 'ordine' => 53],
+            ['nome' => 'Sergente Maggiore Capo', 'abbreviazione' => 'Serg. Magg. Capo', 'ordine' => 52],
+            ['nome' => 'Sergente Maggiore', 'abbreviazione' => 'Serg. Magg.', 'ordine' => 51],
+            ['nome' => 'Sergente', 'abbreviazione' => 'Serg.', 'ordine' => 50],
             
             // GRADUATI
-            ['nome' => 'Caporal Maggiore Scelto', 'abbreviazione' => 'Cap. Magg. Sc.', 'ordine' => 40],
-            ['nome' => 'Caporal Maggiore Capo', 'abbreviazione' => 'Cap. Magg. Ca.', 'ordine' => 39],
-            ['nome' => 'Caporal Maggiore', 'abbreviazione' => 'Cap. Magg.', 'ordine' => 38],
-            ['nome' => 'Caporale', 'abbreviazione' => 'Cpl.', 'ordine' => 37],
+            ['nome' => 'Graduato Aiutante', 'abbreviazione' => 'Grad. Aiut.', 'ordine' => 45],
+            ['nome' => 'Primo Graduato', 'abbreviazione' => '1° Grad.', 'ordine' => 44],
+            ['nome' => 'Graduato Capo', 'abbreviazione' => 'Grad. Capo', 'ordine' => 43],
+            ['nome' => 'Graduato Scelto', 'abbreviazione' => 'Grad. Sc.', 'ordine' => 42],
+            ['nome' => 'Graduato', 'abbreviazione' => 'Grad.', 'ordine' => 41],
             
             // MILITARI DI TRUPPA
-            ['nome' => 'Primo Caporal', 'abbreviazione' => '1° Cpl.', 'ordine' => 20],
-            ['nome' => 'Soldato', 'abbreviazione' => 'Sold.', 'ordine' => 10],
+            ['nome' => 'Caporal Maggiore', 'abbreviazione' => 'C.le Magg.', 'ordine' => 30],
+            ['nome' => 'Caporale', 'abbreviazione' => 'C.le', 'ordine' => 20],
+            ['nome' => 'Soldato', 'abbreviazione' => 'Sol.', 'ordine' => 10],
         ];
 
         foreach ($gradi as $grado) {
