@@ -423,11 +423,11 @@ table.table td,
             @forelse($militari as $m)
                 <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}" data-update-url="{{ route('anagrafica.update-field', $m->id) }}">
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="compagnia" data-militare-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field compagnia-select" data-field="compagnia" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;">
                             <option value="">--</option>
-                            <option value="110" {{ $m->compagnia == '110' ? 'selected' : '' }}>110</option>
-                            <option value="124" {{ $m->compagnia == '124' ? 'selected' : '' }}>124</option>
-                            <option value="127" {{ $m->compagnia == '127' ? 'selected' : '' }}>127</option>
+                            <option value="110" {{ $m->compagnia_id == '110' ? 'selected' : '' }}>110</option>
+                            <option value="124" {{ $m->compagnia_id == '124' ? 'selected' : '' }}>124</option>
+                            <option value="127" {{ $m->compagnia_id == '127' ? 'selected' : '' }}>127</option>
                         </select>
                     </td>
                     <td class="text-center">
@@ -449,10 +449,10 @@ table.table td,
                         {{ $m->nome }}
                     </td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="plotone_id" data-militare-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field plotone-select" data-field="plotone_id" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;">
                             <option value="">--</option>
                             @foreach($plotoni as $plotone)
-                                <option value="{{ $plotone->id }}" {{ $m->plotone_id == $plotone->id ? 'selected' : '' }}>
+                                <option value="{{ $plotone->id }}" data-compagnia-id="{{ $plotone->compagnia_id }}" {{ $m->plotone_id == $plotone->id ? 'selected' : '' }}>
                                     {{ $plotone->nome }}
                                 </option>
                             @endforeach
@@ -716,6 +716,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => {
                         e.target.style.backgroundColor = '';
                     }, 1000);
+                    
+                    // Se è stata cambiata la compagnia, resetta e filtra i plotoni
+                    if (field === 'compagnia' && data.plotone_reset) {
+                        const rowId = e.target.getAttribute('data-row-id');
+                        const plotoneSelect = document.querySelector(`.plotone-select[data-row-id="${rowId}"]`);
+                        if (plotoneSelect) {
+                            plotoneSelect.value = ''; // Resetta il plotone
+                            filterPlotoniByCompagnia(plotoneSelect, value); // Filtra i plotoni per la nuova compagnia
+                        }
+                    }
                 } else {
                     alert('Errore durante l\'aggiornamento: ' + (data.message || 'Errore sconosciuto'));
                 }
@@ -775,6 +785,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 formCheck.style.transform = 'scale(1)';
                 alert('Errore durante l\'aggiornamento patente. Riprova.');
             });
+        }
+    });
+    
+    // Funzione per filtrare i plotoni in base alla compagnia
+    function filterPlotoniByCompagnia(plotoneSelect, compagniaId) {
+        const options = plotoneSelect.querySelectorAll('option');
+        
+        options.forEach(option => {
+            if (option.value === '') {
+                // Mantieni sempre l'opzione vuota "--"
+                option.style.display = '';
+                return;
+            }
+            
+            const optionCompagniaId = option.getAttribute('data-compagnia-id');
+            
+            if (!compagniaId || optionCompagniaId == compagniaId) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    }
+    
+    // Inizializza i filtri dei plotoni all'avvio
+    document.querySelectorAll('.plotone-select').forEach(plotoneSelect => {
+        const rowId = plotoneSelect.getAttribute('data-row-id');
+        const compagniaSelect = document.querySelector(`.compagnia-select[data-row-id="${rowId}"]`);
+        
+        if (compagniaSelect) {
+            const compagniaId = compagniaSelect.value;
+            if (compagniaId) {
+                filterPlotoniByCompagnia(plotoneSelect, compagniaId);
+            }
         }
     });
 });

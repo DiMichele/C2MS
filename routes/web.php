@@ -112,6 +112,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])
         ->middleware('permission:anagrafica.edit')
         ->name('anagrafica.update-field');
+    Route::get('/anagrafica/plotoni-per-compagnia', [MilitareController::class, 'getPlotoniPerCompagnia'])
+        ->middleware('permission:anagrafica.view')
+        ->name('anagrafica.plotoni-per-compagnia');
     Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])
         ->middleware('permission:anagrafica.edit')
         ->name('anagrafica.patenti.add');

@@ -682,27 +682,41 @@ class MilitareController extends Controller
             $field = $request->input('field');
             $value = $request->input('value');
             
-            // Lista dei campi consentiti per l'aggiornamento
-            $allowedFields = [
-                'compagnia', 'grado_id', 'cognome', 'nome', 'plotone_id', 
-                'polo_id', 'mansione_id', 'nos_status', 'anzianita', 
-                'data_nascita', 'email_istituzionale', 'telefono'
+            // Mapping dei campi frontend -> database
+            $fieldMapping = [
+                'compagnia' => 'compagnia_id',
             ];
             
-            if (!in_array($field, $allowedFields)) {
+            // Applica il mapping se necessario
+            $dbField = $fieldMapping[$field] ?? $field;
+            
+            // Lista dei campi consentiti per l'aggiornamento (nomi database)
+            $allowedFields = [
+                'compagnia_id', 'grado_id', 'cognome', 'nome', 'plotone_id', 
+                'polo_id', 'mansione_id', 'ruolo_id', 'nos_status', 
+                'data_nascita', 'codice_fiscale', 'email', 'telefono', 'note'
+            ];
+            
+            if (!in_array($dbField, $allowedFields)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Campo non consentito'
                 ], 400);
             }
             
+            // Se cambia la compagnia, azzera il plotone (perché non appartiene più alla compagnia)
+            if ($dbField === 'compagnia_id' && $value != $militare->compagnia_id) {
+                $militare->plotone_id = null;
+            }
+            
             // Aggiorna il campo
-            $militare->$field = $value;
+            $militare->$dbField = $value;
             $militare->save();
             
             return response()->json([
                 'success' => true,
-                'message' => 'Campo aggiornato con successo'
+                'message' => 'Campo aggiornato con successo',
+                'plotone_reset' => ($dbField === 'compagnia_id') // Indica se il plotone è stato resettato
             ]);
             
         } catch (\Exception $e) {
@@ -715,6 +729,45 @@ class MilitareController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Errore durante l\'aggiornamento'
+            ], 500);
+        }
+    }
+
+    /**
+     * Ottiene i plotoni filtrati per compagnia
+     * 
+     * @param Request $request Richiesta HTTP
+     * @return \Illuminate\Http\JsonResponse Risposta JSON con i plotoni
+     */
+    public function getPlotoniPerCompagnia(Request $request)
+    {
+        try {
+            $compagniaId = $request->input('compagnia_id');
+            
+            if (!$compagniaId) {
+                // Se non c'è compagnia, restituisci tutti i plotoni
+                $plotoni = Plotone::orderBy('nome')->get();
+            } else {
+                // Filtra per compagnia
+                $plotoni = Plotone::where('compagnia_id', $compagniaId)
+                    ->orderBy('nome')
+                    ->get();
+            }
+            
+            return response()->json([
+                'success' => true,
+                'plotoni' => $plotoni
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Errore nel recupero plotoni per compagnia', [
+                'compagnia_id' => $request->input('compagnia_id'),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore nel recupero dei plotoni'
             ], 500);
         }
     }
