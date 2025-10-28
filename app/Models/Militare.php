@@ -94,6 +94,8 @@ class Militare extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'data_nascita' => 'date',
+        'anzianita' => 'date',
     ];
 
     /**
@@ -122,10 +124,13 @@ class Militare extends Model
     // ============================================
     
     /**
-     * Scope per ordinare i militari per grado e nome
+     * Scope per ordinare i militari per grado, anzianità e nome
      * 
-     * Ordina prima per ordine del grado (decrescente, grado più alto prima),
-     * poi per cognome e nome in ordine alfabetico.
+     * Ordine di visualizzazione:
+     * 1. Grado (dal più alto al più basso: COL → SOL)
+     * 2. Anzianità (a parità di grado, il più anziano viene prima)
+     * 3. Cognome
+     * 4. Nome
      * 
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
@@ -135,8 +140,12 @@ class Militare extends Model
         return $query->leftJoin('gradi', 'militari.grado_id', '=', 'gradi.id')
                     // Chi ha il grado viene prima (0), chi non ha grado viene dopo (1)
                     ->orderByRaw('CASE WHEN militari.grado_id IS NULL THEN 1 ELSE 0 END')
-                    // Tra chi ha il grado, ordina per ordine CRESCENTE (ordine 1 = COL più alto, ordine 23 = SOL più basso)
-                    ->orderBy('gradi.ordine', 'asc')
+                    // Tra chi ha il grado, ordina per ordine DECRESCENTE (ordine 90 = COL più alto, ordine 10 = SOL più basso)
+                    ->orderBy('gradi.ordine', 'desc')
+                    // A parità di grado, ordina per anzianità ASCENDENTE (il più vecchio prima)
+                    // NULL viene considerato come ultimo (senza anzianità)
+                    ->orderByRaw('CASE WHEN militari.anzianita IS NULL THEN 1 ELSE 0 END')
+                    ->orderBy('militari.anzianita', 'asc')
                     ->orderBy('militari.cognome')
                     ->orderBy('militari.nome')
                     ->select('militari.*');

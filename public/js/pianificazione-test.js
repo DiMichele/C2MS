@@ -17,6 +17,7 @@ function openEditModal(cell) {
     const cognome = cognomeLink ? cognomeLink.textContent.trim() : cognomeCell.textContent.trim();
     const nome = nomeCell.textContent.trim();
     
+    // Solo Grado Cognome Nome (senza compagnia)
     const nomeCompleto = grado + ' ' + cognome + ' ' + nome;
     const giornoCompleto = giorno + ' Settembre';
     
@@ -158,8 +159,29 @@ function setupSaveButton() {
             const militareId = militareIdEl ? militareIdEl.value : '';
             const giorno = parseInt(giornoEl ? giornoEl.value : '');
             const pianificazioneMensileId = pianificazioneMensileIdEl ? pianificazioneMensileIdEl.value : '';
-            const tipoServizioId = tipoServizioEl ? tipoServizioEl.value : '';
+            
+            // IMPORTANTE: Usa data-id invece di value per ottenere l'ID numerico
+            let tipoServizioId = '';
+            if (tipoServizioEl && tipoServizioEl.value) {
+                const selectedOption = tipoServizioEl.options[tipoServizioEl.selectedIndex];
+                tipoServizioId = selectedOption.getAttribute('data-id') || '';
+                
+                console.log('=== DEBUG TIPO SERVIZIO ===');
+                console.log('Select value:', tipoServizioEl.value);
+                console.log('Selected option:', selectedOption);
+                console.log('data-id attribute:', selectedOption.getAttribute('data-id'));
+                console.log('tipoServizioId finale:', tipoServizioId);
+                console.log('tipo di tipoServizioId:', typeof tipoServizioId);
+            }
+            
             const giornoFine = giornoFineEl ? giornoFineEl.value : '';
+            
+            console.log('=== DATI DA INVIARE ===');
+            console.log('militareId:', militareId);
+            console.log('giorno:', giorno);
+            console.log('pianificazioneMensileId:', pianificazioneMensileId);
+            console.log('tipoServizioId:', tipoServizioId);
+            console.log('giornoFine:', giornoFine);
             
             if (!militareId || !giorno || !pianificazioneMensileId) {
                 alert('Dati mancanti per il salvataggio');
@@ -330,10 +352,13 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
     const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorno';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     
+    // Converti tipoServizioId in numero se è una stringa
+    const tipoServizioIdNumeric = tipoServizioId ? parseInt(tipoServizioId) : null;
+    
     const requestData = {
         giorno: giorno,
         pianificazione_mensile_id: pianificazioneMensileId,
-        tipo_servizio_id: tipoServizioId || null
+        tipo_servizio_id: tipoServizioIdNumeric
     };
     
     // Aggiungi mese e anno se specificati
@@ -341,6 +366,11 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
         requestData.mese = mese;
         requestData.anno = anno;
     }
+    
+    console.log('=== CHIAMATA FETCH ===');
+    console.log('URL:', updateUrl);
+    console.log('Request Data:', requestData);
+    console.log('tipo_servizio_id type:', typeof requestData.tipo_servizio_id);
     
     return fetch(updateUrl, {
         method: 'POST',
@@ -350,7 +380,17 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
         },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json());
+    .then(response => {
+        console.log('=== RISPOSTA SERVER ===');
+        console.log('Status:', response.status);
+        console.log('OK:', response.ok);
+        return response.json();
+    })
+    .then(data => {
+        console.log('=== DATI RICEVUTI ===');
+        console.log('Data:', data);
+        return data;
+    });
 }
 
 // Funzione per salvare un range di giorni (nuovo endpoint batch)

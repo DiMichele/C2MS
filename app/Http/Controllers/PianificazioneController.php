@@ -304,84 +304,106 @@ class PianificazioneController extends Controller
         $approntamenti = \App\Models\Approntamento::orderBy('nome')->get();
         $mansioni = \App\Models\Mansione::select('nome')->distinct()->orderBy('nome')->get();
         
-        // Impegni (tipi servizio) organizzati per categorie - CODICI CORRETTI DALL'IMMAGINE
-        $impegniPerCategoria = [
+        // Carica TUTTI i TipoServizio dal database (con ID NUMERICO corretto)
+        $tipiServizioDb = TipoServizio::where('attivo', true)
+            ->orderBy('categoria')
+            ->orderBy('ordine')
+            ->orderBy('nome')
+            ->get();
+        
+        // Raggruppa per categorie (mantieni come Collection, NON array)
+        $impegniPerCategoria = $tipiServizioDb->groupBy(function($tipo) {
+            // Normalizza i nomi delle categorie per uniformità visiva
+            $categoriaMap = [
+                'servizio' => 'SERVIZIO',
+                'permesso' => 'ASSENTE',
+                'assenza' => 'ASSENTE',
+                'formazione' => 'ADD./APP./CATTEDRE',
+                'missione' => 'OPERAZIONE'
+            ];
+            return $categoriaMap[$tipo->categoria] ?? strtoupper($tipo->categoria);
+        });
+        
+        // NOTA: Ora gli impegni vengono caricati REALMENTE dal database
+        // Se vuoi aggiungere impieghi personalizzati, devono essere PRIMA inseriti nella tabella tipi_servizio
+        
+        // **BACKUP DEL VECCHIO CODICE**: Se necessario ripristinare i codici hardcoded, sono qui sotto (commentati)
+        /*
+        $impegniPerCategoria_HARDCODED = [
             'ASSENTE' => [
-                (object)['id' => 'LS', 'codice' => 'LS', 'nome' => 'LICENZA STRAORD.', 'categoria' => 'ASSENTE'],
-                (object)['id' => 'LO', 'codice' => 'LO', 'nome' => 'LICENZA ORD.', 'categoria' => 'ASSENTE'],
-                (object)['id' => 'LM', 'codice' => 'LM', 'nome' => 'LICENZA DI MATERNITA\'', 'categoria' => 'ASSENTE'],
-                (object)['id' => 'P', 'codice' => 'P', 'nome' => 'PERMESSINO', 'categoria' => 'ASSENTE'],
-                (object)['id' => 'TIR', 'codice' => 'TIR', 'nome' => 'TIROCINIO', 'categoria' => 'ASSENTE'],
-                (object)['id' => 'TRAS', 'codice' => 'TRAS', 'nome' => 'TRASFERITO', 'categoria' => 'ASSENTE']
+                (object)['id' => $tipiServizioDb['LS']->id ?? 'LS', 'codice' => 'LS', 'nome' => 'LICENZA STRAORD.', 'categoria' => 'ASSENTE'],
+                (object)['id' => $tipiServizioDb['LO']->id ?? 'LO', 'codice' => 'LO', 'nome' => 'LICENZA ORD.', 'categoria' => 'ASSENTE'],
+                (object)['id' => $tipiServizioDb['LM']->id ?? 'LM', 'codice' => 'LM', 'nome' => 'LICENZA DI MATERNITA\'', 'categoria' => 'ASSENTE'],
+                (object)['id' => $tipiServizioDb['P']->id ?? 'P', 'codice' => 'P', 'nome' => 'PERMESSINO', 'categoria' => 'ASSENTE'],
+                (object)['id' => $tipiServizioDb['TIR']->id ?? 'TIR', 'codice' => 'TIR', 'nome' => 'TIROCINIO', 'categoria' => 'ASSENTE'],
+                (object)['id' => $tipiServizioDb['TRAS']->id ?? 'TRAS', 'codice' => 'TRAS', 'nome' => 'TRASFERITO', 'categoria' => 'ASSENTE']
             ],
             'PROVVEDIMENTI MEDICO SANITARI' => [
-                (object)['id' => 'RMD', 'codice' => 'RMD', 'nome' => 'RIPOSO MEDICO DOMICILIARE', 'categoria' => 'PROVVEDIMENTI MEDICO SANITARI'],
-                (object)['id' => 'LC', 'codice' => 'LC', 'nome' => 'LICENZA DI CONVALESCENZA', 'categoria' => 'PROVVEDIMENTI MEDICO SANITARI'],
-                (object)['id' => 'IS', 'codice' => 'IS', 'nome' => 'ISOLAMENTO/QUARANTENA', 'categoria' => 'PROVVEDIMENTI MEDICO SANITARI']
+                (object)['id' => $tipiServizioDb['RMD']->id ?? 'RMD', 'codice' => 'RMD', 'nome' => 'RIPOSO MEDICO DOMICILIARE', 'categoria' => 'PROVVEDIMENTI MEDICO SANITARI'],
+                (object)['id' => $tipiServizioDb['LC']->id ?? 'LC', 'codice' => 'LC', 'nome' => 'LICENZA DI CONVALESCENZA', 'categoria' => 'PROVVEDIMENTI MEDICO SANITARI'],
+                (object)['id' => $tipiServizioDb['IS']->id ?? 'IS', 'codice' => 'IS', 'nome' => 'ISOLAMENTO/QUARANTENA', 'categoria' => 'PROVVEDIMENTI MEDICO SANITARI']
             ],
             'SERVIZIO' => [
-                (object)['id' => 'S-G1', 'codice' => 'S-G1', 'nome' => 'GUARDIA D\'AVANZO LUNGA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-G2', 'codice' => 'S-G2', 'nome' => 'GUARDIA D\'AVANZO CORTA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-SA', 'codice' => 'S-SA', 'nome' => 'SORVEGLIANZA D\'AVANZO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-CD1', 'codice' => 'S-CD1', 'nome' => 'CONDUTTORE GUARDIA LUNGO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-CD2', 'codice' => 'S-CD2', 'nome' => 'CONDUTTORE PIAN DEL TERMINE CORTO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-SG', 'codice' => 'S-SG', 'nome' => 'SOTTUFFICIALE DI GIORNATA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-CG', 'codice' => 'S-CG', 'nome' => 'COMANDANTE DELLA GUARDIA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-UI', 'codice' => 'S-UI', 'nome' => 'UFFICIALE DI ISPEZIONE', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-UP', 'codice' => 'S-UP', 'nome' => 'UFFICIALE DI PICCHETTO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-AE', 'codice' => 'S-AE', 'nome' => 'AREE ESTERNE', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-ARM', 'codice' => 'S-ARM', 'nome' => 'ARMIERE DI SERVIZIO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'SI-GD', 'codice' => 'SI-GD', 'nome' => 'SERVIZIO ISOLATO-GUARDIA DISTACCATA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'SI', 'codice' => 'SI', 'nome' => 'SERVIZIO ISOLATO-CAPOMACCHINA/CAU', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'SI-VM', 'codice' => 'SI-VM', 'nome' => 'VISITA MEDICA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'S-PI', 'codice' => 'S-PI', 'nome' => 'PRONTO IMPIEGO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-G1']->id ?? 'S-G1', 'codice' => 'S-G1', 'nome' => 'GUARDIA D\'AVANZO LUNGA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-G2']->id ?? 'S-G2', 'codice' => 'S-G2', 'nome' => 'GUARDIA D\'AVANZO CORTA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-SA']->id ?? 'S-SA', 'codice' => 'S-SA', 'nome' => 'SORVEGLIANZA D\'AVANZO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-CD1']->id ?? 'S-CD1', 'codice' => 'S-CD1', 'nome' => 'CONDUTTORE GUARDIA LUNGO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-CD2']->id ?? 'S-CD2', 'codice' => 'S-CD2', 'nome' => 'CONDUTTORE PIAN DEL TERMINE CORTO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-SG']->id ?? 'S-SG', 'codice' => 'S-SG', 'nome' => 'SOTTUFFICIALE DI GIORNATA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-CG']->id ?? 'S-CG', 'codice' => 'S-CG', 'nome' => 'COMANDANTE DELLA GUARDIA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-UI']->id ?? 'S-UI', 'codice' => 'S-UI', 'nome' => 'UFFICIALE DI ISPEZIONE', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-UP']->id ?? 'S-UP', 'codice' => 'S-UP', 'nome' => 'UFFICIALE DI PICCHETTO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-AE']->id ?? 'S-AE', 'codice' => 'S-AE', 'nome' => 'AREE ESTERNE', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-ARM']->id ?? 'S-ARM', 'codice' => 'S-ARM', 'nome' => 'ARMIERE DI SERVIZIO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['SI-GD']->id ?? 'SI-GD', 'codice' => 'SI-GD', 'nome' => 'SERVIZIO ISOLATO-GUARDIA DISTACCATA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['SI']->id ?? 'SI', 'codice' => 'SI', 'nome' => 'SERVIZIO ISOLATO-CAPOMACCHINA/CAU', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['SI-VM']->id ?? 'SI-VM', 'codice' => 'SI-VM', 'nome' => 'VISITA MEDICA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['S-PI']->id ?? 'S-PI', 'codice' => 'S-PI', 'nome' => 'PRONTO IMPIEGO', 'categoria' => 'SERVIZIO'],
                 // SERVIZI TURNO SETTIMANALI
-                (object)['id' => 'G-BTG', 'codice' => 'G-BTG', 'nome' => 'GRADUATO DI BTG', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'NVA', 'codice' => 'NVA', 'nome' => 'NUCLEO VIGILANZA ARMATA D\'AVANZO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'CG', 'codice' => 'CG', 'nome' => 'CONDUTTORE GUARDIA', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'NS-DA', 'codice' => 'NS-DA', 'nome' => 'NUCLEO SORV. D\' AVANZO 07:30 - 17:00', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'PDT', 'codice' => 'PDT', 'nome' => 'VIGILANZA PIAN DEL TERMINE', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'AA', 'codice' => 'AA', 'nome' => 'ADDETTO ANTINCENDIO', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'VS-CETLI', 'codice' => 'VS-CETLI', 'nome' => 'VIGILANZA SETTIMANALE CETLI', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'CORR', 'codice' => 'CORR', 'nome' => 'CORRIERE', 'categoria' => 'SERVIZIO'],
-                (object)['id' => 'NDI', 'codice' => 'NDI', 'nome' => 'NUCLEO DIFESA IMMEDIATA', 'categoria' => 'SERVIZIO']
+                (object)['id' => $tipiServizioDb['G-BTG']->id ?? 'G-BTG', 'codice' => 'G-BTG', 'nome' => 'GRADUATO DI BTG', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['NVA']->id ?? 'NVA', 'codice' => 'NVA', 'nome' => 'NUCLEO VIGILANZA ARMATA D\'AVANZO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['CG']->id ?? 'CG', 'codice' => 'CG', 'nome' => 'CONDUTTORE GUARDIA', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['NS-DA']->id ?? 'NS-DA', 'codice' => 'NS-DA', 'nome' => 'NUCLEO SORV. D\' AVANZO 07:30 - 17:00', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['PDT']->id ?? 'PDT', 'codice' => 'PDT', 'nome' => 'VIGILANZA PIAN DEL TERMINE', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['AA']->id ?? 'AA', 'codice' => 'AA', 'nome' => 'ADDETTO ANTINCENDIO', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['VS-CETLI']->id ?? 'VS-CETLI', 'codice' => 'VS-CETLI', 'nome' => 'VIGILANZA SETTIMANALE CETLI', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['CORR']->id ?? 'CORR', 'codice' => 'CORR', 'nome' => 'CORRIERE', 'categoria' => 'SERVIZIO'],
+                (object)['id' => $tipiServizioDb['NDI']->id ?? 'NDI', 'codice' => 'NDI', 'nome' => 'NUCLEO DIFESA IMMEDIATA', 'categoria' => 'SERVIZIO']
             ],
             'OPERAZIONE' => [
-                (object)['id' => 'TO', 'codice' => 'TO', 'nome' => 'TEATRO OPERATIVO', 'categoria' => 'OPERAZIONE']
+                (object)['id' => $tipiServizioDb['TO']->id ?? 'TO', 'codice' => 'TO', 'nome' => 'TEATRO OPERATIVO', 'categoria' => 'OPERAZIONE']
             ],
             'ADD./APP./CATTEDRE' => [
-                (object)['id' => 'APS1', 'codice' => 'APS1', 'nome' => 'PRELIEVI', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'APS2', 'codice' => 'APS2', 'nome' => 'VACCINI', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'APS3', 'codice' => 'APS3', 'nome' => 'ECG', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'APS4', 'codice' => 'APS4', 'nome' => 'IDONEITA', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-ELIX', 'codice' => 'AL-ELIX', 'nome' => 'ELITRASPORTO', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-MCM', 'codice' => 'AL-MCM', 'nome' => 'MCM', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-BLS', 'codice' => 'AL-BLS', 'nome' => 'BLS', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-CIED', 'codice' => 'AL-CIED', 'nome' => 'C-IED', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-SM', 'codice' => 'AL-SM', 'nome' => 'STRESS MANAGEMENT', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-RM', 'codice' => 'AL-RM', 'nome' => 'RAPPORTO MEDIA', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-RSPP', 'codice' => 'AL-RSPP', 'nome' => 'RSPP', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-LEG', 'codice' => 'AL-LEG', 'nome' => 'ASPETTI LEGALI', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-SEA', 'codice' => 'AL-SEA', 'nome' => 'SEXUAL EXPLOITATION AND ABUSE', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-MI', 'codice' => 'AL-MI', 'nome' => 'MALATTIE INFETTIVE', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-PO', 'codice' => 'AL-PO', 'nome' => 'PROPAGANDA OSTILE', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AL-PI', 'codice' => 'AL-PI', 'nome' => 'PUBBLICA INFORMAZIONE E COMUNICAZIONE', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AP-M', 'codice' => 'AP-M', 'nome' => 'MANTENIMENTO', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AP-A', 'codice' => 'AP-A', 'nome' => 'APPRONTAMENTO', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AC-SW', 'codice' => 'AC-SW', 'nome' => 'CORSO IN SMART WORKING', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'AC', 'codice' => 'AC', 'nome' => 'CORSO SERVIZIO ISOLATO', 'categoria' => 'ADD./APP./CATTEDRE'],
-                (object)['id' => 'PEFO', 'codice' => 'PEFO', 'nome' => 'PEFO', 'categoria' => 'ADD./APP./CATTEDRE']
+                (object)['id' => $tipiServizioDb['APS1']->id ?? 'APS1', 'codice' => 'APS1', 'nome' => 'PRELIEVI', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['APS2']->id ?? 'APS2', 'codice' => 'APS2', 'nome' => 'VACCINI', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['APS3']->id ?? 'APS3', 'codice' => 'APS3', 'nome' => 'ECG', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['APS4']->id ?? 'APS4', 'codice' => 'APS4', 'nome' => 'IDONEITA', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-ELIX']->id ?? 'AL-ELIX', 'codice' => 'AL-ELIX', 'nome' => 'ELITRASPORTO', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-MCM']->id ?? 'AL-MCM', 'codice' => 'AL-MCM', 'nome' => 'MCM', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-BLS']->id ?? 'AL-BLS', 'codice' => 'AL-BLS', 'nome' => 'BLS', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-CIED']->id ?? 'AL-CIED', 'codice' => 'AL-CIED', 'nome' => 'C-IED', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-SM']->id ?? 'AL-SM', 'codice' => 'AL-SM', 'nome' => 'STRESS MANAGEMENT', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-RM']->id ?? 'AL-RM', 'codice' => 'AL-RM', 'nome' => 'RAPPORTO MEDIA', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-RSPP']->id ?? 'AL-RSPP', 'codice' => 'AL-RSPP', 'nome' => 'RSPP', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-LEG']->id ?? 'AL-LEG', 'codice' => 'AL-LEG', 'nome' => 'ASPETTI LEGALI', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-SEA']->id ?? 'AL-SEA', 'codice' => 'AL-SEA', 'nome' => 'SEXUAL EXPLOITATION AND ABUSE', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-MI']->id ?? 'AL-MI', 'codice' => 'AL-MI', 'nome' => 'MALATTIE INFETTIVE', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-PO']->id ?? 'AL-PO', 'codice' => 'AL-PO', 'nome' => 'PROPAGANDA OSTILE', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AL-PI']->id ?? 'AL-PI', 'codice' => 'AL-PI', 'nome' => 'PUBBLICA INFORMAZIONE E COMUNICAZIONE', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AP-M']->id ?? 'AP-M', 'codice' => 'AP-M', 'nome' => 'MANTENIMENTO', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AP-A']->id ?? 'AP-A', 'codice' => 'AP-A', 'nome' => 'APPRONTAMENTO', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AC-SW']->id ?? 'AC-SW', 'codice' => 'AC-SW', 'nome' => 'CORSO IN SMART WORKING', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['AC']->id ?? 'AC', 'codice' => 'AC', 'nome' => 'CORSO SERVIZIO ISOLATO', 'categoria' => 'ADD./APP./CATTEDRE'],
+                (object)['id' => $tipiServizioDb['PEFO']->id ?? 'PEFO', 'codice' => 'PEFO', 'nome' => 'PEFO', 'categoria' => 'ADD./APP./CATTEDRE']
             ],
             'SUPP.CIS/EXE' => [
-                (object)['id' => 'EXE', 'codice' => 'EXE', 'nome' => 'ESERCITAZIONE', 'categoria' => 'SUPP.CIS/EXE']
+                (object)['id' => $tipiServizioDb['EXE']->id ?? 'EXE', 'codice' => 'EXE', 'nome' => 'ESERCITAZIONE', 'categoria' => 'SUPP.CIS/EXE']
             ]
         ];
+        */ // Fine blocco commentato
         
         // Lista piatta per compatibilità
-        $impegni = collect();
-        foreach ($impegniPerCategoria as $categoria => $impegniCategoria) {
-            $impegni = $impegni->merge($impegniCategoria);
-        }
+        $impegni = $tipiServizioDb;
 
         // Nomi dei mesi in italiano
         $mesiItaliani = [
@@ -492,6 +514,14 @@ class PianificazioneController extends Controller
      */
     public function updateGiorno(Request $request, Militare $militare)
     {
+        // Verifica permessi
+        if (!auth()->user()->can('cpt.edit')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non hai i permessi per modificare il CPT'
+            ], 403);
+        }
+        
         try {
             // Log per debug
             \Log::info('UpdateGiorno request', [
@@ -502,24 +532,20 @@ class PianificazioneController extends Controller
         $request->validate([
             'pianificazione_mensile_id' => 'required|exists:pianificazioni_mensili,id',
             'giorno' => 'required|integer|min:1|max:31',
-                'tipo_servizio_id' => 'nullable|string',
+            'tipo_servizio_id' => 'nullable|integer|exists:tipi_servizio,id',
                 'mese' => 'nullable|integer|min:1|max:12',
                 'anno' => 'nullable|integer|min:2020|max:2030'
         ]);
         
         // Gestione esplicita del caso "nessun impegno"
-            $tipoServizioId = null;
-            if ($request->tipo_servizio_id) {
-                // Cerca il TipoServizio per codice invece che per ID
-                $tipoServizio = TipoServizio::where('codice', $request->tipo_servizio_id)->first();
-                \Log::info('TipoServizio search', [
-                    'codice_ricercato' => $request->tipo_servizio_id,
-                    'trovato' => $tipoServizio ? $tipoServizio->id : null
-                ]);
-                if ($tipoServizio) {
-                    $tipoServizioId = $tipoServizio->id;
-                }
-            }
+            $tipoServizioId = $request->tipo_servizio_id ?: null;
+            
+            \Log::info('Update giorno - tipo_servizio_id ricevuto', [
+                'militare_id' => $militare->id,
+                'giorno' => $request->giorno,
+                'tipo_servizio_id' => $tipoServizioId,
+                'tipo' => gettype($tipoServizioId)
+            ]);
             
             // Determina mese e anno per questo giorno specifico
             $mese = $request->mese;
@@ -583,6 +609,14 @@ class PianificazioneController extends Controller
 
     public function updateGiorniRange(Request $request, Militare $militare)
     {
+        // Verifica permessi
+        if (!auth()->user()->can('cpt.edit')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non hai i permessi per modificare il CPT'
+            ], 403);
+        }
+        
         try {
             $request->validate([
                 'giorni' => 'required|array',

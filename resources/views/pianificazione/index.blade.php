@@ -16,6 +16,7 @@ window.pageData = {
 };
 </script>
 <script src="{{ asset('js/pianificazione-test.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('js/filtro-plotoni-compagnia.js') }}?v={{ time() }}"></script>
 
 <div class="container-fluid" style="position: relative; z-index: 1;">
     <!-- Header con controlli -->
@@ -61,14 +62,7 @@ window.pageData = {
     <!-- Tabella principale stile CPT -->
     <div class="card" style="background: transparent; border: none; box-shadow: none;">
         <div style="background: transparent; border: none; padding: 0;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-success" id="exportExcel" style="border-radius: 6px !important;">
-                        <i class="fas fa-file-excel me-1"></i>
-                        Esporta Excel
-                    </button>
-                </div>
-            </div>
+            <!-- Export button removed - now using floating button -->
         </div>
         
         @php
@@ -166,7 +160,7 @@ window.pageData = {
                             <tr class="militare-row" data-militare-id="{{ $item['militare']->id }}">
                                 <!-- Info militare (colonne fisse) -->
                                 <td class="fw-bold text-center" style="width: 160px; padding: 4px 6px;">
-                                    {{ $item['militare']->compagnia ? $item['militare']->compagnia . 'a' : '-' }}
+                                    {{ $item['militare']->compagnia->numero ?? '-' }}
                                 </td>
                                 <td class="fw-bold" style="width: 200px; padding: 4px 6px;">
                                     <span title="{{ $item['militare']->grado->nome ?? '-' }}">
@@ -262,11 +256,15 @@ window.pageData = {
                                         data-militare-id="{{ $item['militare']->id }}"
                                         data-tipo-servizio-id="{{ $pianificazione->tipo_servizio_id ?? '' }}"
                                     style="{{ $cellStyle }}"
+                                    @can('cpt.edit')
                                     tabindex="0"
                                     role="button"
                                     aria-label="Modifica impegno per {{ $item['militare']->cognome }} {{ $item['militare']->nome }} - {{ $giorno['giorno'] }} {{ $mese }}/{{ $anno }}"
                                     onclick="openEditModal(this)"
-                                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openEditModal(this); }">
+                                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openEditModal(this); }"
+                                    @else
+                                    title="Non hai i permessi per modificare"
+                                    @endcan>
                                         
                                         @if($codice)
                                             @php
@@ -345,13 +343,12 @@ window.pageData = {
                             @foreach($impegniPerCategoria as $categoria => $impegniCategoria)
                                 <optgroup label="{{ $categoria }}">
                                     @foreach($impegniCategoria as $impegno)
-                                        <option value="{{ $impegno->codice }}">{{ $impegno->nome }}</option>
+                                        <option value="{{ $impegno->codice }}" data-id="{{ $impegno->id }}">{{ $impegno->nome }}</option>
                                     @endforeach
                                 </optgroup>
                             @endforeach
                         </select>
                     </div>
-                    
                     <div class="mb-3">
                         <label for="editGiornoFine" class="form-label">Fino al giorno (opzionale)</label>
                         <input type="date" class="form-control" id="editGiornoFine" name="giorno_fine" 
@@ -370,6 +367,11 @@ window.pageData = {
         </div>
     </div>
 </div>
+
+<!-- Floating Button Export Excel -->
+<button type="button" class="fab fab-excel" id="exportExcel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</button>
 
 @endsection
 
@@ -494,6 +496,20 @@ window.pageData = {
 /* Stile compatto per la tabella pianificazione */
 #pianificazioneTable {
     font-size: 11px;
+}
+
+/* Centratura verticale e orizzontale dei badge nelle celle giorno */
+.giorno-cell {
+    vertical-align: middle !important;
+    text-align: center !important;
+}
+
+.giorno-cell .badge,
+.giorno-cell .codice-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
 }
 
 /* Filtri - usa CSS esterno filters.css */
@@ -681,17 +697,7 @@ tbody th {
     border-radius: 0 !important;
 }
 
-/* Centra i badge nelle celle */
-.giorno-cell {
-    vertical-align: middle !important;
-    text-align: center !important;
-}
-
-.codice-badge {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
+/* Rimosso - duplicato spostato più in alto */
 
 /* 2. Sfondo weekend/festivi - rosso semitrasparente */
 table.table tbody td.weekend-column,

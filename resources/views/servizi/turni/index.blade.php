@@ -206,17 +206,7 @@
         </div>
     </div>
 
-    <!-- Azioni -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="d-flex justify-content-end">
-                <a href="{{ route('servizi.turni.export-excel', ['data' => $turno->data_inizio->format('Y-m-d')]) }}" 
-                   class="btn btn-outline-success" style="border-radius: 6px !important;">
-                    <i class="fas fa-file-excel"></i> Esporta Excel
-                </a>
-            </div>
-        </div>
-    </div>
+    <!-- Export button removed - now using floating button -->
 
     <!-- Tabella Turni -->
     <div class="card">
@@ -967,4 +957,11 @@ async function confermaRimozione(assegnazioneId) {
 // Sincronizzazione automatica: non serve più pulsante manuale
 // La sincronizzazione avviene automaticamente ad ogni assegnazione tramite TurniService->sincronizzaConCPT()
 </script>
+
+<!-- Floating Button Export Excel -->
+<a href="{{ route('servizi.turni.export-excel', ['data' => $turno->data_inizio->format('Y-m-d')]) }}" 
+   class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</a>
+
 @endsection

@@ -137,7 +137,7 @@
                 @endif
                 
                 @if(Auth::user()->hasPermission('admin.access'))
-                <li class="nav-menu-item {{ request()->is('admin*') ? 'active' : '' }}">
+                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') ? 'active' : '' }}">
                     <a href="#">
                         Admin
                     </a>
@@ -147,6 +147,9 @@
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('admin/permessi*') || request()->is('admin/ruoli*') ? 'active' : '' }}">
                             <a href="{{ route('admin.permissions.index') }}">Gestione Ruoli</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('codici-cpt*') ? 'active' : '' }}">
+                            <a href="{{ route('codici-cpt.index') }}">Codici CPT</a>
                         </li>
                     </ul>
                 </li>

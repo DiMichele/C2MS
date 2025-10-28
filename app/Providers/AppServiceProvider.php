@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +21,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Registra Gate per i permessi personalizzati
+        // Questo permette a @can di usare il nostro sistema di permessi
+        Gate::before(function ($user, $ability) {
+            // L'amministratore ha SEMPRE tutti i permessi
+            if ($user->hasRole('amministratore')) {
+                return true;
+            }
+            
+            // Altrimenti usa il sistema di permessi standard
+            return $user->hasPermission($ability) ?: null;
+        });
+        
         // Forza HTTPS quando si usa un tunnel (ngrok/cloudflare)
         if (request()->header('X-Forwarded-Proto') === 'https' || 
             request()->header('X-Forwarded-Host') ||

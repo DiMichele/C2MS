@@ -99,14 +99,30 @@ Route::middleware(['auth'])->group(function () {
     */
     // Rotte che devono essere definite PRIMA della resource route
     Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])
-        ->middleware('permission:anagrafica.edit')
+        ->middleware('permission:anagrafica.view')
         ->name('anagrafica.export-excel');
 
-    // Resource route (create, edit, update, destroy protette)
-    Route::resource('anagrafica', MilitareController::class)
+    // Rotte create e store (richiedono permission:anagrafica.create)
+    Route::get('/anagrafica/create', [MilitareController::class, 'create'])
+        ->middleware('permission:anagrafica.create')
+        ->name('anagrafica.create');
+    Route::post('/anagrafica', [MilitareController::class, 'store'])
+        ->middleware('permission:anagrafica.create')
+        ->name('anagrafica.store');
+    
+    // Rotte edit e update (richiedono permission:anagrafica.edit)
+    Route::get('/anagrafica/{militare}/edit', [MilitareController::class, 'edit'])
         ->middleware('permission:anagrafica.edit')
-        ->parameters(['anagrafica' => 'militare'])
-        ->except(['index', 'show']); // index e show sono pubbliche
+        ->name('anagrafica.edit');
+    Route::put('/anagrafica/{militare}', [MilitareController::class, 'update'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('anagrafica.update');
+    Route::patch('/anagrafica/{militare}', [MilitareController::class, 'update']);
+    
+    // Rotta destroy (richiede permission:anagrafica.delete)
+    Route::delete('/anagrafica/{militare}', [MilitareController::class, 'destroy'])
+        ->middleware('permission:anagrafica.delete')
+        ->name('anagrafica.destroy');
 
     // Altre rotte anagrafica (dopo resource per evitare conflitti)
     Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])
@@ -291,6 +307,24 @@ Route::prefix('scadenze')->name('scadenze.')->middleware('permission:scadenze.vi
 */
 Route::prefix('ruolini')->name('ruolini.')->middleware('permission:anagrafica.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
+});
+
+/*
+|-------------------------------------------------
+|| Rotte per la Gestione CPT (Codici e Categorie)
+|-------------------------------------------------
+*/
+Route::prefix('codici-cpt')->name('codici-cpt.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestioneCptController::class, 'index'])->name('index');
+    Route::get('/nuovo', [\App\Http\Controllers\GestioneCptController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\GestioneCptController::class, 'store'])->name('store');
+    Route::get('/{codice}/modifica', [\App\Http\Controllers\GestioneCptController::class, 'edit'])->name('edit');
+    Route::put('/{codice}', [\App\Http\Controllers\GestioneCptController::class, 'update'])->name('update');
+    Route::delete('/{codice}', [\App\Http\Controllers\GestioneCptController::class, 'destroy'])->name('destroy');
+    Route::patch('/{codice}/attiva', [\App\Http\Controllers\GestioneCptController::class, 'toggleAttivo'])->name('toggle');
+    Route::post('/{codice}/duplica', [\App\Http\Controllers\GestioneCptController::class, 'duplicate'])->name('duplicate');
+    Route::get('/esporta', [\App\Http\Controllers\GestioneCptController::class, 'export'])->name('export');
+    Route::post('/aggiorna-ordine', [\App\Http\Controllers\GestioneCptController::class, 'updateOrder'])->name('update-order');
 });
 
 // Debug route per tunnel

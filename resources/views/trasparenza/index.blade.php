@@ -45,13 +45,7 @@
         </div>
     </div>
 
-    <!-- Export Excel -->
-    <div class="d-flex justify-content-end mb-3">
-        <a href="{{ route('trasparenza.export-excel', ['anno' => $anno, 'mese' => $mese]) }}" 
-           class="btn btn-outline-success" style="border-radius: 6px !important;">
-            <i class="fas fa-file-excel me-2"></i> Esporta Excel
-        </a>
-    </div>
+    <!-- Export button removed - now using floating button -->
 
     <!-- Tabella con header fisso -->
     <div class="table-container">
@@ -304,4 +298,11 @@ function cambiaData() {
     window.location.href = '{{ route("trasparenza.index") }}?mese=' + mese + '&anno=' + anno;
 }
 </script>
+
+<!-- Floating Button Export Excel -->
+<a href="{{ route('trasparenza.export-excel', ['anno' => $anno, 'mese' => $mese]) }}" 
+   class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</a>
+
 @endsection

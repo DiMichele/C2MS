@@ -563,7 +563,7 @@ class MilitareService
         }
         
         if ($request->filled('compagnia')) {
-            $query->where('compagnia', $request->compagnia);
+            $query->where('compagnia_id', $request->compagnia);
         }
         
         if ($request->filled('nos_status')) {

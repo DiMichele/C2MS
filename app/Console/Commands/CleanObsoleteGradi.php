@@ -14,6 +14,9 @@ class CleanObsoleteGradi extends Command
     {
         $gradiObsoleti = [
             'Generale', // Rimosso perché troppo generico
+            'Generale di Corpo d\'Armata', // Rimosso: troppo alto
+            'Generale di Divisione', // Rimosso: troppo alto
+            'Generale di Brigata', // Rimosso: troppo alto
             'Maresciallo Maggiore', // Non esiste più, sostituito da Primo Maresciallo
             'Caporal Maggiore Scelto',
             'Caporal Maggiore Capo',

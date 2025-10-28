@@ -694,7 +694,8 @@ class MilitareController extends Controller
             $allowedFields = [
                 'compagnia_id', 'grado_id', 'cognome', 'nome', 'plotone_id', 
                 'polo_id', 'mansione_id', 'ruolo_id', 'nos_status', 
-                'data_nascita', 'codice_fiscale', 'email', 'telefono', 'note'
+                'data_nascita', 'codice_fiscale', 'email', 'telefono', 'note',
+                'email_istituzionale', 'anzianita'
             ];
             
             if (!in_array($dbField, $allowedFields)) {

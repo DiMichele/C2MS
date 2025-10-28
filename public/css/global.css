@@ -1270,6 +1270,16 @@ a.link-name:hover::after {
     transition: all 0.3s ease;
 }
 
+/* Variante Excel del FAB */
+.fab-excel {
+    background: linear-gradient(135deg, #1D6F42, #2E8B57);
+    box-shadow: 0 4px 20px rgba(29, 111, 66, 0.4);
+}
+
+.fab-excel:hover {
+    box-shadow: 0 6px 25px rgba(29, 111, 66, 0.5);
+}
+
 /* Responsive per il FAB */
 @media (max-width: 768px) {
     .fab {

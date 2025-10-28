@@ -173,16 +173,27 @@ table.table td,
                 </thead>
                 <tbody>
                     @foreach($roles as $role)
+                    @php
+                        $isProtectedRole = ($role->name === 'amministratore');
+                    @endphp
                     <tr>
-                        <td class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2);">
+                        <td class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.05)' : 'white' }};">
                             <strong>{{ $role->display_name }}</strong>
+                            @if($isProtectedRole)
+                            <div class="mt-1">
+                                <span class="badge bg-danger" style="font-size: 0.65rem;">
+                                    <i class="fas fa-lock me-1"></i>PROTETTO
+                                </span>
+                            </div>
+                            @endif
                         </td>
                         @foreach($pageGroups as $pageName => $pageData)
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center;">
+                        <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center; background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.03)' : 'white' }};">
                             <form action="{{ route('admin.roles.permissions.update', $role) }}" 
                                   method="POST" 
                                   class="permission-form"
-                                  data-role-id="{{ $role->id }}">
+                                  data-role-id="{{ $role->id }}"
+                                  data-protected="{{ $isProtectedRole ? 'true' : 'false' }}">
                                 @csrf
                                 
                                 @php
@@ -200,13 +211,15 @@ table.table td,
                                                id="perm-{{ $role->id }}-{{ $viewPerm->id }}"
                                                data-role-id="{{ $role->id }}"
                                                @if($role->permissions->contains($viewPerm->id)) checked @endif
+                                               @if($isProtectedRole) disabled @endif
                                                style="display: none;">
-                                        <label class="form-check-label icon-permission" 
+                                        <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
                                                for="perm-{{ $role->id }}-{{ $viewPerm->id }}" 
-                                               title="{{ $role->permissions->contains($viewPerm->id) ? 'Disabilita' : 'Abilita' }} Lettura - {{ $pageData['display_name'] }}"
+                                               title="{{ $isProtectedRole ? 'Ruolo protetto - Tutti i permessi abilitati' : ($role->permissions->contains($viewPerm->id) ? 'Disabilita' : 'Abilita') . ' Lettura - ' . $pageData['display_name'] }}"
                                                data-enabled-text="Disabilita Lettura - {{ $pageData['display_name'] }}"
-                                               data-disabled-text="Abilita Lettura - {{ $pageData['display_name'] }}">
-                                            <i class="fas fa-eye" style="color: {{ $role->permissions->contains($viewPerm->id) ? '#0dcaf0' : '#ccc' }};"></i>
+                                               data-disabled-text="Abilita Lettura - {{ $pageData['display_name'] }}"
+                                               style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
+                                            <i class="fas fa-eye" style="color: {{ $role->permissions->contains($viewPerm->id) || $isProtectedRole ? '#0dcaf0' : '#ccc' }};"></i>
                                         </label>
                                     </div>
                                     @endif
@@ -220,13 +233,15 @@ table.table td,
                                                id="perm-{{ $role->id }}-{{ $editPerm->id }}"
                                                data-role-id="{{ $role->id }}"
                                                @if($role->permissions->contains($editPerm->id)) checked @endif
+                                               @if($isProtectedRole) disabled @endif
                                                style="display: none;">
-                                        <label class="form-check-label icon-permission" 
+                                        <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
                                                for="perm-{{ $role->id }}-{{ $editPerm->id }}" 
-                                               title="{{ $role->permissions->contains($editPerm->id) ? 'Disabilita' : 'Abilita' }} Modifica - {{ $pageData['display_name'] }}"
+                                               title="{{ $isProtectedRole ? 'Ruolo protetto - Tutti i permessi abilitati' : ($role->permissions->contains($editPerm->id) ? 'Disabilita' : 'Abilita') . ' Modifica - ' . $pageData['display_name'] }}"
                                                data-enabled-text="Disabilita Modifica - {{ $pageData['display_name'] }}"
-                                               data-disabled-text="Abilita Modifica - {{ $pageData['display_name'] }}">
-                                            <i class="fas fa-edit" style="color: {{ $role->permissions->contains($editPerm->id) ? '#ffc107' : '#ccc' }};"></i>
+                                               data-disabled-text="Abilita Modifica - {{ $pageData['display_name'] }}"
+                                               style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
+                                            <i class="fas fa-edit" style="color: {{ $role->permissions->contains($editPerm->id) || $isProtectedRole ? '#ffc107' : '#ccc' }};"></i>
                                         </label>
                                     </div>
                                     @endif
@@ -344,15 +359,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Gestione salvataggio permessi
 document.addEventListener('DOMContentLoaded', function() {
+    // Blocca click su permessi protetti
+    document.querySelectorAll('.protected-permission').forEach(label => {
+        label.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Mostra alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                <i class="fas fa-lock me-2"></i>
+                <strong>Ruolo Protetto:</strong> L'Amministratore ha automaticamente tutti i permessi e non può essere modificato.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => alertDiv.remove(), 5000);
+            
+            return false;
+        });
+    });
+    
     // Raccogli tutti i form per ruolo
     const formsByRole = {};
     
     document.querySelectorAll('.permission-form').forEach(form => {
         const roleId = form.dataset.roleId;
+        const isProtected = form.dataset.protected === 'true';
+        
         if (!formsByRole[roleId]) {
             formsByRole[roleId] = {
                 forms: [],
-                pendingSubmit: false
+                pendingSubmit: false,
+                isProtected: isProtected
             };
         }
         formsByRole[roleId].forms.push(form);
@@ -378,6 +419,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const roleId = this.dataset.roleId;
             const roleData = formsByRole[roleId];
+            
+            // BLOCCA il submit per i ruoli protetti
+            if (roleData && roleData.isProtected) {
+                console.log('Tentativo di modifica ruolo protetto bloccato');
+                return;
+            }
             
             if (roleData.pendingSubmit) {
                 return; // Evita submit multipli

@@ -146,18 +146,13 @@ table.table td,
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Gestione filtri migliorata -->
-    <div class="d-flex flex-column gap-2">
-        <button type="button" class="btn btn-sm btn-outline-success" id="exportExcelBtn" style="border-radius: 6px !important;">
-            <i class="fas fa-file-excel me-1"></i>Esporta Excel
-        </button>
-        <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
-            <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
-            <span id="toggleFiltersText">
-                {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
-            </span>
-        </button>
-    </div>
+    <!-- Bottone filtri -->
+    <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
+        <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
+        <span id="toggleFiltersText">
+            {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
+        </span>
+    </button>
     
     <div class="search-container" style="position: relative; width: 320px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
@@ -172,8 +167,14 @@ table.table td,
             style="padding-left: 40px; border-radius: 6px !important;">
     </div>
     
-    <div>
+    <div class="d-flex align-items-center gap-3">
         <span class="badge bg-primary">{{ $militari->count() }} militari</span>
+        
+        @can('anagrafica.create')
+        <a href="{{ route('anagrafica.create') }}" class="btn btn-success" style="border-radius: 6px !important;">
+            <i class="fas fa-plus me-2"></i>Nuovo Militare
+        </a>
+        @endcan
     </div>
 </div>
 
@@ -430,7 +431,7 @@ table.table td,
             @forelse($militari as $m)
                 <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}" data-update-url="{{ route('anagrafica.update-field', $m->id) }}">
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field compagnia-select" data-field="compagnia" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field compagnia-select" data-field="compagnia" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                             <option value="">--</option>
                             @php
                                 $compagnieMap = [
@@ -445,7 +446,7 @@ table.table td,
                         </select>
                     </td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="grado_id" data-militare-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field" data-field="grado_id" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                             <option value="">--</option>
                             @foreach($gradi as $grado)
                                 <option value="{{ $grado->id }}" {{ $m->grado_id == $grado->id ? 'selected' : '' }}>
@@ -463,7 +464,7 @@ table.table td,
                         {{ $m->nome }}
                     </td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field plotone-select" data-field="plotone_id" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field plotone-select" data-field="plotone_id" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                             <option value="">--</option>
                             @foreach($plotoni as $plotone)
                                 <option value="{{ $plotone->id }}" data-compagnia-id="{{ $plotone->compagnia_id }}" {{ $m->plotone_id == $plotone->id ? 'selected' : '' }}>
@@ -473,7 +474,7 @@ table.table td,
                         </select>
                     </td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="polo_id" data-militare-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field" data-field="polo_id" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                             <option value="">--</option>
                             @foreach($poli as $polo)
                                 <option value="{{ $polo->id }}" {{ $m->polo_id == $polo->id ? 'selected' : '' }}>
@@ -483,7 +484,7 @@ table.table td,
                         </select>
                     </td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="mansione_id" data-militare-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field" data-field="mansione_id" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                             <option value="">--</option>
                             @foreach(\App\Models\Mansione::all() as $mansione)
                                 <option value="{{ $mansione->id }}" {{ $m->mansione_id == $mansione->id ? 'selected' : '' }}>
@@ -506,6 +507,7 @@ table.table td,
                                                data-militare-id="{{ $m->id }}" 
                                                data-patente="{{ $patente }}" 
                                                {{ in_array($patente, $patentiMilitare) ? 'checked' : '' }}
+                                               {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}
                                                style="cursor: pointer;">
                                         <label class="form-check-label" 
                                                for="patente_{{ $m->id }}_{{ $patente }}" 
@@ -524,6 +526,7 @@ table.table td,
                                                data-militare-id="{{ $m->id }}" 
                                                data-patente="{{ $patente }}" 
                                                {{ in_array($patente, $patentiMilitare) ? 'checked' : '' }}
+                                               {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}
                                                style="cursor: pointer;">
                                         <label class="form-check-label" 
                                                for="patente_{{ $m->id }}_{{ $patente }}" 
@@ -536,7 +539,7 @@ table.table td,
                         </div>
                     </td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="nos_status" data-militare-id="{{ $m->id }}" style="width: 100%;">
+                        <select class="form-select form-select-sm editable-field" data-field="nos_status" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                             <option value="">--</option>
                             <option value="si" {{ $m->nos_status == 'si' ? 'selected' : '' }}>SI</option>
                             <option value="no" {{ $m->nos_status == 'no' ? 'selected' : '' }}>NO</option>
@@ -546,28 +549,32 @@ table.table td,
                         </select>
                     </td>
                      <td>
-                         <input type="date" class="form-control form-control-sm editable-field" data-field="anzianita" data-militare-id="{{ $m->id }}" value="{{ $m->anzianita ? $m->anzianita->format('Y-m-d') : '' }}" style="width: 100%;">
+                         <input type="date" class="form-control form-control-sm editable-field" data-field="anzianita" data-militare-id="{{ $m->id }}" value="{{ $m->anzianita ? $m->anzianita->format('Y-m-d') : '' }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                      </td>
                     <td>
-                        <input type="date" class="form-control form-control-sm editable-field" data-field="data_nascita" data-militare-id="{{ $m->id }}" value="{{ $m->data_nascita ? $m->data_nascita->format('Y-m-d') : '' }}" style="width: 100%;">
+                        <input type="date" class="form-control form-control-sm editable-field" data-field="data_nascita" data-militare-id="{{ $m->id }}" value="{{ $m->data_nascita ? $m->data_nascita->format('Y-m-d') : '' }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                     </td>
                     <td>
-                        <input type="email" class="form-control form-control-sm editable-field" data-field="email_istituzionale" data-militare-id="{{ $m->id }}" value="{{ $m->email_istituzionale }}" style="width: 100%;">
+                        <input type="email" class="form-control form-control-sm editable-field" data-field="email_istituzionale" data-militare-id="{{ $m->id }}" value="{{ $m->email_istituzionale }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                     </td>
                     <td>
-                        <input type="tel" class="form-control form-control-sm editable-field" data-field="telefono" data-militare-id="{{ $m->id }}" value="{{ $m->telefono }}" style="width: 100%;">
+                        <input type="tel" class="form-control form-control-sm editable-field" data-field="telefono" data-militare-id="{{ $m->id }}" value="{{ $m->telefono }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
                     </td>
                      <td class="text-center">
                          <div class="d-flex justify-content-center gap-1">
                              <a href="{{ route('anagrafica.show', $m->id) }}" class="btn btn-sm btn-outline-primary" title="Visualizza">
                                  <i class="fas fa-eye"></i>
                              </a>
+                             @can('anagrafica.edit')
                              <a href="{{ route('anagrafica.edit', $m->id) }}" class="btn btn-sm btn-outline-warning" title="Modifica">
                                  <i class="fas fa-edit"></i>
                              </a>
+                             @endcan
+                             @can('anagrafica.delete')
                              <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete({{ $m->id }})" title="Elimina">
                                  <i class="fas fa-trash"></i>
                              </button>
+                             @endcan
                          </div>
                      </td>
                 </tr>
@@ -589,10 +596,10 @@ table.table td,
 </div>
 
 
-<!-- Floating Action Button -->
-<a href="{{ route('anagrafica.create') }}" class="fab" data-tooltip="Aggiungi Militare" aria-label="Aggiungi Militare">
-    <i class="fas fa-plus"></i>
-</a>
+<!-- Floating Button Export Excel -->
+<button type="button" class="fab fab-excel" id="exportExcelBtn" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</button>
 
 <!-- Modal per conferma eliminazione -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
@@ -722,7 +729,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     value: value
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                // Gestione specifica per 403 (permessi mancanti)
+                if (response.status === 403) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Non hai i permessi per eseguire questa azione');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     // Mostra un feedback visivo
@@ -741,12 +756,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
                 } else {
-                    alert('Errore durante l\'aggiornamento: ' + (data.message || 'Errore sconosciuto'));
+                    // Feedback visivo negativo
+                    e.target.style.backgroundColor = '#f8d7da';
+                    setTimeout(() => {
+                        e.target.style.backgroundColor = '';
+                    }, 2000);
+                    
+                    // Messaggio non invasivo (solo console)
+                    console.warn('Aggiornamento non riuscito:', data.message || 'Errore sconosciuto');
                 }
             })
             .catch(error => {
                 console.error('Errore:', error);
-                alert('Errore durante l\'aggiornamento');
+                
+                // Feedback visivo per errore
+                e.target.style.backgroundColor = '#f8d7da';
+                setTimeout(() => {
+                    e.target.style.backgroundColor = '';
+                }, 2000);
+                
+                // Non mostrare più alert, solo console per debugging
+                // L'utente vede il campo tornare al colore originale = operazione non riuscita
             });
         }
         
@@ -777,6 +807,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
             })
             .then(response => {
+                // Gestione specifica per 403 (permessi mancanti)
+                if (response.status === 403) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Non hai i permessi per eseguire questa azione');
+                    });
+                }
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -790,14 +826,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Ripristina lo stato precedente in caso di errore
                     checkbox.checked = !isChecked;
                     formCheck.style.transform = 'scale(1)';
-                    alert('Errore durante l\'aggiornamento patente: ' + (data.message || 'Errore sconosciuto'));
+                    
+                    // Messaggio non invasivo (solo console)
+                    console.warn('Aggiornamento patente non riuscito:', data.message || 'Errore sconosciuto');
                 }
             })
             .catch(error => {
                 console.error('Errore durante aggiornamento patente:', error);
+                
+                // Ripristina lo stato precedente
                 checkbox.checked = !isChecked;
                 formCheck.style.transform = 'scale(1)';
-                alert('Errore durante l\'aggiornamento patente. Riprova.');
+                
+                // Non mostrare più alert, solo console per debugging
             });
         }
     });

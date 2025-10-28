@@ -162,6 +162,12 @@ class AdminController extends Controller
      */
     public function updatePermissions(Request $request, Role $role)
     {
+        // PROTEGGI IL RUOLO AMMINISTRATORE - Non può essere modificato
+        if ($role->name === 'amministratore') {
+            return redirect()->route('admin.permissions.index')
+                ->with('error', 'Il ruolo Amministratore è protetto e non può essere modificato. Ha automaticamente tutti i permessi.');
+        }
+        
         $request->validate([
             'permissions' => 'array',
             'permissions.*' => 'exists:permissions,id'

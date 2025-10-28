@@ -21,12 +21,7 @@ class GradiEsercitoItalianoSeeder extends Seeder
         // Invece faremo update dei gradi esistenti e insert dei nuovi
         
         $gradi = [
-            // UFFICIALI GENERALI
-            ['nome' => 'Generale di Corpo d\'Armata', 'abbreviazione' => 'Gen. C.A.', 'ordine' => 110],
-            ['nome' => 'Generale di Divisione', 'abbreviazione' => 'Gen. D.', 'ordine' => 105],
-            ['nome' => 'Generale di Brigata', 'abbreviazione' => 'Gen. B.', 'ordine' => 100],
-            
-            // UFFICIALI SUPERIORI
+            // UFFICIALI SUPERIORI (dal più alto al più basso)
             ['nome' => 'Colonnello', 'abbreviazione' => 'Col.', 'ordine' => 90],
             ['nome' => 'Tenente Colonnello', 'abbreviazione' => 'Ten. Col.', 'ordine' => 85],
             ['nome' => 'Maggiore', 'abbreviazione' => 'Magg.', 'ordine' => 80],

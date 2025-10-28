@@ -939,12 +939,16 @@
     <h1 class="page-title mb-5">{{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</h1>
     
     <div class="action-buttons-center">
+        @can('anagrafica.edit')
         <a href="{{ route('anagrafica.edit', $militare->id) }}" class="action-btn action-btn-edit" data-bs-toggle="tooltip" data-bs-placement="top" title="Modifica">
             <i class="fas fa-edit"></i>
         </a>
+        @endcan
+        @can('anagrafica.delete')
         <button type="button" class="action-btn action-btn-delete" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-toggle="tooltip" data-bs-placement="top" title="Elimina">
             <i class="fas fa-trash-alt"></i>
         </button>
+        @endcan
     </div>
 </div>
 
