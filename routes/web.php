@@ -295,6 +295,28 @@ Route::prefix('trasparenza')->name('trasparenza.')->middleware('permission:servi
 |-------------------------------------------------
 */
 Route::prefix('scadenze')->name('scadenze.')->middleware('permission:scadenze.view')->group(function () {
+    // Pagina RSPP - Sicurezza sul Lavoro
+    Route::get('/rspp', [\App\Http\Controllers\RsppController::class, 'index'])->name('rspp');
+    Route::post('/rspp/{militare}/update-singola', [\App\Http\Controllers\RsppController::class, 'updateSingola'])
+        ->middleware('permission:scadenze.edit')
+        ->name('rspp.update-singola');
+    Route::get('/rspp/export-excel', [\App\Http\Controllers\RsppController::class, 'exportExcel'])->name('rspp.export-excel');
+    
+    // Pagina Idoneità Sanitarie
+    Route::get('/idoneita', [\App\Http\Controllers\IdoneitzController::class, 'index'])->name('idoneita');
+    Route::post('/idoneita/{militare}/update-singola', [\App\Http\Controllers\IdoneitzController::class, 'updateSingola'])
+        ->middleware('permission:scadenze.edit')
+        ->name('idoneita.update-singola');
+    Route::get('/idoneita/export-excel', [\App\Http\Controllers\IdoneitzController::class, 'exportExcel'])->name('idoneita.export-excel');
+    
+    // Pagina Poligoni - Tiri e Mantenimento
+    Route::get('/poligoni', [\App\Http\Controllers\PoligoniController::class, 'index'])->name('poligoni');
+    Route::post('/poligoni/{militare}/update-singola', [\App\Http\Controllers\PoligoniController::class, 'updateSingola'])
+        ->middleware('permission:scadenze.edit')
+        ->name('poligoni.update-singola');
+    Route::get('/poligoni/export-excel', [\App\Http\Controllers\PoligoniController::class, 'exportExcel'])->name('poligoni.export-excel');
+    
+    // DEPRECATED - Vecchia pagina scadenze unificata (manteniamo per compatibilità)
     Route::get('/', [\App\Http\Controllers\ScadenzeController::class, 'index'])->name('index');
     Route::post('/{militare}/update', [\App\Http\Controllers\ScadenzeController::class, 'update'])->name('update');
     Route::post('/{militare}/update-singola', [\App\Http\Controllers\ScadenzeController::class, 'updateSingola'])->name('update-singola');

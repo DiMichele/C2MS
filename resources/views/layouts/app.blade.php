@@ -90,8 +90,19 @@
                         </li>
                         @auth
                         @if(Auth::user()->hasPermission('scadenze.view'))
-                        <li class="nav-dropdown-item {{ request()->is('scadenze*') ? 'active' : '' }}">
-                            <a href="{{ route('scadenze.index') }}">Scadenze</a>
+                        <li class="nav-dropdown-item has-submenu {{ request()->is('scadenze*') ? 'active' : '' }}">
+                            <a href="#">Scadenze <i class="fas fa-chevron-right ms-1"></i></a>
+                            <ul class="nav-sub-dropdown">
+                                <li class="nav-sub-dropdown-item {{ request()->is('scadenze/rspp*') ? 'active' : '' }}">
+                                    <a href="{{ route('scadenze.rspp') }}">RSPP</a>
+                                </li>
+                                <li class="nav-sub-dropdown-item {{ request()->is('scadenze/idoneita*') ? 'active' : '' }}">
+                                    <a href="{{ route('scadenze.idoneita') }}">Idoneità Sanitarie</a>
+                                </li>
+                                <li class="nav-sub-dropdown-item {{ request()->is('scadenze/poligoni*') ? 'active' : '' }}">
+                                    <a href="{{ route('scadenze.poligoni') }}">Poligoni</a>
+                                </li>
+                            </ul>
                         </li>
                         @endif
                         @if(Auth::user()->hasPermission('anagrafica.view'))
