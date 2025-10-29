@@ -68,7 +68,7 @@
                 @endif
                 @endauth
                 
-                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('scadenze*') || request()->is('ruolini*') || request()->is('organigramma*') ? 'active' : '' }}">
+                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('ruolini*') || request()->is('organigramma*') ? 'active' : '' }}">
                     <a href="#">
                         Personale
                     </a>
@@ -89,22 +89,6 @@
                             <a href="{{ route('anagrafica.index') }}">Anagrafica</a>
                         </li>
                         @auth
-                        @if(Auth::user()->hasPermission('scadenze.view'))
-                        <li class="nav-dropdown-item has-submenu {{ request()->is('scadenze*') ? 'active' : '' }}">
-                            <a href="#">Scadenze <i class="fas fa-chevron-right ms-1"></i></a>
-                            <ul class="nav-sub-dropdown">
-                                <li class="nav-sub-dropdown-item {{ request()->is('scadenze/rspp*') ? 'active' : '' }}">
-                                    <a href="{{ route('scadenze.rspp') }}">RSPP</a>
-                                </li>
-                                <li class="nav-sub-dropdown-item {{ request()->is('scadenze/idoneita*') ? 'active' : '' }}">
-                                    <a href="{{ route('scadenze.idoneita') }}">Idoneità Sanitarie</a>
-                                </li>
-                                <li class="nav-sub-dropdown-item {{ request()->is('scadenze/poligoni*') ? 'active' : '' }}">
-                                    <a href="{{ route('scadenze.poligoni') }}">Poligoni</a>
-                                </li>
-                            </ul>
-                        </li>
-                        @endif
                         @if(Auth::user()->hasPermission('anagrafica.view'))
                         <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
                             <a href="{{ url('/organigramma') }}">Organigramma</a>
@@ -113,6 +97,27 @@
                         @endauth
                     </ul>
                 </li>
+                
+                @auth
+                @if(Auth::user()->hasPermission('scadenze.view'))
+                <li class="nav-menu-item {{ request()->is('scadenze*') ? 'active' : '' }}">
+                    <a href="#">
+                        Scadenze
+                    </a>
+                    <ul class="nav-dropdown">
+                        <li class="nav-dropdown-item {{ request()->is('scadenze/rspp*') ? 'active' : '' }}">
+                            <a href="{{ route('scadenze.rspp') }}">RSPP</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('scadenze/idoneita*') ? 'active' : '' }}">
+                            <a href="{{ route('scadenze.idoneita') }}">Idoneità Sanitarie</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('scadenze/poligoni*') ? 'active' : '' }}">
+                            <a href="{{ route('scadenze.poligoni') }}">Poligoni</a>
+                        </li>
+                    </ul>
+                </li>
+                @endif
+                @endauth
                 
                 @auth
                 @if(Auth::user()->hasPermission('board.view'))

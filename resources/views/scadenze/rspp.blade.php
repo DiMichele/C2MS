@@ -31,37 +31,6 @@ table.table td,
     border-color: rgba(10, 35, 66, 0.20) !important;
 }
 
-/* Badge scadenze */
-.badge-scadenza {
-    padding: 6px 12px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    border-radius: 4px;
-    display: inline-block;
-    min-width: 100px;
-    text-align: center;
-}
-
-.badge-valido {
-    background-color: #28a745;
-    color: white;
-}
-
-.badge-in-scadenza {
-    background-color: #ffc107;
-    color: #000;
-}
-
-.badge-scaduto {
-    background-color: #dc3545;
-    color: white;
-}
-
-.badge-mancante {
-    background-color: #6c757d;
-    color: white;
-}
-
 /* Colonna sticky per militare */
 .table th:first-child,
 .table td:first-child {
@@ -89,20 +58,150 @@ table.table td,
     background-color: rgba(10, 35, 66, 0.12) !important;
 }
 
-/* Input date styling */
-.input-data-scadenza {
-    border: none;
-    background: transparent;
-    font-size: 0.85rem;
-    padding: 4px 8px;
+/* Celle scadenze - Solo data colorata */
+.scadenza-cell {
     text-align: center;
+    padding: 10px 8px;
     cursor: pointer;
-    width: 110px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s;
 }
 
-.input-data-scadenza:focus {
-    outline: 2px solid #0a2342;
+.scadenza-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Colori scadenze */
+.scadenza-valido {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.scadenza-in-scadenza {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.scadenza-scaduto {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.scadenza-mancante {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+
+/* Modal hover per modifica */
+.scadenza-modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    z-index: 9999;
+    min-width: 400px;
+}
+
+.scadenza-modal.show {
+    display: block;
+    animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -45%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+}
+
+.modal-overlay.show {
+    display: block;
+}
+
+.modal-header-custom {
+    border-bottom: 2px solid #0a2342;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-header-custom h5 {
+    color: #0a2342;
+    font-weight: 600;
+    margin: 0;
+}
+
+.modal-body-custom {
+    margin-bottom: 20px;
+}
+
+.modal-body-custom label {
+    font-weight: 600;
+    color: #0a2342;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.modal-body-custom input[type="date"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.modal-body-custom input[type="date"]:focus {
+    outline: none;
+    border-color: #0a2342;
+}
+
+.modal-footer-custom {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-save {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-save:hover {
+    background: #218838;
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
 }
 
 /* Link militare con effetto gold */
@@ -143,10 +242,10 @@ table.table td,
         <span class="badge bg-primary">{{ $data->count() }} militari</span>
     </div>
     <div class="d-flex gap-2">
-        <span class="badge badge-valido"><i class="fas fa-check"></i> Valido</span>
-        <span class="badge badge-in-scadenza"><i class="fas fa-exclamation-triangle"></i> In Scadenza (≤30gg)</span>
-        <span class="badge badge-scaduto"><i class="fas fa-times"></i> Scaduto</span>
-        <span class="badge badge-mancante"><i class="fas fa-minus"></i> Mancante</span>
+        <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
+        <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza (≤30gg)</span>
+        <span class="badge" style="background-color: #f8d7da; color: #721c24;"><i class="fas fa-times"></i> Scaduto</span>
+        <span class="badge" style="background-color: #e9ecef; color: #6c757d;"><i class="fas fa-minus"></i> Mancante</span>
     </div>
 </div>
 
@@ -156,13 +255,13 @@ table.table td,
         <thead style="position: sticky; top: 0; z-index: 10;">
             <tr style="background-color: #0a2342; color: white;">
                 <th style="min-width: 200px;">Militare</th>
-                <th style="min-width: 150px;">Lavoratore 4h</th>
-                <th style="min-width: 150px;">Lavoratore 8h</th>
-                <th style="min-width: 150px;">Preposto</th>
-                <th style="min-width: 150px;">Dirigente</th>
-                <th style="min-width: 150px;">Antincendio</th>
-                <th style="min-width: 150px;">BLSD</th>
-                <th style="min-width: 180px;">Primo Soccorso Aziendale</th>
+                <th style="min-width: 130px;">Lavoratore 4h</th>
+                <th style="min-width: 130px;">Lavoratore 8h</th>
+                <th style="min-width: 130px;">Preposto</th>
+                <th style="min-width: 130px;">Dirigente</th>
+                <th style="min-width: 130px;">Antincendio</th>
+                <th style="min-width: 130px;">BLSD</th>
+                <th style="min-width: 160px;">Primo Soccorso Az.</th>
             </tr>
         </thead>
         <tbody>
@@ -177,49 +276,53 @@ table.table td,
                 </td>
                 
                 @foreach(['lavoratore_4h', 'lavoratore_8h', 'preposto', 'dirigente', 'antincendio', 'blsd', 'primo_soccorso_aziendale'] as $campo)
-                <td class="text-center" data-campo="{{ $campo }}">
-                    @php
-                        $scadenza = $item[$campo];
-                        $badgeClass = match($scadenza['stato']) {
-                            'valido' => 'badge-valido',
-                            'in_scadenza' => 'badge-in-scadenza',
-                            'scaduto' => 'badge-scaduto',
-                            'mancante' => 'badge-mancante',
-                            default => 'badge-mancante'
-                        };
-                        $testoStato = match($scadenza['stato']) {
-                            'valido' => 'Valido',
-                            'in_scadenza' => 'In scadenza',
-                            'scaduto' => 'Scaduto',
-                            'mancante' => 'Non presente',
-                            default => 'N/D'
-                        };
-                    @endphp
-                    
+                @php
+                    $scadenza = $item[$campo];
+                    $classeColore = match($scadenza['stato']) {
+                        'valido' => 'scadenza-valido',
+                        'in_scadenza' => 'scadenza-in-scadenza',
+                        'scaduto' => 'scadenza-scaduto',
+                        'mancante' => 'scadenza-mancante',
+                        default => 'scadenza-mancante'
+                    };
+                    $testoData = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('d/m/Y') : 'Non presente';
+                    $campoDB = $campo . '_data_conseguimento';
+                @endphp
+                
+                <td class="scadenza-cell {{ $classeColore }}" 
+                    data-militare-id="{{ $item['militare']->id }}"
+                    data-campo="{{ $campoDB }}"
+                    data-campo-nome="{{ ucwords(str_replace('_', ' ', $campo)) }}"
+                    data-data-conseguimento="{{ $scadenza['data_conseguimento'] ? $scadenza['data_conseguimento']->format('Y-m-d') : '' }}"
                     @can('scadenze.edit')
-                    <input type="date" 
-                           class="input-data-scadenza editable-scadenza" 
-                           value="{{ $scadenza['data_conseguimento'] ? $scadenza['data_conseguimento']->format('Y-m-d') : '' }}"
-                           data-campo="{{ $campo }}_data_conseguimento"
-                           data-militare-id="{{ $item['militare']->id }}">
-                    @else
-                    <div>{{ $scadenza['data_conseguimento'] ? $scadenza['data_conseguimento']->format('d/m/Y') : '-' }}</div>
+                    onclick="openScadenzaModal(this)"
                     @endcan
-                    
-                    <div class="mt-1">
-                        <span class="badge badge-scadenza {{ $badgeClass }}">
-                            {{ $testoStato }}
-                            @if($scadenza['data_scadenza'])
-                                <br><small>{{ $scadenza['data_scadenza']->format('d/m/Y') }}</small>
-                            @endif
-                        </span>
-                    </div>
+                    style="@cannot('scadenze.edit')cursor: default;@endcannot">
+                    {{ $testoData }}
                 </td>
                 @endforeach
             </tr>
             @endforeach
         </tbody>
     </table>
+</div>
+
+<!-- Modal Overlay -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeScadenzaModal()"></div>
+
+<!-- Modal Modifica Scadenza -->
+<div class="scadenza-modal" id="scadenzaModal">
+    <div class="modal-header-custom">
+        <h5 id="modalTitle">Modifica Scadenza</h5>
+    </div>
+    <div class="modal-body-custom">
+        <label for="modalDataConseguimento">Data Conseguimento:</label>
+        <input type="date" id="modalDataConseguimento" class="form-control">
+    </div>
+    <div class="modal-footer-custom">
+        <button type="button" class="btn-cancel" onclick="closeScadenzaModal()">Annulla</button>
+        <button type="button" class="btn-save" onclick="saveScadenza()">Salva</button>
+    </div>
 </div>
 
 <!-- Floating Button Export Excel -->
@@ -231,88 +334,82 @@ table.table td,
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Gestione modifica inline date
-    @can('scadenze.edit')
-    document.querySelectorAll('.editable-scadenza').forEach(input => {
-        input.addEventListener('change', function() {
-            const militareId = this.dataset.militareId;
-            const campo = this.dataset.campo;
-            const nuovaData = this.value;
-            const cell = this.closest('td');
-            
-            // Feedback visivo
-            cell.style.background = '#ffffcc';
-            
-            fetch(`/scadenze/rspp/${militareId}/update-singola`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    campo: campo,
-                    data: nuovaData
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Aggiorna il badge
-                    const badge = cell.querySelector('.badge-scadenza');
-                    const scadenza = data.scadenza;
-                    
-                    // Rimuovi classi vecchie
-                    badge.classList.remove('badge-valido', 'badge-in-scadenza', 'badge-scaduto', 'badge-mancante');
-                    
-                    // Aggiungi classe nuova
-                    const badgeClass = {
-                        'valido': 'badge-valido',
-                        'in_scadenza': 'badge-in-scadenza',
-                        'scaduto': 'badge-scaduto',
-                        'mancante': 'badge-mancante'
-                    }[scadenza.stato] || 'badge-mancante';
-                    
-                    badge.classList.add(badgeClass);
-                    
-                    // Aggiorna testo
-                    const testoStato = {
-                        'valido': 'Valido',
-                        'in_scadenza': 'In scadenza',
-                        'scaduto': 'Scaduto',
-                        'mancante': 'Non presente'
-                    }[scadenza.stato] || 'N/D';
-                    
-                    let html = testoStato;
-                    if (scadenza.data_scadenza) {
-                        const dataScadenza = new Date(scadenza.data_scadenza.date);
-                        html += `<br><small>${dataScadenza.toLocaleDateString('it-IT')}</small>`;
-                    }
-                    badge.innerHTML = html;
-                    
-                    // Feedback verde
-                    cell.style.background = '#d4edda';
-                    setTimeout(() => { cell.style.background = ''; }, 2000);
-                } else {
-                    cell.style.background = '#f8d7da';
-                    setTimeout(() => { cell.style.background = ''; }, 2000);
-                }
-            })
-            .catch(error => {
-                console.error('Errore:', error);
-                cell.style.background = '#f8d7da';
-                setTimeout(() => { cell.style.background = ''; }, 2000);
-            });
-        });
-    });
-    @endcan
+let currentCell = null;
+
+function openScadenzaModal(cell) {
+    @cannot('scadenze.edit')
+    return;
+    @endcannot
     
-    // Export Excel
-    document.getElementById('exportExcel').addEventListener('click', function() {
-        window.location.href = '/scadenze/rspp/export-excel';
+    currentCell = cell;
+    const campoNome = cell.getAttribute('data-campo-nome');
+    const dataConseguimento = cell.getAttribute('data-data-conseguimento');
+    const militareId = cell.getAttribute('data-militare-id');
+    
+    document.getElementById('modalTitle').textContent = `Modifica ${campoNome}`;
+    document.getElementById('modalDataConseguimento').value = dataConseguimento;
+    
+    document.getElementById('modalOverlay').classList.add('show');
+    document.getElementById('scadenzaModal').classList.add('show');
+}
+
+function closeScadenzaModal() {
+    document.getElementById('modalOverlay').classList.remove('show');
+    document.getElementById('scadenzaModal').classList.remove('show');
+    currentCell = null;
+}
+
+function saveScadenza() {
+    if (!currentCell) return;
+    
+    const militareId = currentCell.getAttribute('data-militare-id');
+    const campo = currentCell.getAttribute('data-campo');
+    const nuovaData = document.getElementById('modalDataConseguimento').value;
+    
+    // Feedback visivo
+    currentCell.style.opacity = '0.5';
+    
+    fetch(`/scadenze/rspp/${militareId}/update-singola`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            campo: campo,
+            data: nuovaData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Ricarica la pagina per aggiornare i dati
+            location.reload();
+        } else {
+            alert('Errore durante l\'aggiornamento');
+            currentCell.style.opacity = '1';
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        alert('Errore durante l\'aggiornamento');
+        currentCell.style.opacity = '1';
     });
+    
+    closeScadenzaModal();
+}
+
+// Chiudi modal con ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeScadenzaModal();
+    }
+});
+
+// Export Excel
+document.getElementById('exportExcel').addEventListener('click', function() {
+    window.location.href = '/scadenze/rspp/export-excel';
 });
 </script>
 @endpush
-
