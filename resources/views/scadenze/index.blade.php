@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Scadenze - C2MS')
+@section('title', 'Scadenze - SUGECO')
 
 @section('content')
 <style>
@@ -613,13 +613,13 @@ document.addEventListener('DOMContentLoaded', function() {
     modalBootstrap = new bootstrap.Modal(document.getElementById('modalData'));
     
     // Forza l'inizializzazione dei filtri se non già fatto
-    if (window.C2MS && window.C2MS.Filters) {
-        window.C2MS.Filters.init();
+    if (window.SUGECO && window.SUGECO.Filters) {
+        window.SUGECO.Filters.init();
     }
     
     // Inizializza il nuovo sistema di ricerca
-    if (window.C2MS && window.C2MS.Search) {
-        window.C2MS.Search.init();
+    if (window.SUGECO && window.SUGECO.Search) {
+        window.SUGECO.Search.init();
     }
 });
 

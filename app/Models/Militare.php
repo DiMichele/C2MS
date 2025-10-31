@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Modello Militare
  * 
  * Rappresenta un militare con le sue informazioni personali, grado, assegnazioni

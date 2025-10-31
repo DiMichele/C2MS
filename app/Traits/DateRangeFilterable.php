@@ -3,7 +3,7 @@
 namespace App\Traits;
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Trait per aggiungere funzionalità di filtro su intervalli di date.
  * Fornisce scope queries comuni per filtrare entità basate su range temporali.

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'C2MS: Gestione e Controllo Digitale a Supporto del Comando')</title>
+    <title>@yield('title', 'SUGECO - Sistema Unico di Gestione e Controllo')</title>
     
     <!-- Meta CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -48,10 +48,12 @@
         <!-- Logo a sinistra - Solo testo minimalista -->
         <a href="{{ url('/') }}" class="header-logo">
             <div class="logo-text">
-                <span class="logo-letter">C</span>
-                <span class="logo-letter">2</span>
-                <span class="logo-letter">M</span>
                 <span class="logo-letter">S</span>
+                <span class="logo-letter">U</span>
+                <span class="logo-letter">G</span>
+                <span class="logo-letter">E</span>
+                <span class="logo-letter">C</span>
+                <span class="logo-letter">O</span>
             </div>
         </a>
         
@@ -207,7 +209,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p class="mb-0">C2MS: Gestione e Controllo Digitale a Supporto del Comando &copy; {{ date('Y') }}</p>
+            <p class="mb-0">SUGECO - Sistema Unico di Gestione e Controllo &copy; {{ date('Y') }}</p>
         </div>
     </footer>
     
@@ -225,7 +227,7 @@
     <script src="{{ asset('js/error-handler.js') }}?v={{ time() }}"></script>
     
     <!-- Scripts Sistema - Caricati nell'ordine corretto delle dipendenze -->
-    <script src="{{ asset('js/c2ms-core.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/sugeco-core.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/toast-system.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/filters.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/search-fixed.js') }}?v={{ time() }}&bust={{ rand(1000,9999) }}&debug=true"></script>

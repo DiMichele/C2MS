@@ -1,16 +1,16 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Stili per il sistema di tooltip e suggerimenti.
  * Include tooltip per certificati, azioni, stati e informazioni aggiuntive.
  * Sistema modale per visualizzare i dettagli dei certificati.
  * 
- * @package C2MS
+ * @package SUGECO
  * @subpackage Styles
  * @version 1.0
  * @since 1.0
  * @author Michele Di Gennaro
- * @copyright 2025 C2MS
+ * @copyright 2025 SUGECO
  * 
  * Sezioni:
  * - Modal Container: Contenitore principale per i tooltip modali

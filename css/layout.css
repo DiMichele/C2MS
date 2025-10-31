@@ -1,15 +1,15 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Stili per il layout principale dell'applicazione.
  * Include header, navigazione, logo, menu dropdown e footer.
  * 
- * @package C2MS
+ * @package SUGECO
  * @subpackage Styles
  * @version 1.0
  * @since 1.0
  * @author Michele Di Gennaro
- * @copyright 2025 C2MS
+ * @copyright 2025 SUGECO
  * 
  * Sezioni:
  * - Header & Logo: Logo animato e header principale
@@ -72,6 +72,16 @@
 .header-logo:hover .logo-letter:nth-child(4) {
     color: var(--gold);
     transform: translateY(1px);
+}
+
+.header-logo:hover .logo-letter:nth-child(5) {
+    color: var(--gold-light);
+    transform: translateY(-2px);
+}
+
+.header-logo:hover .logo-letter:nth-child(6) {
+    color: var(--gold);
+    transform: translateY(2px);
 }
 
 /* ===========================================

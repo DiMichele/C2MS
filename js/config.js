@@ -1,5 +1,5 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Configuration file for JavaScript modules
  * 
  * Centralizes configuration settings for the application
@@ -9,7 +9,7 @@
  */
 
 // Global configuration object
-window.C2MS_CONFIG = {
+window.SUGECO_CONFIG = {
     /**
      * Debug mode - set to false in production
      * Controls console logging and error reporting
@@ -138,7 +138,7 @@ window.C2MS_CONFIG = {
  */
 (function() {
     // Debug mode is permanently disabled
-    window.C2MS_CONFIG.DEBUG = false;
+    window.SUGECO_CONFIG.DEBUG = false;
     
     // Remove any debug setting from localStorage
     localStorage.removeItem('c2ms_debug');
@@ -147,7 +147,7 @@ window.C2MS_CONFIG = {
 /**
  * Configuration helper functions
  */
-window.C2MS_CONFIG.helpers = {
+window.SUGECO_CONFIG.helpers = {
     /**
      * Get configuration value with dot notation
      * @param {string} path - Configuration path (e.g., 'TIMING.DEBOUNCE_DELAY')
@@ -156,7 +156,7 @@ window.C2MS_CONFIG.helpers = {
      */
     get: function(path, defaultValue = null) {
         const keys = path.split('.');
-        let value = window.C2MS_CONFIG;
+        let value = window.SUGECO_CONFIG;
         
         for (const key of keys) {
             if (value && typeof value === 'object' && key in value) {
@@ -177,7 +177,7 @@ window.C2MS_CONFIG.helpers = {
     set: function(path, value) {
         const keys = path.split('.');
         const lastKey = keys.pop();
-        let target = window.C2MS_CONFIG;
+        let target = window.SUGECO_CONFIG;
         
         for (const key of keys) {
             if (!(key in target) || typeof target[key] !== 'object') {
@@ -194,7 +194,7 @@ window.C2MS_CONFIG.helpers = {
      * @param {boolean} enabled - Enable/disable debug mode
      */
     setDebug: function(enabled) {
-        window.C2MS_CONFIG.DEBUG = enabled;
+        window.SUGECO_CONFIG.DEBUG = enabled;
         localStorage.setItem('c2ms_debug', enabled.toString());
     },
     
@@ -203,7 +203,7 @@ window.C2MS_CONFIG.helpers = {
      * @returns {string} Configuration JSON
      */
     export: function() {
-        return JSON.stringify(window.C2MS_CONFIG, null, 2);
+        return JSON.stringify(window.SUGECO_CONFIG, null, 2);
     },
     
     /**
@@ -213,7 +213,7 @@ window.C2MS_CONFIG.helpers = {
     import: function(configJson) {
         try {
             const config = JSON.parse(configJson);
-            Object.assign(window.C2MS_CONFIG, config);
+            Object.assign(window.SUGECO_CONFIG, config);
         } catch (e) {
             // Errore silenzioso
         }
@@ -237,8 +237,8 @@ window.C2MS_CONFIG.helpers = {
     } else {
         // Extract base path from current URL
         // Examples:
-        // /C2MS/ -> /C2MS
-        // /C2MS/militare -> /C2MS
+        // /SUGECO/ -> /SUGECO
+        // /SUGECO/militare -> /SUGECO
         // /my-project/militare/1 -> /my-project
         
         const pathParts = currentPath.split('/').filter(part => part !== '');
@@ -259,13 +259,13 @@ window.C2MS_CONFIG.helpers = {
     }
     
     // Set the detected base URLs
-    window.C2MS_CONFIG.APP.BASE_URL = basePath;
-    window.C2MS_CONFIG.API.BASE_URL = basePath + '/api';
+    window.SUGECO_CONFIG.APP.BASE_URL = basePath;
+    window.SUGECO_CONFIG.API.BASE_URL = basePath + '/api';
     
     // Debug log
-    if (window.C2MS_CONFIG.DEBUG) {
-        console.log('[C2MS] Auto-detected base URL:', basePath);
-        console.log('[C2MS] API base URL:', window.C2MS_CONFIG.API.BASE_URL);
+    if (window.SUGECO_CONFIG.DEBUG) {
+        console.log('[SUGECO] Auto-detected base URL:', basePath);
+        console.log('[SUGECO] API base URL:', window.SUGECO_CONFIG.API.BASE_URL);
     }
 })();
 

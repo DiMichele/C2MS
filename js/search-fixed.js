@@ -1,16 +1,16 @@
 /**
- * Modulo di ricerca unificato C2MS
+ * Modulo di ricerca unificato SUGECO
  * Sistema con logiche specifiche per dashboard, organigramma e tabelle
  */
-window.C2MS = window.C2MS || {};
-window.C2MS.Search = {
+window.SUGECO = window.SUGECO || {};
+window.SUGECO.Search = {
     
     /**
      * Initialize search module
      */
     init: function() {
         this.setupSearchInputs();
-        window.C2MS.Core.log('Modulo di ricerca unificato inizializzato');
+        window.SUGECO.Core.log('Modulo di ricerca unificato inizializzato');
     },
 
     /**
@@ -42,7 +42,7 @@ window.C2MS.Search = {
             }, 150);
         });
 
-        window.C2MS.Core.log('Campo di ricerca configurato: ' + (input.id || input.className));
+        window.SUGECO.Core.log('Campo di ricerca configurato: ' + (input.id || input.className));
     },
 
     /**
@@ -95,7 +95,7 @@ window.C2MS.Search = {
      * Fetch militari suggestions via AJAX
      */
     fetchMilitariSuggestions: function(query, input) {
-        const url = window.C2MS.Core.buildUrl(`/militare/search?query=${encodeURIComponent(query)}`);
+        const url = window.SUGECO.Core.buildUrl(`/militare/search?query=${encodeURIComponent(query)}`);
         
         fetch(url, {
             method: 'GET',
@@ -119,7 +119,7 @@ window.C2MS.Search = {
             }
         })
         .catch(error => {
-            window.C2MS.Core.log('Dashboard search error: ' + error.message, 'error');
+            window.SUGECO.Core.log('Dashboard search error: ' + error.message, 'error');
             this.hideDashboardSuggestions();
         });
     },
@@ -197,11 +197,11 @@ window.C2MS.Search = {
                 suggestionItem.style.pointerEvents = 'none';
                 
                 if (!militare.id) {
-                    window.C2MS.Core.log('Errore: ID militare non trovato', 'error');
+                    window.SUGECO.Core.log('Errore: ID militare non trovato', 'error');
                     return;
                 }
                 
-                const targetUrl = window.C2MS.Core.buildUrl(`/militare/${militare.id}`);
+                const targetUrl = window.SUGECO.Core.buildUrl(`/militare/${militare.id}`);
                 
                 // Redirect to biografic card
                 window.location.href = targetUrl;
@@ -733,7 +733,7 @@ window.C2MS.Search = {
     searchWithDOMFilter: function(query, targetContainer, input) {
         const table = this.getTargetTable(input, targetContainer);
         if (!table) {
-            window.C2MS.Core.log('Tabella target non trovata', 'warn');
+            window.SUGECO.Core.log('Tabella target non trovata', 'warn');
             return;
         }
 
@@ -860,17 +860,17 @@ document.addEventListener('click', (e) => {
     const dropdownItem = e.target.closest('.dropdown-militare-item');
     
     if (dashboardSuggestions && !searchInput) {
-        window.C2MS.Search.hideDashboardSuggestions();
+        window.SUGECO.Search.hideDashboardSuggestions();
     }
     
     if (organigrammaDropdown && !searchInput && !dropdownItem) {
-        window.C2MS.Search.hideOrganigrammaDropdown();
+        window.SUGECO.Search.hideOrganigrammaDropdown();
     }
 });
 
 // Auto-inizializzazione quando il DOM è pronto
 document.addEventListener('DOMContentLoaded', function() {
-    if (typeof window.C2MS !== 'undefined' && typeof window.C2MS.Search !== 'undefined') {
-        window.C2MS.Search.init();
+    if (typeof window.SUGECO !== 'undefined' && typeof window.SUGECO.Search !== 'undefined') {
+        window.SUGECO.Search.init();
     }
 });

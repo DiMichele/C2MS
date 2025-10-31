@@ -890,8 +890,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Inizializza il modulo Filters per l'auto-submit
-    if (typeof C2MS !== 'undefined' && typeof C2MS.Filters !== 'undefined') {
-        C2MS.Filters.init();
+    if (typeof SUGECO !== 'undefined' && typeof SUGECO.Filters !== 'undefined') {
+        SUGECO.Filters.init();
     }
 });
 

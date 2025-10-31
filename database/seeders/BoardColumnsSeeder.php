@@ -14,31 +14,45 @@ class BoardColumnsSeeder extends Seeder
     {
         $columns = [
             [
-                'name' => 'Da Fare',
-                'slug' => 'todo',
+                'name' => 'Servizi Isolati',
+                'slug' => 'servizi-isolati',
                 'color' => '#6c757d',
                 'order' => 1,
                 'is_active' => true
             ],
             [
-                'name' => 'In Corso',
-                'slug' => 'progress',
-                'color' => '#0d6efd',
+                'name' => 'Esercitazioni',
+                'slug' => 'esercitazioni',
+                'color' => '#fd7e14',
                 'order' => 2,
                 'is_active' => true
             ],
             [
-                'name' => 'In Revisione',
-                'slug' => 'review',
+                'name' => 'Stand-by',
+                'slug' => 'stand-by',
                 'color' => '#ffc107',
                 'order' => 3,
                 'is_active' => true
             ],
             [
-                'name' => 'Completato',
-                'slug' => 'done',
-                'color' => '#198754',
+                'name' => 'Operazioni',
+                'slug' => 'operazioni',
+                'color' => '#dc3545',
                 'order' => 4,
+                'is_active' => true
+            ],
+            [
+                'name' => 'Corsi',
+                'slug' => 'corsi',
+                'color' => '#0d6efd',
+                'order' => 5,
+                'is_active' => true
+            ],
+            [
+                'name' => 'Cattedre',
+                'slug' => 'cattedre',
+                'color' => '#198754',
+                'order' => 6,
                 'is_active' => true
             ]
         ];

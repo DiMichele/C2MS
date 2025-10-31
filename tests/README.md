@@ -1,8 +1,8 @@
-# 🧪 C2MS Test Suite
+# 🧪 SUGECO Test Suite
 
 ## Panoramica
 
-Suite di test per il **C2MS (Command and Control Management System)** che include test unitari per verificare le funzionalità principali del sistema di gestione militare.
+Suite di test per il **SUGECO (Command and Control Management System)** che include test unitari per verificare le funzionalità principali del sistema di gestione militare.
 
 ## 📁 Struttura Test
 
@@ -218,4 +218,4 @@ vendor/bin/phpunit tests/Unit/ --debug --verbose
 
 ---
 
-**Suite Test C2MS v2.1.0** - *Test sicuri e affidabili per il sistema di gestione militare* 
+**Suite Test SUGECO v2.1.0** - *Test sicuri e affidabili per il sistema di gestione militare* 

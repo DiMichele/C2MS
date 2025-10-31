@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Trasparenza Servizi - C2MS')
+@section('title', 'Trasparenza Servizi - SUGECO')
 
 @section('content')
 <div class="container-fluid">
@@ -286,8 +286,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Inizializza il sistema di ricerca
-    if (window.C2MS && window.C2MS.Search) {
-        window.C2MS.Search.init();
+    if (window.SUGECO && window.SUGECO.Search) {
+        window.SUGECO.Search.init();
     }
 });
 

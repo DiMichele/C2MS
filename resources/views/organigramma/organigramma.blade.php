@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Organigramma - C2MS')
+@section('title', 'Organigramma - SUGECO')
 
 @section('styles')
 <style>

@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Anagrafica - C2MS')
+@section('title', 'Anagrafica - SUGECO')
 
 @section('content')
 <style>
@@ -669,13 +669,13 @@ function confirmDelete(militareId) {
 
 document.addEventListener('DOMContentLoaded', function() {
     // Forza l'inizializzazione dei filtri se non già fatto
-    if (window.C2MS && window.C2MS.Filters) {
-        window.C2MS.Filters.init();
+    if (window.SUGECO && window.SUGECO.Filters) {
+        window.SUGECO.Filters.init();
     }
     
     // Inizializza il nuovo sistema di ricerca
-    if (window.C2MS && window.C2MS.Search) {
-        window.C2MS.Search.init();
+    if (window.SUGECO && window.SUGECO.Search) {
+        window.SUGECO.Search.init();
     }
     
     // Export Excel

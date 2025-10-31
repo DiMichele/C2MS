@@ -45,7 +45,14 @@ class IdoneitzController extends Controller
             'data' => 'nullable|date',
         ]);
         
-        $scadenza = $militare->scadenza ?? new ScadenzaMilitare(['militare_id' => $militare->id]);
+        // Ottieni o crea il record scadenza
+        $scadenza = $militare->scadenza;
+        if (!$scadenza) {
+            $scadenza = new ScadenzaMilitare();
+            $scadenza->militare_id = $militare->id;
+            $scadenza->save(); // Salva prima il record con solo il militare_id
+        }
+        
         $campo = $request->campo;
         
         $scadenza->$campo = $request->data;

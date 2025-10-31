@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard - C2MS')
+@section('title', 'Dashboard - SUGECO')
 
 @section('styles')
 <!-- Stili specifici per la dashboard sono ora in dashboard.css -->

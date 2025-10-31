@@ -1,16 +1,16 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Toast notification system
  * 
  * @version 1.0
  * @author Michele Di Gennaro
  */
 
-// Ensure C2MS namespace exists
-window.C2MS = window.C2MS || {};
+// Ensure SUGECO namespace exists
+window.SUGECO = window.SUGECO || {};
 
 // Toast system module
-window.C2MS.Toast = {
+window.SUGECO.Toast = {
     container: null,
     
     /**
@@ -19,7 +19,7 @@ window.C2MS.Toast = {
     init: function() {
         this.createContainer();
         this.setupGlobalToastFunction();
-        window.C2MS.Core.log('Toast System initialized');
+        window.SUGECO.Core.log('Toast System initialized');
     },
     
     /**
@@ -169,19 +169,19 @@ window.C2MS.Toast = {
 
 // Alias globali per facilità d'uso
 window.showSuccess = function(message) {
-    window.C2MS.Toast.success(message);
+    window.SUGECO.Toast.success(message);
 };
 
 window.showError = function(message) {
-    window.C2MS.Toast.error(message);
+    window.SUGECO.Toast.error(message);
 };
 
 window.showWarning = function(message) {
-    window.C2MS.Toast.warning(message);
+    window.SUGECO.Toast.warning(message);
 };
 
 window.showInfo = function(message) {
-    window.C2MS.Toast.info(message);
+    window.SUGECO.Toast.info(message);
 };
 
 // Auto-inizializzazione quando il DOM è pronto

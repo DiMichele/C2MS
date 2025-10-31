@@ -242,13 +242,26 @@ window.pageData = {
                                     @endphp
                                     
                                     @php
-                                        $cellStyle = "width: 60px; font-size: 11px; cursor: pointer;";
+                                        // Stili base cella
+                                        $cellStyle = "width: 60px; height: 32px; cursor: pointer; font-size: 10px; font-weight: 600; padding: 0;";
                                         
-                                        // Aggiungi background-color inline per weekend/festivi/oggi
-                                        if ($giorno['is_weekend'] || $giorno['is_holiday']) {
-                                            $cellStyle .= " background-color: rgba(255, 0, 0, 0.12);";
-                                        } elseif ($giorno['is_today']) {
-                                            $cellStyle .= " background-color: rgba(255, 220, 0, 0.20);";
+                                        // COLORA LA CELLA direttamente in base al codice impegno
+                                        if ($codice) {
+                                            // Determina colore in base al tipo di impegno
+                                            if (in_array($codice, ['LS', 'LO', 'LM', 'P', 'TIR', 'TRAS', 'APS1', 'APS2', 'APS3', 'APS4', 'AL-ELIX', 'AL-MCM', 'AL-BLS', 'AL-CIED', 'AL-SM', 'AL-RM', 'AL-RSPP', 'AL-LEG', 'AL-SEA', 'AL-MI', 'AL-PO', 'AL-PI', 'AP-M', 'AP-A', 'AC-SW', 'AC', 'PEFO'])) {
+                                                $cellStyle .= " background-color: #ffff00 !important; color: #000000 !important;";
+                                            } elseif (in_array($codice, ['RMD', 'LC', 'IS', 'TO'])) {
+                                                $cellStyle .= " background-color: #ff0000 !important; color: #ffffff !important;";
+                                            } else {
+                                                $cellStyle .= " background-color: #00b050 !important; color: #ffffff !important;";
+                                            }
+                                        } else {
+                                            // Celle vuote - sfondo weekend/festivi/oggi
+                                            if ($giorno['is_weekend'] || $giorno['is_holiday']) {
+                                                $cellStyle .= " background-color: rgba(255, 0, 0, 0.12);";
+                                            } elseif ($giorno['is_today']) {
+                                                $cellStyle .= " background-color: rgba(255, 220, 0, 0.20);";
+                                            }
                                         }
                                     @endphp
                                     <td class="text-center giorno-cell {{ $giorno['is_weekend'] ? 'weekend-column' : '' }} {{ $giorno['is_holiday'] ? 'holiday-column' : '' }} {{ $giorno['is_today'] ? 'today-column' : '' }}"
@@ -266,30 +279,7 @@ window.pageData = {
                                     title="Non hai i permessi per modificare"
                                     @endcan>
                                         
-                                        @if($codice)
-                                            @php
-                                                // Colori CPT esatti inline per garantire che funzionino
-                                                $inlineStyle = match($colore) {
-                                                    'cpt-verde' => 'background-color: #00b050 !important; color: white !important;',
-                                                    'cpt-giallo' => 'background-color: #ffff00 !important; color: black !important;',
-                                                    'cpt-rosso' => 'background-color: #ff0000 !important; color: white !important;',
-                                                    'cpt-arancione' => 'background-color: #ffc000 !important; color: black !important;',
-                                                    default => ''
-                                                };
-                                            @endphp
-                                            <span class="badge bg-{{ $colore }} codice-badge" 
-                                              style="font-size: 9px; padding: 2px 4px; min-width: 28px; {{ $inlineStyle }}"
-                                              data-bs-toggle="tooltip" 
-                                              data-bs-placement="top"
-                                              title="{{ $tooltip }}">
-                                                {{ $codice }}
-                                            </span>
-                                        @else
-                                        <span class="text-muted" style="font-size: 10px;" 
-                                              data-bs-toggle="tooltip" 
-                                              data-bs-placement="top"
-                                              title="Nessun impegno">-</span>
-                                        @endif
+{{ $codice ?: '-' }}
                                     </td>
                                 @endforeach
                             </tr>
@@ -498,17 +488,36 @@ window.pageData = {
     font-size: 11px;
 }
 
-/* Centratura verticale e orizzontale dei badge nelle celle giorno */
+/* ========================================================================
+   CELLE GIORNO CPT - Centratura perfetta dei badge
+   ======================================================================== */
+   
+/* TD celle giorno - container per badge full-size */
+table.table tbody tr td.giorno-cell,
+#pianificazioneTable tbody tr td.giorno-cell,
+tbody tr td.giorno-cell,
+tr td.giorno-cell,
+td.giorno-cell,
 .giorno-cell {
-    vertical-align: middle !important;
-    text-align: center !important;
-}
-
-.giorno-cell .badge,
-.giorno-cell .codice-badge {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    /* Dimensioni fisse */
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    
+    /* NESSUN padding - il badge riempie tutto */
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    
+    /* FLEX per centrare perfettamente */
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    
+    /* Altri stili */
+    cursor: pointer !important;
     vertical-align: middle !important;
 }
 
@@ -568,6 +577,77 @@ window.pageData = {
 .btn-sm {
     padding: 4px 8px;
 }
+
+/* ========================================================================
+   OVERRIDE BADGE CELLE GIORNO - DOPO regole .badge generiche
+   ======================================================================== */
+table.table tbody tr td.giorno-cell span.badge,
+table.table tbody tr td.giorno-cell span.codice-badge,
+#pianificazioneTable tbody tr td.giorno-cell span.badge,
+#pianificazioneTable tbody tr td.giorno-cell span.codice-badge,
+tbody tr td.giorno-cell span.badge,
+tbody tr td.giorno-cell span.codice-badge,
+tr td.giorno-cell span.badge,
+tr td.giorno-cell span.codice-badge,
+td.giorno-cell span.badge,
+td.giorno-cell span.codice-badge,
+.giorno-cell span.badge,
+.giorno-cell span.codice-badge {
+    /* BADGE FULL-SIZE - riempie tutta la cella */
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100% !important;
+    max-height: 100% !important;
+    
+    /* Font e dimensioni */
+    font-size: 9px !important;
+    font-weight: 600 !important;
+    line-height: 32px !important;  /* Centra verticalmente con line-height = height cella */
+    
+    /* NESSUN padding - il testo è centrato con line-height */
+    padding: 0 !important;
+    margin: 0 !important;
+    
+    /* Testo centrato */
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    /* Rimuovi bordi arrotondati per riempire perfettamente */
+    border-radius: 0 !important;
+    
+    /* Flex */
+    flex-shrink: 0 !important;
+    flex-grow: 1 !important;
+}
+
+/* Celle senza badge (giorno vuoto) - NON espandere, resta centrato */
+table.table tbody tr td.giorno-cell span.giorno-vuoto,
+#pianificazioneTable tbody tr td.giorno-cell span.giorno-vuoto,
+tbody tr td.giorno-cell span.giorno-vuoto,
+tr td.giorno-cell span.giorno-vuoto,
+td.giorno-cell span.giorno-vuoto,
+.giorno-cell span.giorno-vuoto {
+    width: auto !important;
+    height: auto !important;
+    font-size: 14px !important;
+    color: #ccc !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-block !important;
+    line-height: 1 !important;
+}
+/* ======================================================================== */
 
         /* RIGHE ALTERNATE SEMPLICI */
         .table tbody tr.militare-row:nth-child(even) {
@@ -833,21 +913,39 @@ document.addEventListener('DOMContentLoaded', function() {
         row.addEventListener('mouseenter', function() {
             const cells = this.querySelectorAll('td');
             cells.forEach(cell => {
-                // Salva il colore originale inline (se presente)
-                if (!cell.dataset.originalBg) {
-                    cell.dataset.originalBg = cell.style.backgroundColor || '';
+                // NON applicare hover alle celle con impegni (celle colorate CPT)
+                // Le celle CPT hanno colori specifici: giallo (#ffff00), rosso (#ff0000), verde (#00b050)
+                const currentBg = cell.style.backgroundColor || '';
+                const hasImpegno = currentBg.includes('rgb(255, 255, 0)') || // giallo
+                                    currentBg.includes('rgb(255, 0, 0)') || // rosso
+                                    currentBg.includes('rgb(0, 176, 80)') || // verde
+                                    currentBg.includes('#ffff00') ||
+                                    currentBg.includes('#ff0000') ||
+                                    currentBg.includes('#00b050');
+                
+                if (!hasImpegno) {
+                    // Salva il colore originale inline (se presente)
+                    if (!cell.dataset.originalBg) {
+                        cell.dataset.originalBg = currentBg;
+                    }
+                    // Applica l'hover SOLO alle celle senza impegni
+                    cell.style.backgroundColor = hoverColor;
                 }
-                // Applica l'hover
-                cell.style.backgroundColor = hoverColor;
             });
         });
         
         row.addEventListener('mouseleave', function() {
             const cells = this.querySelectorAll('td');
             cells.forEach(cell => {
-                // Ripristina il colore originale salvato
+                // Ripristina SOLO se non è una cella con impegno
                 if (cell.dataset.originalBg !== undefined) {
-                    cell.style.backgroundColor = cell.dataset.originalBg;
+                    const hasImpegno = cell.style.backgroundColor.includes('rgb(255, 255, 0)') ||
+                                        cell.style.backgroundColor.includes('rgb(255, 0, 0)') ||
+                                        cell.style.backgroundColor.includes('rgb(0, 176, 80)');
+                    
+                    if (!hasImpegno) {
+                        cell.style.backgroundColor = cell.dataset.originalBg;
+                    }
                 }
             });
         });

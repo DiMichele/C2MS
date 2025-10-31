@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Gestione Eventi - C2MS')
+@section('title', 'Gestione Eventi - SUGECO')
 
 @section('content')
 <style>

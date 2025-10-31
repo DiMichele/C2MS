@@ -1,16 +1,16 @@
 /**
- * Modulo di ricerca avanzato C2MS
+ * Modulo di ricerca avanzato SUGECO
  * Logiche specifiche per dashboard (suggerimenti) e organigramma (evidenziazione)
  */
-window.C2MS = window.C2MS || {};
-window.C2MS.SearchEnhanced = {
+window.SUGECO = window.SUGECO || {};
+window.SUGECO.SearchEnhanced = {
     
     /**
      * Initialize enhanced search module
      */
     init: function() {
         this.setupEnhancedSearch();
-        window.C2MS.Core.log('Modulo di ricerca avanzato inizializzato');
+        window.SUGECO.Core.log('Modulo di ricerca avanzato inizializzato');
     },
 
     /**
@@ -107,7 +107,7 @@ window.C2MS.SearchEnhanced = {
             }
         })
         .catch(error => {
-            window.C2MS.Core.log('Dashboard search error: ' + error.message, 'error');
+            window.SUGECO.Core.log('Dashboard search error: ' + error.message, 'error');
             this.hideDashboardSuggestions();
         });
     },
@@ -418,15 +418,15 @@ document.addEventListener('click', (e) => {
     const searchInput = e.target.closest('.search-input, [data-search-type]');
     
     if (dashboardSuggestions && !searchInput) {
-        window.C2MS.SearchEnhanced.hideDashboardSuggestions();
+        window.SUGECO.SearchEnhanced.hideDashboardSuggestions();
     }
 });
 
 // Auto-inizializzazione quando il DOM è pronto
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
-        if (typeof window.C2MS !== 'undefined' && typeof window.C2MS.SearchEnhanced !== 'undefined') {
-            window.C2MS.SearchEnhanced.init();
+        if (typeof window.SUGECO !== 'undefined' && typeof window.SUGECO.SearchEnhanced !== 'undefined') {
+            window.SUGECO.SearchEnhanced.init();
         }
     }, 300); // Dopo il modulo base
 });

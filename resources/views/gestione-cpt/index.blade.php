@@ -308,14 +308,14 @@ table.table td,
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Inizializza il sistema di filtri C2MS (auto-submit)
-    if (typeof C2MS !== 'undefined' && typeof C2MS.Filters !== 'undefined') {
-        C2MS.Filters.init();
+    // Inizializza il sistema di filtri SUGECO (auto-submit)
+    if (typeof SUGECO !== 'undefined' && typeof SUGECO.Filters !== 'undefined') {
+        SUGECO.Filters.init();
     }
     
     // Inizializza la ricerca
-    if (typeof C2MS !== 'undefined' && typeof C2MS.Search !== 'undefined') {
-        C2MS.Search.init();
+    if (typeof SUGECO !== 'undefined' && typeof SUGECO.Search !== 'undefined') {
+        SUGECO.Search.init();
     }
     
     // Tooltip

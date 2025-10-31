@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Repository per la gestione delle statistiche e dei report della dashboard.
  * Centralizza le query complesse per le statistiche con sistema di cache ottimizzato.

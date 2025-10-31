@@ -1,5 +1,5 @@
-# C2MS - Command and Control Management System
-*Sistema Completo di Gestione e Controllo Digitale a Supporto del Comando*
+# SUGECO - Sistema Unico di Gestione e Controllo
+*Sistema Unico di Gestione e Controllo*
 
 [![PHP Version](https://img.shields.io/badge/PHP-8.2+-blue)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-11.x-red)](https://laravel.com)
@@ -7,7 +7,7 @@
 
 ## 📋 Panoramica
 
-C2MS è un sistema completo di gestione militare digitale progettato per ottimizzare la gestione del personale, certificazioni, presenze e operazioni. Il sistema fornisce un'interfaccia moderna e intuitiva per il controllo completo delle attività di comando.
+SUGECO è un sistema completo di gestione militare digitale progettato per ottimizzare la gestione del personale, certificazioni, presenze e operazioni. Il sistema fornisce un'interfaccia moderna e intuitiva per il controllo completo delle attività di comando.
 
 ## ✨ Caratteristiche Principali
 
@@ -89,8 +89,8 @@ C2MS è un sistema completo di gestione militare digitale progettato per ottimiz
 
 ### 1. Clone del Repository
 ```bash
-git clone https://github.com/DiMichele/C2MS.git
-cd C2MS
+git clone https://github.com/DiMichele/SUGECO.git
+cd SUGECO
 ```
 
 ### 2. Installazione Dipendenze
@@ -162,12 +162,12 @@ composer install --optimize-autoloader --no-dev
 ```
 
 ### 8. Accesso all'Applicazione
-Apri il browser e vai su: `http://localhost/C2MS/public`
+Apri il browser e vai su: `http://localhost/SUGECO/public`
 
 ## 🗂️ Struttura del Progetto
 
 ```
-C2MS/
+SUGECO/
 ├── app/
 │   ├── Console/Commands/         # Comandi Artisan personalizzati
 │   │   ├── BackupDatabase.php    # Backup automatico database
@@ -347,7 +347,7 @@ FILESYSTEM_DISK=local
 
 ## 🔒 Sicurezza e Note
 
-> **Sistema Monoutente**: C2MS è progettato per uso interno da parte di un singolo operatore. Non include sistema di autenticazione multi-utente per semplicità d'uso in ambiente controllato.
+> **Sistema Monoutente**: SUGECO è progettato per uso interno da parte di un singolo operatore. Non include sistema di autenticazione multi-utente per semplicità d'uso in ambiente controllato.
 
 ### Misure di Sicurezza Implementate
 - Validazione rigorosa input utente
@@ -379,7 +379,7 @@ FILESYSTEM_DISK=local
 5. Creazione Pull Request
 
 ### Segnalazione Bug
-Usa il sistema di [Issues GitHub](https://github.com/DiMichele/C2MS/issues) per segnalare bug o richiedere nuove funzionalità.
+Usa il sistema di [Issues GitHub](https://github.com/DiMichele/SUGECO/issues) per segnalare bug o richiedere nuove funzionalità.
 
 ## 📝 Licenza
 
@@ -387,6 +387,6 @@ Questo progetto è sviluppato per uso interno e proprietario. Tutti i diritti ri
 
 ---
 
-**C2MS v2.1.0** - *Gestione e Controllo Digitale a Supporto del Comando*
+**SUGECO v2.1.0** - *Sistema Unico di Gestione e Controllo*
 
 *Sviluppato con ❤️ per l'efficienza operativa*

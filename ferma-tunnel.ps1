@@ -26,6 +26,6 @@ if ($ngrok) {
 
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "📊 Stato: Sito OFFLINE da internet" -ForegroundColor Red
-Write-Host "💻 Localhost: http://localhost/C2MS/public" -ForegroundColor Green
+Write-Host "💻 Localhost: http://localhost/SUGECO/public" -ForegroundColor Green
 Write-Host "========================================`n" -ForegroundColor Green
 

@@ -53,17 +53,17 @@ class AppServiceProvider extends ServiceProvider
             
             // Se stiamo usando ngrok
             if (str_contains($host ?? '', 'ngrok')) {
-                URL::forceRootUrl('https://' . $host . '/C2MS/public');
-                \Log::debug('Using ngrok URL: https://' . $host . '/C2MS/public');
+                URL::forceRootUrl('https://' . $host . '/SUGECO/public');
+                \Log::debug('Using ngrok URL: https://' . $host . '/SUGECO/public');
             } 
             // Se stiamo usando cloudflare
             elseif (str_contains($host ?? '', 'trycloudflare')) {
-                URL::forceRootUrl('https://' . $host . '/C2MS/public');
-                \Log::debug('Using cloudflare URL: https://' . $host . '/C2MS/public');
+                URL::forceRootUrl('https://' . $host . '/SUGECO/public');
+                \Log::debug('Using cloudflare URL: https://' . $host . '/SUGECO/public');
             }
             // Altrimenti usa localhost per sviluppo locale
-            elseif (request()->server('REQUEST_URI') && strpos(request()->server('REQUEST_URI'), '/C2MS/public/') !== false) {
-                URL::forceRootUrl('http://localhost/C2MS/public');
+            elseif (request()->server('REQUEST_URI') && strpos(request()->server('REQUEST_URI'), '/SUGECO/public/') !== false) {
+                URL::forceRootUrl('http://localhost/SUGECO/public');
                 \Log::debug('Using localhost URL');
             }
         }

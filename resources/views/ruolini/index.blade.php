@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ruolini - C2MS')
+@section('title', 'Ruolini - SUGECO')
 
 @section('content')
 <div class="container-fluid">

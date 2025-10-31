@@ -561,7 +561,7 @@
 @endsection
 
 @push('scripts')
-<!-- Carica FullCalendar prima dei moduli C2MS -->
+<!-- Carica FullCalendar prima dei moduli SUGECO -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales/it.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

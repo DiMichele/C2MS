@@ -4,32 +4,83 @@
 
 @section('content')
 <div class="container-fluid">
-    <!-- Header Minimal Solo Titolo -->
-<div class="text-center mb-4">
-    <h1 class="page-title">Hub Attività</h1>
-</div>
+    <!-- Header con Selettore Compagnia -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="page-title mb-0">Hub Attività</h1>
     
-    <div class="text-end mb-3">
-        <a href="{{ route('board.calendar') }}" class="btn btn-outline-primary me-2">
+    <div class="d-flex align-items-center gap-3">
+        <!-- Selettore Compagnia -->
+        <div class="d-flex align-items-center">
+            <label for="compagniaSelector" class="me-2 mb-0 fw-bold">Compagnia:</label>
+            <select id="compagniaSelector" class="form-select" style="min-width: 200px;" onchange="cambiaCompagnia(this.value)">
+                @foreach($compagnie as $compagnia)
+                    <option value="{{ $compagnia->id }}" {{ $compagniaSelezionata && $compagniaSelezionata->id == $compagnia->id ? 'selected' : '' }}>
+                        {{ $compagnia->nome }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        
+        <a href="{{ route('board.calendar') }}" class="btn btn-outline-primary">
             <i class="fas fa-calendar"></i> Vista Calendario
         </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createActivityModal">
             <i class="fas fa-plus"></i> Nuova Attività
         </button>
     </div>
+</div>
 
     <div id="board-container" class="board-container">
-        <div class="row flex-nowrap board-row">
-            @foreach($columns as $column)
-            <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+        @php
+            // Organizza le colonne su 2 righe
+            $primaRiga = $columns->filter(function($col) {
+                return in_array($col->slug, ['servizi-isolati', 'cattedre', 'corsi']);
+            })->sortBy(function($col) {
+                $order = ['servizi-isolati' => 1, 'cattedre' => 2, 'corsi' => 3];
+                return $order[$col->slug] ?? 99;
+            });
+            
+            $secondaRiga = $columns->filter(function($col) {
+                return in_array($col->slug, ['esercitazioni', 'stand-by', 'operazioni']);
+            })->sortBy(function($col) {
+                $order = ['esercitazioni' => 1, 'stand-by' => 2, 'operazioni' => 3];
+                return $order[$col->slug] ?? 99;
+            });
+        @endphp
+        
+        <!-- Prima Riga: Servizi Isolati, Cattedre, Corsi -->
+        <div class="row board-row mb-4">
+            @foreach($primaRiga as $column)
+            <div class="col-xl-4 col-lg-4 col-md-4 mb-3">
                 <div class="card board-column shadow-sm" data-column-id="{{ $column->id }}" data-column-slug="{{ $column->slug }}">
                     <div class="card-header d-flex justify-content-between align-items-center py-3">
                         <h5 class="mb-0 fw-bold column-title">
                             @php
-                                $colors = ['urgenti'=>'text-danger','in-scadenza'=>'text-warning','pianificate'=>'text-success','fuori-porta'=>'text-info'];
-                                $bg     = ['urgenti'=>'bg-danger','in-scadenza'=>'bg-warning','pianificate'=>'bg-success','fuori-porta'=>'bg-info'];
-                                $icons  = ['urgenti'=>'fa-exclamation-circle','in-scadenza'=>'fa-clock','pianificate'=>'fa-check-circle','fuori-porta'=>'fa-map-marker-alt'];
-                                $slug   = $column->slug;
+                                $colors = [
+                                    'servizi-isolati' => 'text-secondary',
+                                    'esercitazioni' => 'text-warning',
+                                    'stand-by' => 'text-warning',
+                                    'operazioni' => 'text-danger',
+                                    'corsi' => 'text-primary',
+                                    'cattedre' => 'text-success'
+                                ];
+                                $bg = [
+                                    'servizi-isolati' => 'bg-secondary',
+                                    'esercitazioni' => 'bg-warning',
+                                    'stand-by' => 'bg-warning',
+                                    'operazioni' => 'bg-danger',
+                                    'corsi' => 'bg-primary',
+                                    'cattedre' => 'bg-success'
+                                ];
+                                $icons = [
+                                    'servizi-isolati' => 'fa-shield-alt',
+                                    'esercitazioni' => 'fa-running',
+                                    'stand-by' => 'fa-pause-circle',
+                                    'operazioni' => 'fa-bolt',
+                                    'corsi' => 'fa-graduation-cap',
+                                    'cattedre' => 'fa-chalkboard-teacher'
+                                ];
+                                $slug = $column->slug;
                             @endphp
                             <i class="fas {{ $icons[$slug] ?? 'fa-list' }} {{ $colors[$slug] ?? 'text-primary' }} me-2"></i>{{ $column->name }}
                         </h5>
@@ -56,6 +107,103 @@
                                     <p class="card-text small mb-3" style="max-height: 60px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;" title="{{ $activity->description ?: 'Nessuna descrizione' }}">{{ $activity->description ?: 'Nessuna descrizione' }}</p>
                                     
                                     <!-- Militari coinvolti - Solo numero con possibilità di click -->
+                                    @if($activity->militari->isNotEmpty())
+                                    <div class="mb-2">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <i class="fas fa-users text-primary me-1"></i>
+                                                <small class="text-muted fw-bold">Militari Coinvolti:</small>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#militariModal{{ $activity->id }}"
+                                                    title="Visualizza tutti i militari">
+                                                <i class="far fa-user me-1"></i>
+                                                <strong>{{ $activity->militari->count() }}</strong>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    @else
+                                    <div class="mb-2">
+                                        <div class="text-center py-1 text-muted">
+                                            <i class="fas fa-user-slash me-1"></i>
+                                            <span class="small">Nessun militare assegnato</span>
+                                        </div>
+                                    </div>
+                                    @endif
+                                    <div class="mt-auto d-flex justify-content-between align-items-center">
+                                        <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-outline-primary" title="Visualizza dettagli completi">
+                                            <i class="fas fa-eye me-1"></i>Dettagli
+                                        </a>
+                                        <small class="text-muted">{{ $activity->created_at->diffForHumans() }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        
+        <!-- Seconda Riga: Esercitazioni, Stand-by, Operazioni -->
+        <div class="row board-row">
+            @foreach($secondaRiga as $column)
+            <div class="col-xl-4 col-lg-4 col-md-4 mb-3">
+                <div class="card board-column shadow-sm" data-column-id="{{ $column->id }}" data-column-slug="{{ $column->slug }}">
+                    <div class="card-header d-flex justify-content-between align-items-center py-3">
+                        <h5 class="mb-0 fw-bold column-title">
+                            @php
+                                $colors = [
+                                    'servizi-isolati' => 'text-secondary',
+                                    'esercitazioni' => 'text-warning',
+                                    'stand-by' => 'text-warning',
+                                    'operazioni' => 'text-danger',
+                                    'corsi' => 'text-primary',
+                                    'cattedre' => 'text-success'
+                                ];
+                                $bg = [
+                                    'servizi-isolati' => 'bg-secondary',
+                                    'esercitazioni' => 'bg-warning',
+                                    'stand-by' => 'bg-warning',
+                                    'operazioni' => 'bg-danger',
+                                    'corsi' => 'bg-primary',
+                                    'cattedre' => 'bg-success'
+                                ];
+                                $icons = [
+                                    'servizi-isolati' => 'fa-shield-alt',
+                                    'esercitazioni' => 'fa-running',
+                                    'stand-by' => 'fa-pause-circle',
+                                    'operazioni' => 'fa-bolt',
+                                    'corsi' => 'fa-graduation-cap',
+                                    'cattedre' => 'fa-chalkboard-teacher'
+                                ];
+                                $slug = $column->slug;
+                            @endphp
+                            <i class="fas {{ $icons[$slug] ?? 'fa-list' }} {{ $colors[$slug] ?? 'text-primary' }} me-2"></i>{{ $column->name }}
+                        </h5>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-secondary rounded-pill me-2">{{ $column->activities->count() }}</span>
+                            <button class="btn btn-sm add-activity-btn {{ $bg[$slug] ?? 'bg-primary' }} text-white"
+                                data-bs-toggle="modal" data-bs-target="#createActivityModal"
+                                data-column-id="{{ $column->id }}" data-column-name="{{ $column->name }}">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-2">
+                        <div class="activities-container">
+                            @foreach($column->activities as $activity)
+                            <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}">
+                                <div class="card-body d-flex flex-column p-3">
+                                    <h6 class="card-title mb-2 text-truncate" title="{{ $activity->title }}">{{ $activity->title }}</h6>
+                                    <div class="activity-dates mb-2 small text-muted">
+                                        <i class="far fa-calendar-alt me-1"></i>{{ $activity->start_date->format('d/m/Y') }}
+                                        @if($activity->end_date) - {{ $activity->end_date->format('d/m/Y') }} @endif
+                                    </div>
+                                    <p class="card-text small mb-3" style="max-height: 60px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;" title="{{ $activity->description ?: 'Nessuna descrizione' }}">{{ $activity->description ?: 'Nessuna descrizione' }}</p>
+                                    
                                     @if($activity->militari->isNotEmpty())
                                     <div class="mb-2">
                                         <div class="d-flex align-items-center justify-content-between">
@@ -157,9 +305,10 @@
     <div class="modal-content">
       <form action="{{ route('board.activities.store') }}" method="POST" id="newActivityForm">
         @csrf
+        <input type="hidden" name="compagnia_id" id="compagnia_id_form" value="{{ $compagniaSelezionata->id ?? '' }}">
         <div class="modal-header bg-light">
           <h5 class="modal-title" id="createActivityModalLabel">
-            <i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività
+            <i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività - {{ $compagniaSelezionata->nome ?? '' }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -199,14 +348,16 @@
           <div class="mb-3">
             <label for="militari" class="form-label fw-bold">Militari Coinvolti</label>
             <select class="form-control select2" id="militari" name="militari[]" multiple>
-              @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
-              <option value="{{ $militare->id }}">
-                {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
-                @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
-              </option>
-              @endforeach
+              @if($compagniaSelezionata)
+                @foreach(App\Models\Militare::where('compagnia_id', $compagniaSelezionata->id)->with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
+                <option value="{{ $militare->id }}">
+                  {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
+                  @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
+                </option>
+                @endforeach
+              @endif
             </select>
-            <small class="form-text text-muted">Seleziona uno o più militari coinvolti nell'attività</small>
+            <small class="form-text text-muted">Seleziona uno o più militari della {{ $compagniaSelezionata->nome ?? 'compagnia' }}</small>
           </div>
         </div>
         <div class="modal-footer bg-light">
@@ -482,21 +633,29 @@
         box-shadow: 0 0 15px rgba(0,0,0,0.25) !important;
     }
     
-    /* Stili specifici per colonne - Uniformati con il calendario */
-    .card-urgenti {
-        border-left-color: #dc3545; /* Urgenti - Rosso */
+    /* Stili specifici per colonne */
+    .card-servizi-isolati {
+        border-left-color: #6c757d; /* Servizi Isolati - Grigio */
     }
     
-    .card-in-scadenza {
-        border-left-color: #ffc107; /* In scadenza - Giallo */
+    .card-esercitazioni {
+        border-left-color: #fd7e14; /* Esercitazioni - Arancione */
     }
     
-    .card-pianificate {
-        border-left-color: #28a745; /* Pianificate - Verde */
+    .card-stand-by {
+        border-left-color: #ffc107; /* Stand-by - Giallo */
     }
     
-    .card-fuori-porta {
-        border-left-color: #17a2b8; /* Fuori porta - Celeste */
+    .card-operazioni {
+        border-left-color: #dc3545; /* Operazioni - Rosso */
+    }
+    
+    .card-corsi {
+        border-left-color: #0d6efd; /* Corsi - Blu */
+    }
+    
+    .card-cattedre {
+        border-left-color: #198754; /* Cattedre - Verde */
     }
     
     /* Stili per drop zone attiva */
@@ -738,6 +897,11 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+// Funzione per cambiare compagnia
+function cambiaCompagnia(compagniaId) {
+    window.location.href = `{{ route('board.index') }}?compagnia_id=${compagniaId}`;
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     const token = document.querySelector('meta[name="csrf-token"]').content;
     
@@ -746,11 +910,56 @@ window.addEventListener('DOMContentLoaded', () => {
         $('.select2').select2({ placeholder:'Seleziona i militari coinvolti', theme:'bootstrap-5', allowClear:true, width:'100%', language:'it' });
     }
     
+    // Gestione submit form
+    const activityForm = document.querySelector('#newActivityForm');
+    if (activityForm) {
+        activityForm.addEventListener('submit', (e) => {
+            const compagniaIdField = document.querySelector('#compagnia_id_form');
+            const titleField = document.querySelector('#title');
+            const startDateField = document.querySelector('#start_date');
+            const columnIdField = document.querySelector('#column_id');
+            
+            // Verifica campi obbligatori
+            if (!titleField.value) {
+                alert('Il titolo è obbligatorio');
+                e.preventDefault();
+                return false;
+            }
+            if (!startDateField.value) {
+                alert('La data di inizio è obbligatoria');
+                e.preventDefault();
+                return false;
+            }
+            if (!columnIdField.value) {
+                alert('Devi selezionare uno stato');
+                e.preventDefault();
+                return false;
+            }
+            if (!compagniaIdField || !compagniaIdField.value) {
+                alert('Errore: compagnia non selezionata. Ricarica la pagina.');
+                e.preventDefault();
+                return false;
+            }
+            
+            console.log('Form valido, invio in corso...', {
+                title: titleField.value,
+                start_date: startDateField.value,
+                column_id: columnIdField.value,
+                compagnia_id: compagniaIdField.value
+            });
+        });
+    }
+    
     // pulsanti "Nuova Attività"
     document.querySelectorAll('.add-activity-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             const { columnId, columnName } = e.currentTarget.dataset;
             const sel = document.querySelector('#column_id'); if (sel) sel.value = columnId;
+            // Assicura che compagnia_id sia sempre aggiornato
+            const compagniaIdField = document.querySelector('#compagnia_id_form');
+            if (compagniaIdField && compagniaIdField.value) {
+                console.log('Compagnia ID impostato:', compagniaIdField.value);
+            }
             document.querySelector('#createActivityModal .modal-title').innerHTML =
                 `<i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività in "${columnName}"`;
         });
@@ -759,11 +968,28 @@ window.addEventListener('DOMContentLoaded', () => {
     // reset modal
     const modal = document.getElementById('createActivityModal');
     if (modal) {
+        // Quando si apre il modal
+        modal.addEventListener('show.bs.modal', () => {
+            // Imposta la data di inizio ad oggi se non impostata
+            const startDateField = document.querySelector('#start_date');
+            if (startDateField && !startDateField.value) {
+                startDateField.value = new Date().toISOString().split('T')[0];
+            }
+            // Verifica che compagnia_id sia impostato
+            const compagniaIdField = document.querySelector('#compagnia_id_form');
+            if (!compagniaIdField || !compagniaIdField.value) {
+                console.error('Errore: compagnia_id non impostato!');
+            }
+        });
+        
+        // Quando si chiude il modal
         modal.addEventListener('hidden.bs.modal', () => {
+            const compagniaId = document.querySelector('#compagnia_id_form').value; // Salva il valore
             document.querySelector('#newActivityForm').reset();
+            document.querySelector('#compagnia_id_form').value = compagniaId; // Ripristina il valore
             $('#militari').val(null).trigger('change');
             document.querySelector('#createActivityModal .modal-title').innerHTML =
-                '<i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività';
+                '<i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività - {{ $compagniaSelezionata->nome ?? '' }}';
             document.querySelector('#start_date').value = new Date().toISOString().split('T')[0];
         });
     }

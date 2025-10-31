@@ -5,7 +5,7 @@ namespace App\Traits;
 use Carbon\Carbon;
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Trait per la gestione comune di certificati e idoneità.
  * Fornisce metodi per verificare validità, scadenze e stati dei certificati.

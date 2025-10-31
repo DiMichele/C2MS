@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Inserisci Assenza - C2MS')
+@section('title', 'Inserisci Assenza - SUGECO')
 
 @section('content')
 <!-- Header Minimal Solo Titolo -->

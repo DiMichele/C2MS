@@ -1,21 +1,21 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Filters functionality for tables and lists
  * 
  * @version 1.0
  * @author Michele Di Gennaro
  */
 
-// Ensure C2MS namespace exists
-window.C2MS = window.C2MS || {};
+// Ensure SUGECO namespace exists
+window.SUGECO = window.SUGECO || {};
 
 // Filters module
-window.C2MS.Filters = {
+window.SUGECO.Filters = {
     /**
      * Initialize filters functionality
      */
     init: function() {
-        window.C2MS.Core.log('Filters module initialized');
+        window.SUGECO.Core.log('Filters module initialized');
         this.initToggleFilters();
         this.initFilterSelects();
         this.initClearButtons();
@@ -31,11 +31,11 @@ window.C2MS.Filters = {
         const filtersContainer = document.querySelector('.filters-container');
         
         if (!toggleButton || !filtersContainer) {
-            window.C2MS.Core.log('Toggle filters elements not found, skipping initialization', 'warn');
+            window.SUGECO.Core.log('Toggle filters elements not found, skipping initialization', 'warn');
             return;
         }
         
-        window.C2MS.Core.log('Filter toggle initialized');
+        window.SUGECO.Core.log('Filter toggle initialized');
         
         // Check if filters are initially visible
         const isInitiallyVisible = !filtersContainer.classList.contains('filters-hidden');
@@ -60,7 +60,7 @@ window.C2MS.Filters = {
             }
             
             const isVisible = !filtersContainer.classList.contains('filters-hidden');
-            window.C2MS.Core.log('Filters toggled: ' + (isVisible ? 'visible' : 'hidden'));
+            window.SUGECO.Core.log('Filters toggled: ' + (isVisible ? 'visible' : 'hidden'));
         });
     },
 
@@ -88,16 +88,16 @@ window.C2MS.Filters = {
     initFilterSelects: function() {
         const filterSelects = document.querySelectorAll('.filter-select');
         
-        window.C2MS.Core.log(`Found ${filterSelects.length} filter selects`);
+        window.SUGECO.Core.log(`Found ${filterSelects.length} filter selects`);
         
         filterSelects.forEach(select => {
             // Check if filter is already applied
             if (select.value && select.value !== '') {
-                window.C2MS.Core.log(`Filter ${select.name} is applied with value: ${select.value}`);
+                window.SUGECO.Core.log(`Filter ${select.name} is applied with value: ${select.value}`);
             }
             
             select.addEventListener('change', function() {
-                window.C2MS.Core.log(`Filter ${this.name} changed to: ${this.value}`);
+                window.SUGECO.Core.log(`Filter ${this.name} changed to: ${this.value}`);
                 
                 // Find the parent form
                 const form = this.closest('form');
@@ -108,10 +108,10 @@ window.C2MS.Filters = {
                         pageInput.value = '1';
                     }
                     
-                    window.C2MS.Core.log('Submitting form due to filter change');
+                    window.SUGECO.Core.log('Submitting form due to filter change');
                     form.submit();
                 } else {
-                    window.C2MS.Core.log('No form found for filter select', 'warn');
+                    window.SUGECO.Core.log('No form found for filter select', 'warn');
                 }
             });
         });
@@ -123,14 +123,14 @@ window.C2MS.Filters = {
     initClearButtons: function() {
         const clearButtons = document.querySelectorAll('.clear-filter');
         
-        window.C2MS.Core.log(`Found ${clearButtons.length} clear filter buttons`);
+        window.SUGECO.Core.log(`Found ${clearButtons.length} clear filter buttons`);
         
         clearButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 
                 const filterName = button.getAttribute('data-filter');
-                window.C2MS.Core.log(`Clearing filter: ${filterName}`);
+                window.SUGECO.Core.log(`Clearing filter: ${filterName}`);
                 
                 // Find the corresponding select element
                 const select = document.querySelector(`select[name="${filterName}"]`);
@@ -140,18 +140,18 @@ window.C2MS.Filters = {
                     // Submit the form
                     const form = select.closest('form');
                     if (form) {
-                        window.C2MS.Core.log('Submitting form after clearing filter');
+                        window.SUGECO.Core.log('Submitting form after clearing filter');
                         form.submit();
                     } else {
                         // Fallback: redirect with cleared parameter
-                        window.C2MS.Core.log('Using URL fallback for filter clearing');
+                        window.SUGECO.Core.log('Using URL fallback for filter clearing');
                         const url = new URL(window.location);
                         url.searchParams.delete(filterName);
                         url.searchParams.delete('page'); // Reset page
                         window.location.href = url.toString();
                     }
                 } else {
-                    window.C2MS.Core.log(`Select element not found for filter: ${filterName}`, 'warn');
+                    window.SUGECO.Core.log(`Select element not found for filter: ${filterName}`, 'warn');
                 }
             });
         });
@@ -163,12 +163,12 @@ window.C2MS.Filters = {
     initResetAllButton: function() {
         const resetAllBtns = document.querySelectorAll('.reset-all-filters');
         
-        window.C2MS.Core.log(`Found ${resetAllBtns.length} reset all buttons`);
+        window.SUGECO.Core.log(`Found ${resetAllBtns.length} reset all buttons`);
         
         resetAllBtns.forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.C2MS.Core.log('Reset all filters clicked');
+                window.SUGECO.Core.log('Reset all filters clicked');
                 
                 // Clear all filter selects
                 const filterSelects = document.querySelectorAll('.filter-select');
@@ -202,7 +202,7 @@ window.C2MS.Filters = {
             }
         });
         
-        window.C2MS.Core.log(`Found ${activeCount} active filters`);
+        window.SUGECO.Core.log(`Found ${activeCount} active filters`);
         
         // Update filters count display
         const filtersCount = document.querySelector('.filters-count');
@@ -227,5 +227,5 @@ window.C2MS.Filters = {
 
 // Initialize module when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    window.C2MS.Filters.init();
+    window.SUGECO.Filters.init();
 });

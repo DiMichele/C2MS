@@ -1,5 +1,5 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Main JavaScript file for application initialization
  * 
  * @version 1.0
@@ -9,7 +9,7 @@
 // Main application initialization
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize the main application
-    if (typeof window.C2MS !== 'undefined') {
+    if (typeof window.SUGECO !== 'undefined') {
         initializeApplication();
     } else {
         // Fallback if core is not loaded
@@ -18,51 +18,51 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApplication() {
-    window.C2MS.Core.log('Application initializing...');
+    window.SUGECO.Core.log('Application initializing...');
     
     // Initialize based on page type
-    const pageInfo = window.C2MS.Core.detectPageType();
+    const pageInfo = window.SUGECO.Core.detectPageType();
     
     // Initialize search functionality
-    if (typeof window.C2MS.Search !== 'undefined') {
-        window.C2MS.Search.init();
+    if (typeof window.SUGECO.Search !== 'undefined') {
+        window.SUGECO.Search.init();
     }
     
     // Initialize filters
-    if (typeof window.C2MS.Filters !== 'undefined') {
-        window.C2MS.Filters.init();
+    if (typeof window.SUGECO.Filters !== 'undefined') {
+        window.SUGECO.Filters.init();
     }
     
     // Initialize militare-specific features
-    if (pageInfo.isMilitare && typeof window.C2MS.Militare !== 'undefined') {
-        window.C2MS.Militare.init();
+    if (pageInfo.isMilitare && typeof window.SUGECO.Militare !== 'undefined') {
+        window.SUGECO.Militare.init();
     }
     
     // Initialize certificate tooltips for certificate pages
-    if (pageInfo.isCertificati && typeof window.C2MS.CertificateTooltips !== 'undefined') {
-        window.C2MS.CertificateTooltips.init();
+    if (pageInfo.isCertificati && typeof window.SUGECO.CertificateTooltips !== 'undefined') {
+        window.SUGECO.CertificateTooltips.init();
     }
     
     // Initialize autosave functionality
-    if (typeof window.C2MS.Autosave !== 'undefined') {
-        window.C2MS.Autosave.init();
+    if (typeof window.SUGECO.Autosave !== 'undefined') {
+        window.SUGECO.Autosave.init();
     }
     
     // Initialize toast system
-    if (typeof window.C2MS.Toast !== 'undefined') {
-        window.C2MS.Toast.init();
+    if (typeof window.SUGECO.Toast !== 'undefined') {
+        window.SUGECO.Toast.init();
     }
     
-    window.C2MS.Core.log('Application initialized');
+    window.SUGECO.Core.log('Application initialized');
 }
 
 /**
  * Legacy compatibility function
- * @deprecated Use window.C2MS.Core.detectPageType() instead
+ * @deprecated Use window.SUGECO.Core.detectPageType() instead
  */
 function detectPageType() {
-    const pageInfo = window.C2MS.Core.detectPageType();
-            window.C2MS.Core.log('Page type detected: ' + pageInfo.path);
+    const pageInfo = window.SUGECO.Core.detectPageType();
+            window.SUGECO.Core.log('Page type detected: ' + pageInfo.path);
     return pageInfo;
 }
 
@@ -73,7 +73,7 @@ function detectPageType() {
 function initializePageSpecificFeatures() {
     // This function is kept for compatibility but functionality
     // has been moved to individual modules
-    window.C2MS.Core.log('Legacy initializePageSpecificFeatures called - functionality moved to modules');
+    window.SUGECO.Core.log('Legacy initializePageSpecificFeatures called - functionality moved to modules');
 }
 
 // Export for global access (legacy compatibility)

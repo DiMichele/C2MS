@@ -1,7 +1,7 @@
 <?php
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Questo file fa parte del sistema C2MS per la gestione militare digitale.
  * 
@@ -60,6 +60,7 @@ class BoardActivity extends Model
         'end_date',
         'column_id',
         'created_by',
+        'compagnia_id',
         'status',
         'order'
     ];
@@ -123,6 +124,16 @@ class BoardActivity extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Relazione con la compagnia di appartenenza
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function compagnia()
+    {
+        return $this->belongsTo(Compagnia::class);
     }
 
     // ==========================================

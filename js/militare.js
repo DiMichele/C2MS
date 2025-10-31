@@ -1,21 +1,21 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Military personnel specific functionality
  * 
  * @version 1.0
  * @author Michele Di Gennaro
  */
 
-// Ensure C2MS namespace exists
-window.C2MS = window.C2MS || {};
+// Ensure SUGECO namespace exists
+window.SUGECO = window.SUGECO || {};
 
 // Militare module
-window.C2MS.Militare = {
+window.SUGECO.Militare = {
     /**
      * Initialize militare-specific functionality
      */
     init: function() {
-        window.C2MS.Core.log('Militare module initialized');
+        window.SUGECO.Core.log('Militare module initialized');
         this.initDeleteModal();
     },
 
@@ -30,7 +30,7 @@ window.C2MS.Militare = {
             return;
         }
         
-        window.C2MS.Core.log('Delete modal initialized');
+        window.SUGECO.Core.log('Delete modal initialized');
         
         deleteButtons.forEach(button => {
             button.addEventListener('click', (e) => {
@@ -75,7 +75,7 @@ window.C2MS.Militare = {
      * @param {string} militareId - Militare ID to delete
      */
     deleteMilitare: function(militareId) {
-        const csrfToken = window.C2MS.Core.getCsrfToken();
+        const csrfToken = window.SUGECO.Core.getCsrfToken();
         
         if (!csrfToken) {
             if (typeof window.showToast === 'function') {
@@ -91,7 +91,7 @@ window.C2MS.Militare = {
             confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminazione...';
         }
         
-        fetch(window.C2MS.Core.buildUrl(`/militare/${militareId}`), {
+        fetch(window.SUGECO.Core.buildUrl(`/militare/${militareId}`), {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -132,9 +132,9 @@ window.C2MS.Militare = {
             }
         })
         .catch(error => {
-            window.C2MS.Core.log('Delete error:', 'error');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(error.message, 'error');
+            window.SUGECO.Core.log('Delete error:', 'error');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(error.message, 'error');
             }
             
             // Show error message
@@ -153,5 +153,5 @@ window.C2MS.Militare = {
 
 // Initialize module when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    window.C2MS.Militare.init();
+    window.SUGECO.Militare.init();
 });

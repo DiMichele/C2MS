@@ -1,4 +1,4 @@
-# 🔐 Sistema di Login C2MS
+# 🔐 Sistema di Login SUGECO
 
 ## Credenziali di Accesso
 
@@ -19,8 +19,8 @@
 ## 🌐 URL di Accesso
 
 ### Locale
-- **Login:** http://localhost/C2MS/public/login
-- **Anagrafica:** http://localhost/C2MS/public/anagrafica
+- **Login:** http://localhost/SUGECO/public/login
+- **Anagrafica:** http://localhost/SUGECO/public/anagrafica
 
 ### Tunnel (quando attivo)
 - Eseguire `avvia-tunnel.ps1` per ottenere l'URL pubblico
@@ -92,7 +92,7 @@
 
 ## 🚀 Come Testare
 
-1. **Aprire il browser** e navigare su `http://localhost/C2MS/public`
+1. **Aprire il browser** e navigare su `http://localhost/SUGECO/public`
 2. **Tentare di accedere** a una pagina protetta (es. Dashboard)
 3. **Verifica redirect** automatico alla pagina di login
 4. **Effettuare login** con una delle credenziali sopra
@@ -157,5 +157,5 @@ Route::post('/logout', [LoginController::class, 'logout']);
 
 **Versione:** 1.0  
 **Data:** 25 Ottobre 2025  
-**Sistema:** C2MS - Gestione e Controllo Digitale
+**Sistema:** SUGECO - Gestione e Controllo Digitale
 

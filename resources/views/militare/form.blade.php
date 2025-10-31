@@ -7,7 +7,7 @@
 --}}
 
 @extends('layouts.app')
-@section('title', (isset($militare) ? 'Modifica' : 'Nuovo') . ' Militare - C2MS')
+@section('title', (isset($militare) ? 'Modifica' : 'Nuovo') . ' Militare - SUGECO')
 
 @section('content')
     @include('militare.partials.form_militare', ['isEdit' => isset($militare)])

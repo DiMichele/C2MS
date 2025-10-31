@@ -1,8 +1,8 @@
-# C2MS Test Suite Runner
+# SUGECO Test Suite Runner
 # Script PowerShell per eseguire la suite completa di test
 
 Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "   C2MS - Test Suite Execution" -ForegroundColor Cyan
+Write-Host "   SUGECO - Test Suite Execution" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -126,5 +126,5 @@ Write-Host "   • Eseguire test specifici: vendor/bin/phpunit tests/Unit/NomeTe
 Write-Host "   • Debug test: vendor/bin/phpunit --debug tests/Feature/NomeTest.php" -ForegroundColor White
 
 Write-Host ""
-Write-Host "🎯 Test Suite C2MS completata!" -ForegroundColor Green
+Write-Host "🎯 Test Suite SUGECO completata!" -ForegroundColor Green
 Write-Host "=========================================" -ForegroundColor Cyan 

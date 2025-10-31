@@ -1,7 +1,7 @@
 <?php
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Questo file fa parte del sistema C2MS per la gestione militare digitale.
  * 
@@ -40,13 +40,30 @@ class BoardController extends Controller
      * 
      * @return \Illuminate\View\View Vista della bacheca con colonne e attività
      */
-    public function index()
+    public function index(Request $request)
     {
-        $columns = BoardColumn::with(['activities.militari', 'activities.attachments'])
+        // Ottieni la compagnia selezionata o la prima disponibile
+        $compagniaId = $request->get('compagnia_id');
+        
+        if (!$compagniaId) {
+            // Se nessuna compagnia selezionata, prendi la prima
+            $primaCompagnia = \App\Models\Compagnia::orderBy('nome')->first();
+            $compagniaId = $primaCompagnia?->id;
+        }
+        
+        // Carica le colonne con le attività filtrate per compagnia
+        $columns = BoardColumn::with(['activities' => function($query) use ($compagniaId) {
+                $query->where('compagnia_id', $compagniaId)
+                      ->with(['militari', 'attachments']);
+            }])
             ->orderBy('order')
             ->get();
+        
+        // Ottieni tutte le compagnie per il selettore
+        $compagnie = \App\Models\Compagnia::orderBy('nome')->get();
+        $compagniaSelezionata = \App\Models\Compagnia::find($compagniaId);
             
-        return view('board.index', compact('columns'));
+        return view('board.index', compact('columns', 'compagnie', 'compagniaSelezionata'));
     }
 
     /**
@@ -181,30 +198,38 @@ class BoardController extends Controller
                 'start_date' => 'required|date',
                 'end_date' => 'nullable|date|after_or_equal:start_date',
                 'column_id' => 'required|exists:board_columns,id',
+                'compagnia_id' => 'required|exists:compagnie,id',
                 'militari' => 'nullable|array',
                 'militari.*' => 'exists:militari,id'
             ]);
 
             DB::beginTransaction();
 
+            // Ottieni l'ID dell'utente autenticato o del primo utente disponibile
+            $userId = auth()->id() ?? \App\Models\User::first()->id;
+            
             $activity = BoardActivity::create([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
                 'start_date' => $validated['start_date'],
                 'end_date' => $validated['end_date'],
                 'column_id' => $validated['column_id'],
-                'created_by' => 1, // Sistema monoutente - ID utente fisso
+                'compagnia_id' => $validated['compagnia_id'],
+                'created_by' => $userId,
                 'order' => $this->getNextOrderForColumn($validated['column_id'])
             ]);
 
             if (!empty($validated['militari'])) {
                 $activity->militari()->attach($validated['militari']);
+                
+                // Sincronizza automaticamente con il CPT
+                $this->sincronizzaConCPT($activity, $validated['militari']);
             }
 
             DB::commit();
 
-            return redirect()->route('board.activities.show', $activity)
-                ->with('success', 'Attività creata con successo');
+            return redirect()->route('board.index', ['compagnia_id' => $validated['compagnia_id']])
+                ->with('success', 'Attività creata con successo e sincronizzata con il CPT');
                 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
@@ -258,6 +283,9 @@ class BoardController extends Controller
             // Aggiorna militari associati
             if (isset($validated['militari'])) {
                 $activity->militari()->sync($validated['militari']);
+                
+                // Sincronizza automaticamente con il CPT
+                $this->sincronizzaConCPT($activity, $validated['militari']);
             } else {
                 $activity->militari()->detach();
             }
@@ -265,7 +293,7 @@ class BoardController extends Controller
             DB::commit();
 
             return redirect()->route('board.activities.show', $activity)
-                ->with('success', 'Attività aggiornata con successo');
+                ->with('success', 'Attività aggiornata e sincronizzata con il CPT');
                 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()
@@ -635,5 +663,106 @@ class BoardController extends Controller
     private function getNextOrderForColumn($columnId)
     {
         return BoardActivity::where('column_id', $columnId)->max('order') + 1;
+    }
+    
+    /**
+     * Sincronizza l'attività della board con il CPT
+     * Crea automaticamente voci CPT per i militari assegnati all'attività
+     * 
+     * @param BoardActivity $activity Attività della board
+     * @param array $militariIds Array di ID dei militari assegnati
+     * @return void
+     */
+    private function sincronizzaConCPT(BoardActivity $activity, array $militariIds)
+    {
+        try {
+            // Mapping tra colonne board e codici CPT
+            $mappingCPT = [
+                'servizi-isolati' => 'SI',      // Servizi Isolati
+                'cattedre' => 'AC',             // Corso/Cattedre
+                'corsi' => 'AC',                // Corsi
+                'esercitazioni' => 'EXE',       // Esercitazioni
+                'stand-by' => 'S-PI',           // Pronto Impiego
+                'operazioni' => 'TO'            // Teatro Operativo
+            ];
+            
+            // Ottieni la colonna dell'attività
+            $column = BoardColumn::find($activity->column_id);
+            if (!$column || !isset($mappingCPT[$column->slug])) {
+                Log::warning('Colonna board non mappata a CPT', [
+                    'column_slug' => $column->slug ?? 'unknown',
+                    'activity_id' => $activity->id
+                ]);
+                return;
+            }
+            
+            // Trova il tipo servizio CPT corrispondente
+            $codiceCPT = $mappingCPT[$column->slug];
+            $tipoServizio = \App\Models\TipoServizio::where('codice', $codiceCPT)
+                ->where('attivo', true)
+                ->first();
+            
+            if (!$tipoServizio) {
+                Log::warning('Codice CPT non trovato', [
+                    'codice' => $codiceCPT,
+                    'activity_id' => $activity->id
+                ]);
+                return;
+            }
+            
+            // Crea le date dall'inizio alla fine dell'attività
+            $startDate = \Carbon\Carbon::parse($activity->start_date);
+            $endDate = $activity->end_date ? \Carbon\Carbon::parse($activity->end_date) : $startDate->copy();
+            
+            // Per ogni militare assegnato
+            foreach ($militariIds as $militareId) {
+                // Per ogni giorno dell'attività
+                $currentDate = $startDate->copy();
+                while ($currentDate->lte($endDate)) {
+                    // Trova o crea la pianificazione mensile
+                    $pianificazioneMensile = \App\Models\PianificazioneMensile::firstOrCreate(
+                        [
+                            'mese' => $currentDate->month,
+                            'anno' => $currentDate->year,
+                        ],
+                        [
+                            'nome' => $currentDate->translatedFormat('F Y'),
+                            'stato' => 'attiva',
+                            'data_creazione' => $currentDate->format('Y-m-d'),
+                        ]
+                    );
+                    
+                    // Crea o aggiorna la pianificazione giornaliera
+                    \App\Models\PianificazioneGiornaliera::updateOrCreate(
+                        [
+                            'pianificazione_mensile_id' => $pianificazioneMensile->id,
+                            'militare_id' => $militareId,
+                            'giorno' => $currentDate->day,
+                        ],
+                        [
+                            'tipo_servizio_id' => $tipoServizio->id,
+                            'note' => "Attività Board: {$activity->title}"
+                        ]
+                    );
+                    
+                    $currentDate->addDay();
+                }
+            }
+            
+            Log::info('Attività sincronizzata con CPT', [
+                'activity_id' => $activity->id,
+                'activity_title' => $activity->title,
+                'codice_cpt' => $codiceCPT,
+                'militari_count' => count($militariIds),
+                'giorni' => $startDate->diffInDays($endDate) + 1
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Errore sincronizzazione CPT da Board', [
+                'activity_id' => $activity->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 } 

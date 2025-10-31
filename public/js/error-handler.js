@@ -1,16 +1,16 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Error handler for common JavaScript errors
  * 
  * @version 1.0
  * @author Michele Di Gennaro
  */
 
-// Ensure C2MS namespace exists
-window.C2MS = window.C2MS || {};
+// Ensure SUGECO namespace exists
+window.SUGECO = window.SUGECO || {};
 
 // Error Handler module
-window.C2MS.ErrorHandler = {
+window.SUGECO.ErrorHandler = {
     initialized: false,
     
     /**
@@ -28,8 +28,8 @@ window.C2MS.ErrorHandler = {
         
         this.initialized = true;
         
-        if (window.C2MS_CONFIG?.DEBUG) {
-            console.log('[C2MS] Error handler initialized');
+        if (window.SUGECO_CONFIG?.DEBUG) {
+            console.log('[SUGECO] Error handler initialized');
         }
     },
 
@@ -93,8 +93,8 @@ window.C2MS.ErrorHandler = {
     setupUnhandledPromiseRejection: function() {
         window.addEventListener('rejectionhandled', (event) => {
             // This fires when a promise rejection is handled after being unhandled
-            if (window.C2MS_CONFIG?.DEBUG) {
-                console.log('[C2MS] Promise rejection handled:', event.reason);
+            if (window.SUGECO_CONFIG?.DEBUG) {
+                console.log('[SUGECO] Promise rejection handled:', event.reason);
             }
         });
     },
@@ -105,11 +105,11 @@ window.C2MS.ErrorHandler = {
      * @param {Object} details - Error details
      */
     logError: function(type, details) {
-        if (!window.C2MS_CONFIG?.DEBUG) {
+        if (!window.SUGECO_CONFIG?.DEBUG) {
             return;
         }
 
-        console.group(`[C2MS] ${type}`);
+        console.group(`[SUGECO] ${type}`);
         
         if (details.suppressed) {
             console.log('This error has been suppressed to avoid console spam');
@@ -190,8 +190,8 @@ window.C2MS.ErrorHandler = {
             indicators.some(indicator => script.src.includes(indicator))
         );
         
-        if (hasExtensionScripts && window.C2MS_CONFIG?.DEBUG) {
-            console.log('[C2MS] Browser extensions detected - they might cause vendor.js errors');
+        if (hasExtensionScripts && window.SUGECO_CONFIG?.DEBUG) {
+            console.log('[SUGECO] Browser extensions detected - they might cause vendor.js errors');
         }
         
         return hasExtensionScripts;
@@ -200,9 +200,9 @@ window.C2MS.ErrorHandler = {
 
 // Initialize error handler when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    window.C2MS.ErrorHandler.init();
-    window.C2MS.ErrorHandler.detectProblematicExtensions();
+    window.SUGECO.ErrorHandler.init();
+    window.SUGECO.ErrorHandler.detectProblematicExtensions();
 });
 
 // Initialize error handler immediately for early errors
-window.C2MS.ErrorHandler.init(); 
+window.SUGECO.ErrorHandler.init(); 

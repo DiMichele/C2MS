@@ -1,5 +1,5 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Core JavaScript library with shared utilities and namespace
  * 
  * @version 1.0
@@ -7,15 +7,15 @@
  */
 
 // Create global namespace
-window.C2MS = window.C2MS || {};
+window.SUGECO = window.SUGECO || {};
 
 // Initialize core configuration
-window.C2MS.Core = {
+window.SUGECO.Core = {
     config: {
-        get debounceDelay() { return window.C2MS_CONFIG?.TIMING?.DEBOUNCE_DELAY || 300; },
-        get saveDelay() { return window.C2MS_CONFIG?.TIMING?.SAVE_DELAY || 1000; },
-        get toastDuration() { return window.C2MS_CONFIG?.TIMING?.TOAST_DURATION || 3000; },
-        get debug() { return window.C2MS_CONFIG?.DEBUG || false; }
+        get debounceDelay() { return window.SUGECO_CONFIG?.TIMING?.DEBOUNCE_DELAY || 300; },
+        get saveDelay() { return window.SUGECO_CONFIG?.TIMING?.SAVE_DELAY || 1000; },
+        get toastDuration() { return window.SUGECO_CONFIG?.TIMING?.TOAST_DURATION || 3000; },
+        get debug() { return window.SUGECO_CONFIG?.DEBUG || false; }
     },
     
     /**
@@ -35,7 +35,7 @@ window.C2MS.Core = {
                 ? levelStr 
                 : 'log';
             
-            console[consoleMethod](`[C2MS] ${messageStr}`);
+            console[consoleMethod](`[SUGECO] ${messageStr}`);
         }
     },
     
@@ -104,7 +104,7 @@ window.C2MS.Core = {
                 setTimeout(() => {
                     toast.remove();
                 }, 300);
-            }, window.C2MS.Core.config.toastDuration);
+            }, window.SUGECO.Core.config.toastDuration);
         };
     },
     
@@ -142,7 +142,7 @@ window.C2MS.Core = {
      * @returns {string} Full URL with base path
      */
     buildUrl: function(path) {
-        const baseUrl = window.C2MS_CONFIG?.APP?.BASE_URL || '';
+        const baseUrl = window.SUGECO_CONFIG?.APP?.BASE_URL || '';
         return baseUrl + (path.startsWith('/') ? path : '/' + path);
     },
     
@@ -213,5 +213,5 @@ window.C2MS.Core = {
 
 // Initialize core when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    window.C2MS.Core.init();
+    window.SUGECO.Core.init();
 });

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\CodiciServizioGerarchia;
+use App\Models\TipoServizio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Controller per la gestione dei codici CPT
@@ -126,24 +128,37 @@ class GestioneCptController extends Controller
                 ->withInput();
         }
 
-        // Calcola automaticamente l'ordine come ultimo della categoria
-        $maxOrdine = CodiciServizioGerarchia::where('macro_attivita', $request->macro_attivita)
-            ->max('ordine') ?? 0;
+        DB::beginTransaction();
+        try {
+            // Calcola automaticamente l'ordine come ultimo della categoria
+            $maxOrdine = CodiciServizioGerarchia::where('macro_attivita', $request->macro_attivita)
+                ->max('ordine') ?? 0;
 
-        $codice = CodiciServizioGerarchia::create([
-            'codice' => strtoupper($request->codice),
-            'macro_attivita' => $request->macro_attivita,
-            'tipo_attivita' => null,
-            'attivita_specifica' => $request->attivita_specifica,
-            'impiego' => $request->impiego,
-            'descrizione_impiego' => null,
-            'colore_badge' => $request->colore_badge,
-            'attivo' => true,
-            'ordine' => $maxOrdine + 1
-        ]);
+            $codice = CodiciServizioGerarchia::create([
+                'codice' => strtoupper($request->codice),
+                'macro_attivita' => $request->macro_attivita,
+                'tipo_attivita' => null,
+                'attivita_specifica' => $request->attivita_specifica,
+                'impiego' => $request->impiego,
+                'descrizione_impiego' => null,
+                'colore_badge' => $request->colore_badge,
+                'attivo' => true,
+                'ordine' => $maxOrdine + 1
+            ]);
 
-        return redirect()->route('gestione-cpt.index')
-            ->with('success', "Codice '{$codice->codice}' creato con successo!");
+            // SINCRONIZZA con tipi_servizio per il CPT
+            $this->sincronizzaTipoServizio($codice);
+
+            DB::commit();
+            
+            return redirect()->route('codici-cpt.index')
+                ->with('success', "Codice '{$codice->codice}' creato e sincronizzato con il CPT!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->withErrors(['error' => 'Errore durante la creazione: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
     /**
@@ -200,17 +215,30 @@ class GestioneCptController extends Controller
             $ordine = $maxOrdine + 1;
         }
 
-        $codice->update([
-            'codice' => strtoupper($request->codice),
-            'macro_attivita' => $request->macro_attivita,
-            'attivita_specifica' => $request->attivita_specifica,
-            'impiego' => $request->impiego,
-            'colore_badge' => $request->colore_badge,
-            'ordine' => $ordine
-        ]);
+        DB::beginTransaction();
+        try {
+            $codice->update([
+                'codice' => strtoupper($request->codice),
+                'macro_attivita' => $request->macro_attivita,
+                'attivita_specifica' => $request->attivita_specifica,
+                'impiego' => $request->impiego,
+                'colore_badge' => $request->colore_badge,
+                'ordine' => $ordine
+            ]);
 
-        return redirect()->route('gestione-cpt.index')
-            ->with('success', "Codice '{$codice->codice}' aggiornato con successo!");
+            // SINCRONIZZA con tipi_servizio
+            $this->sincronizzaTipoServizio($codice);
+
+            DB::commit();
+            
+            return redirect()->route('codici-cpt.index')
+                ->with('success', "Codice '{$codice->codice}' aggiornato e sincronizzato con il CPT!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->withErrors(['error' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
     /**
@@ -218,19 +246,25 @@ class GestioneCptController extends Controller
      */
     public function destroy(CodiciServizioGerarchia $codice)
     {
-        // Verifica se il codice è utilizzato
-        $utilizzato = $codice->tipiServizio()->count() > 0;
+        DB::beginTransaction();
+        try {
+            $codiceTesto = $codice->codice;
+            
+            // Elimina anche da tipi_servizio se esiste
+            TipoServizio::where('codice', $codice->codice)->delete();
+            
+            // Elimina da codici_servizio_gerarchia
+            $codice->delete();
 
-        if ($utilizzato) {
+            DB::commit();
+            
+            return redirect()->route('codici-cpt.index')
+                ->with('success', "Codice '{$codiceTesto}' eliminato e rimosso dal CPT!");
+        } catch (\Exception $e) {
+            DB::rollBack();
             return redirect()->back()
-                ->with('error', "Impossibile eliminare il codice '{$codice->codice}' perché è utilizzato in {$codice->tipiServizio()->count()} tipo/i di servizio.");
+                ->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
         }
-
-        $codiceTesto = $codice->codice;
-        $codice->delete();
-
-        return redirect()->route('gestione-cpt.index')
-            ->with('success', "Codice '{$codiceTesto}' eliminato con successo!");
     }
 
     /**
@@ -238,12 +272,24 @@ class GestioneCptController extends Controller
      */
     public function toggleAttivo(CodiciServizioGerarchia $codice)
     {
-        $codice->update(['attivo' => !$codice->attivo]);
+        DB::beginTransaction();
+        try {
+            $codice->update(['attivo' => !$codice->attivo]);
 
-        $stato = $codice->attivo ? 'attivato' : 'disattivato';
-        
-        return redirect()->back()
-            ->with('success', "Codice '{$codice->codice}' {$stato} con successo!");
+            // Sincronizza lo stato con tipi_servizio
+            $this->sincronizzaTipoServizio($codice);
+
+            DB::commit();
+            
+            $stato = $codice->attivo ? 'attivato' : 'disattivato';
+            
+            return redirect()->back()
+                ->with('success', "Codice '{$codice->codice}' {$stato} e sincronizzato con il CPT!");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -264,7 +310,7 @@ class GestioneCptController extends Controller
         $nuovo->attivo = false; // Disattivato per default
         $nuovo->save();
 
-        return redirect()->route('gestione-cpt.edit', $nuovo)
+        return redirect()->route('codici-cpt.edit', $nuovo)
             ->with('success', "Codice duplicato con successo! Modifica i dettagli e attivalo quando pronto.");
     }
 
@@ -316,6 +362,40 @@ class GestioneCptController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Ordine aggiornato con successo!']);
+    }
+
+    /**
+     * Sincronizza un codice CPT con la tabella tipi_servizio (usata dal CPT)
+     * 
+     * @param CodiciServizioGerarchia $codiceGerarchia
+     * @return void
+     */
+    private function sincronizzaTipoServizio(CodiciServizioGerarchia $codiceGerarchia)
+    {
+        // Mappa macro_attivita -> categoria per tipi_servizio
+        $mappaCategorie = [
+            'ASSENTE' => 'assenza',
+            'PROVVEDIMENTI MEDICO SANITARI' => 'assenza',
+            'SERVIZIO' => 'servizio',
+            'OPERAZIONE' => 'missione',
+            'ADD./APP./CATTEDRE' => 'formazione',
+            'SUPP.CIS/EXE' => 'servizio',
+        ];
+
+        $categoria = $mappaCategorie[$codiceGerarchia->macro_attivita] ?? 'servizio';
+
+        // Crea o aggiorna il tipo servizio corrispondente
+        TipoServizio::updateOrCreate(
+            ['codice' => $codiceGerarchia->codice],
+            [
+                'nome' => $codiceGerarchia->attivita_specifica,
+                'descrizione' => $codiceGerarchia->descrizione_impiego ?? $codiceGerarchia->attivita_specifica,
+                'colore_badge' => $codiceGerarchia->colore_badge,
+                'categoria' => $categoria,
+                'attivo' => $codiceGerarchia->attivo,
+                'ordine' => $codiceGerarchia->ordine
+            ]
+        );
     }
 }
 

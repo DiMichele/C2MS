@@ -1,7 +1,7 @@
 <?php
 
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * 
  * Questo file fa parte del sistema C2MS per la gestione militare digitale.
  * 

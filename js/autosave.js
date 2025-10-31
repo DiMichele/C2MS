@@ -1,28 +1,28 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Autosave functionality for forms and inputs
  * 
  * @version 1.0
  * @author Michele Di Gennaro
  */
 
-// Ensure C2MS namespace exists
-window.C2MS = window.C2MS || {};
+// Ensure SUGECO namespace exists
+window.SUGECO = window.SUGECO || {};
 
 // Autosave module
-window.C2MS.Autosave = {
+window.SUGECO.Autosave = {
     csrfToken: null,
     
     /**
      * Initialize autosave functionality
      */
     init: function() {
-        window.C2MS.Core.log('Autosave module initialized');
+        window.SUGECO.Core.log('Autosave module initialized');
         
         // Get CSRF token
-        this.csrfToken = window.C2MS.Core.getCsrfToken();
+        this.csrfToken = window.SUGECO.Core.getCsrfToken();
         if (!this.csrfToken) {
-            window.C2MS.Core.log('CSRF token not found. Autosave will not function properly.', 'error');
+            window.SUGECO.Core.log('CSRF token not found. Autosave will not function properly.', 'error');
             return;
         }
         
@@ -41,14 +41,14 @@ window.C2MS.Autosave = {
             return;
         }
         
-        window.C2MS.Core.log(`Initializing autosave for ${textareas.length} textarea(s)`);
+        window.SUGECO.Core.log(`Initializing autosave for ${textareas.length} textarea(s)`);
         
         textareas.forEach(textarea => {
             const url = textarea.getAttribute('data-autosave-url');
             const field = textarea.getAttribute('data-autosave-field');
             
             if (!url || !field) {
-                window.C2MS.Core.log('Missing data attributes for autosave textarea', 'warn');
+                window.SUGECO.Core.log('Missing data attributes for autosave textarea', 'warn');
                 return;
             }
             
@@ -57,7 +57,7 @@ window.C2MS.Autosave = {
             let isSaving = false;
             
             // Create debounced save function
-            const debouncedSave = window.C2MS.Core.debounce((value) => {
+            const debouncedSave = window.SUGECO.Core.debounce((value) => {
                 if (value !== lastSavedValue && !isSaving) {
                     this.saveTextareaValue(url, field, value, textarea, () => {
                         lastSavedValue = value;
@@ -65,7 +65,7 @@ window.C2MS.Autosave = {
                     });
                     isSaving = true;
                 }
-            }, window.C2MS.Core.config.saveDelay);
+            }, window.SUGECO.Core.config.saveDelay);
             
             // Add input event listener
             textarea.addEventListener('input', (e) => {
@@ -125,9 +125,9 @@ window.C2MS.Autosave = {
             }
         })
         .catch(error => {
-            window.C2MS.Core.log('Save error:', 'error');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(error.message, 'error');
+            window.SUGECO.Core.log('Save error:', 'error');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(error.message, 'error');
             }
             this.showErrorState(textarea);
             
@@ -151,14 +151,14 @@ window.C2MS.Autosave = {
             return;
         }
         
-        window.C2MS.Core.log(`Initializing autosave for ${selects.length} select(s)`);
+        window.SUGECO.Core.log(`Initializing autosave for ${selects.length} select(s)`);
         
         selects.forEach(select => {
             const url = select.getAttribute('data-autosave-url');
             const field = select.getAttribute('data-autosave-field');
             
             if (!url || !field) {
-                window.C2MS.Core.log('Missing data attributes for autosave select', 'warn');
+                window.SUGECO.Core.log('Missing data attributes for autosave select', 'warn');
                 return;
             }
             
@@ -215,9 +215,9 @@ window.C2MS.Autosave = {
             }
         })
         .catch(error => {
-            window.C2MS.Core.log('Save error:', 'error');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(error.message, 'error');
+            window.SUGECO.Core.log('Save error:', 'error');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(error.message, 'error');
             }
             this.showErrorState(select);
             
@@ -343,9 +343,9 @@ window.C2MS.Autosave = {
                 }
             }
         } catch (e) {
-            window.C2MS.Core.log('Error updating UI for role:', 'warn');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(e.message, 'error');
+            window.SUGECO.Core.log('Error updating UI for role:', 'warn');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(e.message, 'error');
             }
         }
     }
@@ -353,5 +353,5 @@ window.C2MS.Autosave = {
 
 // Initialize module when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    window.C2MS.Autosave.init();
+    window.SUGECO.Autosave.init();
 });

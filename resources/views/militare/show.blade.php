@@ -8,7 +8,7 @@
 --}}
 
 @extends('layouts.app')
-@section('title', 'Dettaglio Militare - C2MS')
+@section('title', 'Dettaglio Militare - SUGECO')
 
 @section('styles')
 <style>

@@ -47,7 +47,7 @@ if ($urlLine -match "(https://[^\s]+\.trycloudflare\.com)") {
     Write-Host ""
     
     Write-Host "URL Pubblico:" -ForegroundColor Yellow
-    Write-Host "$tunnelUrl/C2MS/public" -ForegroundColor Cyan
+    Write-Host "$tunnelUrl/SUGECO/public" -ForegroundColor Cyan
     
     Write-Host ""
     Write-Host "Copia questo URL e usalo da qualsiasi dispositivo!" -ForegroundColor White

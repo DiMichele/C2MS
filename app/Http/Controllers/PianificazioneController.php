@@ -629,9 +629,15 @@ class PianificazioneController extends Controller
             // Gestione esplicita del caso "nessun impegno"
             $tipoServizioId = null;
             if ($request->tipo_servizio_id) {
-                $tipoServizio = TipoServizio::where('codice', $request->tipo_servizio_id)->first();
-                if ($tipoServizio) {
-                    $tipoServizioId = $tipoServizio->id;
+                // Il frontend invia l'ID, quindi convertiamo in numero
+                $tipoServizioId = is_numeric($request->tipo_servizio_id) ? (int)$request->tipo_servizio_id : null;
+                
+                // Verifica che il tipo servizio esista
+                if ($tipoServizioId) {
+                    $tipoServizio = TipoServizio::find($tipoServizioId);
+                    if (!$tipoServizio) {
+                        $tipoServizioId = null;
+                    }
                 }
             }
             

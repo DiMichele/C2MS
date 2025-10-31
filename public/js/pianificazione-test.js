@@ -253,8 +253,13 @@ function setupSaveButton() {
                 }
             }
             
+            console.log('=== GIORNI DA SALVARE ===');
+            console.log('Totale giorni:', giorniDaSalvare.length);
+            console.log('Array giorni:', giorniDaSalvare);
+            
         // Se c'è un range di giorni, usa il nuovo endpoint batch
         if (giorniDaSalvare.length > 1) {
+            console.log('📦 Chiamando saveDaysRange per', giorniDaSalvare.length, 'giorni');
             saveDaysRange(militareId, giorniDaSalvare, tipoServizioId)
                 .then(result => {
                     // Chiudi il modal
@@ -276,12 +281,22 @@ function setupSaveButton() {
                     
                     // Aggiorna solo le celle visibili (del mese corrente)
                     if (result.success) {
+                        console.log('🔄 Aggiornamento celle per range...');
+                        console.log('Pianificazioni ricevute:', result.pianificazioni.length);
+                        console.log('Giorni da aggiornare:', giorniDaSalvare);
+                        console.log('Mese corrente:', window.pageData.mese, 'Anno corrente:', window.pageData.anno);
+                        
                         result.pianificazioni.forEach((data, index) => {
                             if (index < giorniDaSalvare.length) {
                                 const dayData = giorniDaSalvare[index];
+                                console.log(`Cella ${index}: giorno=${dayData.giorno}, mese=${dayData.mese}, anno=${dayData.anno}`);
+                                
                                 // Aggiorna solo se il giorno è nel mese corrente
                                 if (dayData.mese === window.pageData.mese && dayData.anno === window.pageData.anno) {
+                                    console.log(`✅ Aggiorno cella militare=${militareId}, giorno=${dayData.giorno}`);
                                     updateCellContent(militareId, dayData.giorno, data);
+                                } else {
+                                    console.log(`⏭️ Salto cella (mese/anno diverso)`);
                                 }
                             }
                         });
@@ -303,6 +318,7 @@ function setupSaveButton() {
                 });
         } else {
             // Per un singolo giorno, usa il metodo esistente
+            console.log('📝 Chiamando saveSingleDay per il giorno', giorno);
             saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizioId)
                 .then(result => {
                     // Chiudi il modal
@@ -349,8 +365,12 @@ function setupSaveButton() {
 
 // Funzione per salvare un singolo giorno
 function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizioId, mese = null, anno = null) {
+    console.log('🔵 saveSingleDay chiamata con:', { militareId, giorno, pianificazioneMensileId, tipoServizioId, mese, anno });
+    
     const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorno';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    console.log('📤 URL chiamata:', updateUrl);
     
     // Converti tipoServizioId in numero se è una stringa
     const tipoServizioIdNumeric = tipoServizioId ? parseInt(tipoServizioId) : null;
@@ -395,13 +415,19 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
 
 // Funzione per salvare un range di giorni (nuovo endpoint batch)
 function saveDaysRange(militareId, giorniDaSalvare, tipoServizioId) {
+    console.log('🟢 saveDaysRange chiamata con:', { militareId, giorniCount: giorniDaSalvare.length, tipoServizioId });
+    
     const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorni-range';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    
+    console.log('📤 URL chiamata:', updateUrl);
     
     const bodyData = {
         giorni: giorniDaSalvare,
         tipo_servizio_id: tipoServizioId || null
     };
+    
+    console.log('📨 Dati inviati:', bodyData);
 
     return fetch(updateUrl, {
         method: 'POST',
@@ -411,120 +437,86 @@ function saveDaysRange(militareId, giorniDaSalvare, tipoServizioId) {
         },
         body: JSON.stringify(bodyData)
     })
-    .then(response => response.json());
+    .then(response => {
+        console.log('📥 Risposta ricevuta:', response.status, response.statusText);
+        if (!response.ok) {
+            throw new Error('Errore nella risposta del server: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('✅ Dati range salvati con successo:', data);
+        return data;
+    })
+    .catch(error => {
+        console.error('❌ Errore saveDaysRange:', error);
+        throw error;
+    });
 }
 
 // Funzione per aggiornare il contenuto di una cella specifica
 function updateCellContent(militareId, giorno, pianificazioneData) {
-    const cell = document.querySelector('[data-militare-id="' + militareId + '"][data-giorno="' + giorno + '"]');
-    if (!cell) return;
+    console.log('🎨 updateCellContent chiamata:', { militareId, giorno });
+    console.log('📋 Dati pianificazione:', pianificazioneData);
     
-    // Pulisci il contenuto attuale
-    cell.innerHTML = '';
+    const selector = '[data-militare-id="' + militareId + '"][data-giorno="' + giorno + '"]';
+    console.log('🔍 Query selector:', selector);
     
-    // Se c'è una pianificazione con tipo servizio, aggiungi il badge
+    const cell = document.querySelector(selector);
+    console.log('📍 Cella trovata:', cell ? 'SI ✅' : 'NO ❌');
+    
+    if (!cell) {
+        console.error('❌ Cella non trovata per militareId=' + militareId + ', giorno=' + giorno);
+        return;
+    }
+    
+    // Se c'è una pianificazione con tipo servizio, COLORA LA CELLA
     if (pianificazioneData && pianificazioneData.tipo_servizio && pianificazioneData.tipo_servizio.codice) {
         const codice = pianificazioneData.tipo_servizio.codice;
+        console.log('🎯 Codice CPT da visualizzare:', codice);
         
-        // Determina il colore basato sul codice
-        let colore = 'light';
-        let inlineStyle = '';
-        let nomeCompleto = '';
+        // Mappa dei codici GIALLI (ASSENTE e ADD./APP./CATTEDRE)
+        const codiciGialli = ['LS', 'LO', 'LM', 'P', 'TIR', 'TRAS', 'APS1', 'APS2', 'APS3', 'APS4', 
+                              'AL-ELIX', 'AL-MCM', 'AL-BLS', 'AL-CIED', 'AL-SM', 'AL-RM', 'AL-RSPP', 
+                              'AL-LEG', 'AL-SEA', 'AL-MI', 'AL-PO', 'AL-PI', 'AP-M', 'AP-A', 'AC-SW', 
+                              'AC', 'PEFO'];
         
-        // Mappa completa dei codici con nomi e colori - CODICI CORRETTI DALL'IMMAGINE
-        const codiciMap = {
-            // ASSENTE - Giallo
-            'LS': { nome: 'LICENZA STRAORD.', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'LO': { nome: 'LICENZA ORD.', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'LM': { nome: 'LICENZA DI MATERNITA\'', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'P': { nome: 'PERMESSINO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'TIR': { nome: 'TIROCINIO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'TRAS': { nome: 'TRASFERITO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            
-            // PROVVEDIMENTI MEDICO SANITARI - Rosso
-            'RMD': { nome: 'RIPOSO MEDICO DOMICILIARE', colore: 'cpt-rosso', style: 'background-color: #ff0000 !important; color: white !important;' },
-            'LC': { nome: 'LICENZA DI CONVALESCENZA', colore: 'cpt-rosso', style: 'background-color: #ff0000 !important; color: white !important;' },
-            'IS': { nome: 'ISOLAMENTO/QUARANTENA', colore: 'cpt-rosso', style: 'background-color: #ff0000 !important; color: white !important;' },
-            
-            // SERVIZIO - Verde
-            'S-G1': { nome: 'GUARDIA D\'AVANZO LUNGA', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-G2': { nome: 'GUARDIA D\'AVANZO CORTA', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-SA': { nome: 'SORVEGLIANZA D\'AVANZO', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-CD1': { nome: 'CONDUTTORE GUARDIA LUNGO', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-CD2': { nome: 'CONDUTTORE PIAN DEL TERMINE CORTO', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-SG': { nome: 'SOTTUFFICIALE DI GIORNATA', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-CG': { nome: 'COMANDANTE DELLA GUARDIA', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-UI': { nome: 'UFFICIALE DI ISPEZIONE', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-UP': { nome: 'UFFICIALE DI PICCHETTO', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-AE': { nome: 'AREE ESTERNE', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-ARM': { nome: 'ARMIERE DI SERVIZIO', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'SI-GD': { nome: 'SERVIZIO ISOLATO-GUARDIA DISTACCATA', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'SI': { nome: 'SERVIZIO ISOLATO-CAPOMACCHINA/CAU', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'SI-VM': { nome: 'VISITA MEDICA', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            'S-PI': { nome: 'PRONTO IMPIEGO', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' },
-            
-            // OPERAZIONE - Rosso
-            'TO': { nome: 'TEATRO OPERATIVO', colore: 'cpt-rosso', style: 'background-color: #ff0000 !important; color: white !important;' },
-            
-            // ADD./APP./CATTEDRE - Giallo
-            'APS1': { nome: 'PRELIEVI', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'APS2': { nome: 'VACCINI', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'APS3': { nome: 'ECG', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'APS4': { nome: 'IDONEITA', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-ELIX': { nome: 'ELITRASPORTO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-MCM': { nome: 'MCM', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-BLS': { nome: 'BLS', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-CIED': { nome: 'C-IED', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-SM': { nome: 'STRESS MANAGEMENT', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-RM': { nome: 'RAPPORTO MEDIA', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-RSPP': { nome: 'RSPP', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-LEG': { nome: 'ASPETTI LEGALI', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-SEA': { nome: 'SEXUAL EXPLOITATION AND ABUSE', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-MI': { nome: 'MALATTIE INFETTIVE', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-PO': { nome: 'PROPAGANDA OSTILE', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AL-PI': { nome: 'PUBBLICA INFORMAZIONE E COMUNICAZIONE', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AP-M': { nome: 'MANTENIMENTO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AP-A': { nome: 'APPRONTAMENTO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AC-SW': { nome: 'CORSO IN SMART WORKING', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'AC': { nome: 'CORSO SERVIZIO ISOLATO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            'PEFO': { nome: 'PEFO', colore: 'cpt-giallo', style: 'background-color: #ffff00 !important; color: black !important;' },
-            
-            // SUPP.CIS/EXE - Verde
-            'EXE': { nome: 'ESERCITAZIONE', colore: 'cpt-verde', style: 'background-color: #00b050 !important; color: white !important;' }
-        };
+        // Mappa dei codici ROSSI (PROVVEDIMENTI MEDICO SANITARI e OPERAZIONE)
+        const codiciRossi = ['RMD', 'LC', 'IS', 'TO'];
         
-        // Trova il codice nella mappa
-        if (codiciMap[codice]) {
-            colore = codiciMap[codice].colore;
-            inlineStyle = codiciMap[codice].style;
-            nomeCompleto = codiciMap[codice].nome;
+        // Determina il colore della CELLA
+        let bgColor = '';
+        let textColor = '';
+        
+        if (codiciGialli.includes(codice)) {
+            bgColor = '#ffff00';
+            textColor = '#000000';
+        } else if (codiciRossi.includes(codice)) {
+            bgColor = '#ff0000';
+            textColor = '#ffffff';
         } else {
-            // Default per codici non riconosciuti
-            colore = 'cpt-verde';
-            inlineStyle = 'background-color: #00b050 !important; color: white !important;';
-            nomeCompleto = codice;
+            // VERDE per tutti gli altri (SERVIZIO, SUPP.CIS/EXE)
+            bgColor = '#00b050';
+            textColor = '#ffffff';
         }
         
-        // Crea il badge
-        const badge = document.createElement('span');
-        badge.className = 'badge ' + colore;
-        badge.style.cssText = 'font-size: 9px; padding: 2px 4px; ' + inlineStyle;
-        badge.textContent = codice;
+        // Applica il colore direttamente alla CELLA TD
+        cell.style.backgroundColor = bgColor;
+        cell.style.color = textColor;
+        cell.style.fontWeight = '600';
+        cell.style.fontSize = '10px';
         
-        // Aggiungi tooltip per mostrare il nome completo
-        badge.setAttribute('data-bs-toggle', 'tooltip');
-        badge.setAttribute('data-bs-placement', 'top');
-        badge.setAttribute('title', nomeCompleto);
+        // Metti il TESTO direttamente nella cella
+        cell.textContent = codice;
         
-        cell.appendChild(badge);
+        console.log('🎨 Cella colorata:', { codice, bgColor, textColor });
         
-        // Reinizializza i tooltip per il nuovo badge
-        if (typeof bootstrap !== 'undefined') {
-            new bootstrap.Tooltip(badge);
-        }
     } else {
-        // Se non c'è tipo servizio (Nessun impegno), mostra solo il trattino
-        cell.innerHTML = '<span class="text-muted" style="font-size: 10px;">-</span>';
+        // Celle vuote - rimuovi colori di sfondo e metti trattino
+        cell.style.backgroundColor = '';
+        cell.style.color = '';
+        cell.textContent = '-';
+        console.log('⚪ Cella vuota');
     }
 }
 
@@ -544,8 +536,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupModalAccessibility();
     
     // Inizializza il modulo Filters per l'auto-submit
-    if (typeof C2MS !== 'undefined' && typeof C2MS.Filters !== 'undefined') {
-        C2MS.Filters.init();
+    if (typeof SUGECO !== 'undefined' && typeof SUGECO.Filters !== 'undefined') {
+        SUGECO.Filters.init();
     }
 });
 

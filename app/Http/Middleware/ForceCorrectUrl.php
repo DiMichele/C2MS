@@ -23,7 +23,7 @@ class ForceCorrectUrl
         
         // Se è un tunnel (ngrok o cloudflare), forza l'URL completo
         if (str_contains($host, 'ngrok') || str_contains($host, 'trycloudflare')) {
-            URL::forceRootUrl('https://' . $host . '/C2MS/public');
+            URL::forceRootUrl('https://' . $host . '/SUGECO/public');
             URL::forceScheme('https');
         }
         

@@ -1,5 +1,5 @@
 /**
- * C2MS: Gestione e Controllo Digitale a Supporto del Comando
+ * SUGECO: Sistema Unico di Gestione e Controllo
  * Certificate Tooltips Module - Handles certificate details modal/tooltips
  * 
  * @version 1.0
@@ -7,8 +7,8 @@
  */
 
 // Define certificate tooltips namespace
-window.C2MS = window.C2MS || {};
-window.C2MS.CertificateTooltips = {
+window.SUGECO = window.SUGECO || {};
+window.SUGECO.CertificateTooltips = {
     // DOM elements cache
     elements: {
         modalContainer: null,
@@ -37,7 +37,7 @@ window.C2MS.CertificateTooltips = {
      * Initialize certificate tooltips
      */
     init: function() {
-        window.C2MS.Core.log('Certificate Tooltips module initialized');
+        window.SUGECO.Core.log('Certificate Tooltips module initialized');
         
         // Initialize modal container
         this.initModalContainer();
@@ -397,9 +397,9 @@ window.C2MS.CertificateTooltips = {
                 });
             }
         } catch (error) {
-            window.C2MS.Core.log('Error extracting tooltip data:', 'error');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(error.message, 'error');
+            window.SUGECO.Core.log('Error extracting tooltip data:', 'error');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(error.message, 'error');
             }
         }
         
@@ -431,9 +431,9 @@ window.C2MS.CertificateTooltips = {
                 }
             }
         } catch (err) {
-            window.C2MS.Core.log('Error getting certificate type:', 'error');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(err.message, 'error');
+            window.SUGECO.Core.log('Error getting certificate type:', 'error');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(err.message, 'error');
             }
         }
         
@@ -471,9 +471,9 @@ window.C2MS.CertificateTooltips = {
                 }
             }
         } catch (err) {
-            window.C2MS.Core.log('Error getting militare info:', 'error');
-            if (window.C2MS.Core.config.debug) {
-                window.C2MS.Core.log(err.message, 'error');
+            window.SUGECO.Core.log('Error getting militare info:', 'error');
+            if (window.SUGECO.Core.config.debug) {
+                window.SUGECO.Core.log(err.message, 'error');
             }
         }
         
@@ -663,5 +663,5 @@ window.C2MS.CertificateTooltips = {
 
 // Initialize module when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    window.C2MS.CertificateTooltips.init();
+    window.SUGECO.CertificateTooltips.init();
 });

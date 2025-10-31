@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - C2MS</title>
+    <title>Login - SUGECO</title>
     
     <!-- Meta CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -242,7 +242,7 @@
     <div class="login-container">
         <!-- Header -->
         <div class="login-header">
-            <div class="login-logo">C2MS</div>
+            <div class="login-logo">SUGECO</div>
             <div class="login-subtitle">GESTIONE E CONTROLLO DIGITALE</div>
         </div>
 
