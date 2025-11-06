@@ -316,7 +316,7 @@ class DashboardController extends Controller
         $oggi = Carbon::today();
         
         return Evento::where('data_fine', '>=', $oggi)
-            ->with('militari')
+            ->with('militare')
             ->orderBy('data_inizio')
             ->limit(5)
             ->get()
@@ -324,11 +324,11 @@ class DashboardController extends Controller
                 $inCorso = $evento->data_inizio <= $oggi && $evento->data_fine >= $oggi;
                 return [
                     'id' => $evento->id,
-                    'titolo' => $evento->titolo,
-                    'tipo' => $evento->tipo,
+                    'titolo' => $evento->nome,
+                    'tipo' => $evento->tipologia,
                     'data_inizio' => $evento->data_inizio,
                     'data_fine' => $evento->data_fine,
-                    'militari_count' => $evento->militari->count(),
+                    'militare' => $evento->militare ? $evento->militare->cognome . ' ' . $evento->militare->nome : 'N/A',
                     'in_corso' => $inCorso,
                     'giorni_inizio' => $inCorso ? 0 : $oggi->diffInDays($evento->data_inizio, false),
                 ];
