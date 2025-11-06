@@ -50,9 +50,9 @@ return new class extends Migration
         }
         
         try {
-            // Indici su presenze
+            // Indici su presenze (colonna corretta: 'stato')
             Schema::table('presenze', function (Blueprint $table) {
-                $table->index(['data', 'presenza'], 'idx_data_presenza');
+                $table->index(['data', 'stato'], 'idx_data_stato');
             });
         } catch (\Exception $e) {
             // Indice già esistente
@@ -116,7 +116,7 @@ return new class extends Migration
         });
         
         Schema::table('presenze', function (Blueprint $table) {
-            $table->dropIndex('idx_data_presenza');
+            $table->dropIndex('idx_data_stato');
         });
         
         Schema::table('pianificazioni_giornaliere', function (Blueprint $table) {

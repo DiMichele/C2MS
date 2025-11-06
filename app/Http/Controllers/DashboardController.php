@@ -75,12 +75,12 @@ class DashboardController extends Controller
                 
                 // Presenze oggi
                 'presenti_oggi' => Militare::whereHas('presenzaOggi', function($q) {
-                    $q->where('presenza', 'Presente');
+                    $q->where('stato', 'Presente');
                 })->count(),
                 
                 // Assenti oggi
                 'assenti_oggi' => Militare::whereHas('presenzaOggi', function($q) {
-                    $q->where('presenza', 'Assente');
+                    $q->where('stato', 'Assente');
                 })->count(),
                 
                 // Percentuale presenti
@@ -192,10 +192,10 @@ class DashboardController extends Controller
                 'data' => $data->format('Y-m-d'),
                 'giorno' => $data->locale('it')->isoFormat('ddd'),
                 'presenti' => Presenza::whereDate('data', $data)
-                    ->where('presenza', 'Presente')
+                    ->where('stato', 'Presente')
                     ->count(),
                 'assenti' => Presenza::whereDate('data', $data)
-                    ->where('presenza', 'Assente')
+                    ->where('stato', 'Assente')
                     ->count(),
             ];
         }
@@ -266,7 +266,7 @@ class DashboardController extends Controller
                 'militari',
                 'militari as presenti_count' => function($q) {
                     $q->whereHas('presenzaOggi', function($q2) {
-                        $q2->where('presenza', 'Presente');
+                        $q2->where('stato', 'Presente');
                     });
                 }
             ])
@@ -288,7 +288,7 @@ class DashboardController extends Controller
                 'militari',
                 'militari as presenti_count' => function($q) {
                     $q->whereHas('presenzaOggi', function($q2) {
-                        $q2->where('presenza', 'Presente');
+                        $q2->where('stato', 'Presente');
                     });
                 }
             ])
@@ -340,7 +340,7 @@ class DashboardController extends Controller
     private function calcolaPercentualePresenti()
     {
         $presenti = Militare::whereHas('presenzaOggi', function($q) {
-            $q->where('presenza', 'Presente');
+            $q->where('stato', 'Presente');
         })->count();
         
         $totale = Militare::count();
