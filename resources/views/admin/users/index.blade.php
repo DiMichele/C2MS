@@ -65,18 +65,22 @@ table.table td,
     <h1 class="page-title">Gestione Utenti</h1>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <span class="badge bg-primary">{{ $users->count() }} utenti</span>
-    </div>
-    
-    <div class="search-container" style="position: relative; width: 320px;">
+<!-- Barra di ricerca centrata sotto il titolo -->
+<div class="d-flex justify-content-center mb-3">
+    <div class="search-container" style="position: relative; width: 500px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
         <input type="text" 
                id="searchUser" 
                class="form-control" 
                placeholder="Cerca utente..."
                style="padding-left: 40px; border-radius: 6px !important;">
+    </div>
+</div>
+
+<!-- Badge e azioni su riga separata -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <span class="badge bg-primary">{{ $users->count() }} utenti</span>
     </div>
     
     <a href="{{ route('admin.create') }}" class="btn btn-primary" style="border-radius: 6px !important;">

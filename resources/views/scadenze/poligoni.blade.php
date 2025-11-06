@@ -291,13 +291,24 @@ table.table td,
     <h1 class="page-title">POLIGONI - TIRI E MANTENIMENTO</h1>
 </div>
 
-<!-- Filtri e Ricerca -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="toggleFilters">
-            <i class="fas fa-filter"></i> <span id="filterToggleText">Mostra Filtri</span>
-        </button>
+<!-- Barra di ricerca centrata sotto il titolo -->
+<div class="d-flex justify-content-center mb-3">
+    <div class="search-container" style="position: relative; width: 500px;">
+        <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+        <input 
+            type="text" 
+            id="searchInput" 
+            class="form-control" 
+            placeholder="Cerca militare..." 
+            style="padding-left: 40px; border-radius: 6px !important;">
     </div>
+</div>
+
+<!-- Filtri e badge su riga separata -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button type="button" class="btn btn-primary" id="toggleFilters" style="border-radius: 6px !important;">
+        <i class="fas fa-filter me-2"></i> <span id="filterToggleText">Mostra Filtri</span>
+    </button>
     <div class="d-flex gap-2 align-items-center">
         <span class="badge bg-primary">{{ $data->count() }} militari</span>
         <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
@@ -311,12 +322,6 @@ table.table td,
 <div class="filters-section" id="filtersSection" style="display: none;">
     <form id="filterForm" method="GET" action="{{ route('scadenze.poligoni') }}">
         <div class="row g-3">
-            <div class="col-md-5">
-                <label class="form-label">Cerca Militare:</label>
-                <input type="text" name="search" id="searchInput" class="form-control filter-select" 
-                       placeholder="Cerca per grado, cognome o nome..." 
-                       value="{{ request('search') }}">
-            </div>
             <div class="col-md-2">
                 <label class="form-label">Tiri Approntamento:</label>
                 <select name="tiri_approntamento" class="form-select filter-select">

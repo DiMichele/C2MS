@@ -88,15 +88,16 @@ document.addEventListener('DOMContentLoaded', function() {
     $poli = \App\Models\Polo::count();
 @endphp
 
-<!-- Ricerca Rapida Professionale -->
-<div class="search-section mb-4">
-    <div class="search-wrapper">
-        <i class="fas fa-search search-icon"></i>
+<!-- Ricerca Rapida Centrata -->
+<div class="d-flex justify-content-center mb-4">
+    <div style="position: relative; width: 500px;">
+        <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
         <input type="text" 
                id="quickSearch" 
-               class="search-input-clean" 
+               class="form-control" 
                placeholder="Cerca militare per cognome o nome..." 
-               data-search-type="dashboard">
+               data-search-type="dashboard"
+               style="padding-left: 40px; border-radius: 6px !important;">
     </div>
 </div>
 

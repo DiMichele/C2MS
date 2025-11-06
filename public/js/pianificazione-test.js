@@ -367,7 +367,7 @@ function setupSaveButton() {
 function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizioId, mese = null, anno = null) {
     console.log('🔵 saveSingleDay chiamata con:', { militareId, giorno, pianificazioneMensileId, tipoServizioId, mese, anno });
     
-    const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorno';
+    const updateUrl = window.location.origin + '/SUGECO/public/cpt/militare/' + militareId + '/update-giorno';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     
     console.log('📤 URL chiamata:', updateUrl);
@@ -417,7 +417,7 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
 function saveDaysRange(militareId, giorniDaSalvare, tipoServizioId) {
     console.log('🟢 saveDaysRange chiamata con:', { militareId, giorniCount: giorniDaSalvare.length, tipoServizioId });
     
-    const updateUrl = window.location.origin + '/C2MS/public/cpt/militare/' + militareId + '/update-giorni-range';
+    const updateUrl = window.location.origin + '/SUGECO/public/cpt/militare/' + militareId + '/update-giorni-range';
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     
     console.log('📤 URL chiamata:', updateUrl);

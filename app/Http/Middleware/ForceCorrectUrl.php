@@ -22,9 +22,13 @@ class ForceCorrectUrl
                 ?? $request->getHost();
         
         // Se è un tunnel (ngrok o cloudflare), forza l'URL completo
+        // Il tunnel punta a XAMPP localhost:80 che serve da /SUGECO/public/
         if (str_contains($host, 'ngrok') || str_contains($host, 'trycloudflare')) {
-            URL::forceRootUrl('https://' . $host . '/SUGECO/public');
+            $tunnelUrl = 'https://' . $host . '/SUGECO/public';
+            URL::forceRootUrl($tunnelUrl);
             URL::forceScheme('https');
+            // Forza anche l'asset URL
+            config(['app.asset_url' => $tunnelUrl]);
         }
         
         return $next($request);

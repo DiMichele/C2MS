@@ -67,22 +67,23 @@
     <h1 class="page-title">Gestione Eventi</h1>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Gestione filtri migliorata -->
-    <div>
-        <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}">
-            <i class="fas fa-filter me-2"></i> 
-            <span id="toggleFiltersText">
-                {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
-            </span>
-        </button>
-    </div>
-    
-    <div class="search-container" style="position: relative; width: 320px; z-index: 1000;">
+<!-- Barra di ricerca centrata sotto il titolo -->
+<div class="d-flex justify-content-center mb-3">
+    <div class="search-container" style="position: relative; width: 500px; z-index: 1000;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 5;"></i>
-        <input type="text" id="searchEvento" class="form-control" placeholder="Cerca evento..." aria-label="Cerca evento" style="padding-left: 40px; border-radius: 20px;">
+        <input type="text" id="searchEvento" class="form-control" placeholder="Cerca evento..." aria-label="Cerca evento" style="padding-left: 40px; border-radius: 6px !important;">
         <div id="searchSuggestions" class="d-none" style="position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: white; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.15); z-index: 1050; max-height: 350px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.1);"></div>
     </div>
+</div>
+
+<!-- Filtri e badge su riga separata -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
+        <i class="fas fa-filter me-2"></i> 
+        <span id="toggleFiltersText">
+            {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
+        </span>
+    </button>
     
     <div>
         <span class="badge bg-primary">{{ $eventi->count() }} eventi</span>

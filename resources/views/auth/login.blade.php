@@ -243,7 +243,7 @@
         <!-- Header -->
         <div class="login-header">
             <div class="login-logo">SUGECO</div>
-            <div class="login-subtitle">GESTIONE E CONTROLLO DIGITALE</div>
+            <div class="login-subtitle">Sistema Unico di Gestione e Controllo</div>
         </div>
 
         <!-- Body -->

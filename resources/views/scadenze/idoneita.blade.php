@@ -291,14 +291,9 @@ table.table td,
     <h1 class="page-title">IDONEITÀ SANITARIE</h1>
 </div>
 
-<!-- Header come Anagrafica: Filtri | Search | Badge -->
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <button id="toggleFilters" class="btn btn-primary" style="border-radius: 6px !important;">
-        <i class="fas fa-filter me-2"></i> 
-        <span id="toggleFiltersText">Mostra filtri</span>
-        </button>
-    
-    <div class="search-container" style="position: relative; width: 320px;">
+<!-- Barra di ricerca centrata sotto il titolo -->
+<div class="d-flex justify-content-center mb-3">
+    <div class="search-container" style="position: relative; width: 500px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
         <input 
             type="text" 
@@ -307,6 +302,14 @@ table.table td,
             placeholder="Cerca militare..." 
             style="padding-left: 40px; border-radius: 6px !important;">
     </div>
+</div>
+
+<!-- Filtri e badge su riga separata -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button id="toggleFilters" class="btn btn-primary" style="border-radius: 6px !important;">
+        <i class="fas fa-filter me-2"></i> 
+        <span id="toggleFiltersText">Mostra filtri</span>
+    </button>
     
     <div class="d-flex gap-2 align-items-center">
         <span class="badge bg-primary">{{ $data->count() }} militari</span>

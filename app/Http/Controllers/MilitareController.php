@@ -582,6 +582,8 @@ class MilitareController extends Controller
             ];
             
             $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
+            $sheet->getStyle('A1:M1')->getAlignment()->setWrapText(true);
+            $sheet->getRowDimension('1')->setRowHeight(35);
             
             // Dati dei militari
             $row = 2;
@@ -599,7 +601,7 @@ class MilitareController extends Controller
                 $sheet->setCellValue('H' . $row, !empty($patenti) ? implode(' ', $patenti) : '');
                 
                 $sheet->setCellValue('I' . $row, $militare->nos_status ? ucfirst($militare->nos_status) : '');
-                $sheet->setCellValue('J' . $row, $militare->anzianita ?? '');
+                $sheet->setCellValue('J' . $row, $militare->anzianita ? (is_object($militare->anzianita) ? $militare->anzianita->format('d/m/Y') : $militare->anzianita) : '');
                 $sheet->setCellValue('K' . $row, $militare->data_nascita ? $militare->data_nascita->format('d/m/Y') : '');
                 $sheet->setCellValue('L' . $row, $militare->email_istituzionale ?? '');
                 $sheet->setCellValue('M' . $row, $militare->telefono ?? '');
@@ -624,20 +626,20 @@ class MilitareController extends Controller
                 $sheet->getStyle('A2:M' . ($row - 1))->applyFromArray($dataStyle);
             }
             
-            // Imposta la larghezza delle colonne (aumentate per evitare troncamenti)
+            // Imposta la larghezza delle colonne (ottimizzate per evitare troncamenti)
             $columnWidths = [
                 'A' => 12,  // Compagnia
-                'B' => 20,  // Grado (sigla)
+                'B' => 12,  // Grado (sigla)
                 'C' => 25,  // Cognome
-                'D' => 20,  // Nome
-                'E' => 18,  // Plotone
-                'F' => 30,  // Ufficio
-                'G' => 30,  // Incarico
-                'H' => 15,  // Patenti
+                'D' => 22,  // Nome
+                'E' => 25,  // Plotone
+                'F' => 35,  // Ufficio
+                'G' => 35,  // Incarico
+                'H' => 18,  // Patenti
                 'I' => 10,  // NOS
-                'J' => 12,  // Anzianità
+                'J' => 15,  // Anzianità
                 'K' => 18,  // Data di Nascita
-                'L' => 35,  // Email
+                'L' => 40,  // Email
                 'M' => 20   // Cellulare
             ];
             

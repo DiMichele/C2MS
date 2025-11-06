@@ -145,16 +145,9 @@ table.table td,
     <h1 class="page-title">Anagrafica</h1>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Bottone filtri -->
-    <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
-        <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
-        <span id="toggleFiltersText">
-            {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
-        </span>
-    </button>
-    
-    <div class="search-container" style="position: relative; width: 320px;">
+<!-- Barra di ricerca centrata sotto il titolo -->
+<div class="d-flex justify-content-center mb-3">
+    <div class="search-container" style="position: relative; width: 500px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
         <input 
             type="text" 
@@ -166,6 +159,16 @@ table.table td,
             aria-label="Cerca militare" 
             style="padding-left: 40px; border-radius: 6px !important;">
     </div>
+</div>
+
+<!-- Filtri e azioni su riga separata -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
+        <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
+        <span id="toggleFiltersText">
+            {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
+        </span>
+    </button>
     
     <div class="d-flex align-items-center gap-3">
         <span class="badge bg-primary">{{ $militari->count() }} militari</span>

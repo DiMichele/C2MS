@@ -38,8 +38,9 @@ Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData']
 Route::get('/anagrafica', [MilitareController::class, 'index'])
     ->name('anagrafica.index');
 
-Route::get('/anagrafica/{militare}', [MilitareController::class, 'show'])
-    ->name('anagrafica.show');
+// NOTA: La rotta parametrica /anagrafica/{militare} deve essere definita 
+// DOPO tutte le altre rotte specifiche (come /anagrafica/create, /anagrafica/export-excel, ecc.)
+// altrimenti cattura tutto come parametro militare
 
 // Redirect da vecchie URL militare a anagrafica
 Route::redirect('/militare', '/anagrafica', 301);
@@ -97,11 +98,11 @@ Route::middleware(['auth'])->group(function () {
      | Rotte per la gestione dei militari (protette)
      |-------------------------------------------------
     */
-    // Rotte che devono essere definite PRIMA della resource route
+    // Export Excel Anagrafica (DEVE essere prima della rotta parametrica)
     Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])
         ->middleware('permission:anagrafica.view')
         ->name('anagrafica.export-excel');
-
+    
     // Rotte create e store (richiedono permission:anagrafica.create)
     Route::get('/anagrafica/create', [MilitareController::class, 'create'])
         ->middleware('permission:anagrafica.create')
@@ -128,9 +129,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])
         ->middleware('permission:anagrafica.edit')
         ->name('anagrafica.update-field');
+    
     Route::get('/anagrafica/plotoni-per-compagnia', [MilitareController::class, 'getPlotoniPerCompagnia'])
         ->middleware('permission:anagrafica.view')
         ->name('anagrafica.plotoni-per-compagnia');
+    
     Route::post('/anagrafica/{militare}/patenti/add', [MilitareController::class, 'addPatente'])
         ->middleware('permission:anagrafica.edit')
         ->name('anagrafica.patenti.add');
@@ -138,7 +141,7 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:anagrafica.edit')
         ->name('anagrafica.patenti.remove');
 
-    // Altre rotte militare
+// Altre rotte militare (CONTINUANO DENTRO IL MIDDLEWARE AUTH)
     Route::put('militare/{militare}/update-notes', [MilitareController::class, 'updateNotes'])->name('militare.update_notes');
 
     // Rotte per gestione foto profilo
@@ -397,3 +400,9 @@ Route::get('/debug-assets', function() {
 });
 
 }); // Fine middleware auth
+
+// Rotta parametrica anagrafica (DEVE essere DOPO tutte le altre rotte specifiche)
+// Altrimenti cattura /anagrafica/export-excel, /anagrafica/create, ecc. come ID militare
+Route::get('/anagrafica/{militare}', [MilitareController::class, 'show'])
+    ->name('anagrafica.show');
+

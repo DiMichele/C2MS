@@ -66,21 +66,9 @@ table.table td,
     <h1 class="page-title">CODICI CPT</h1>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <!-- Gestione filtri migliorata -->
-    <div class="d-flex flex-column gap-2">
-        <a href="{{ route('codici-cpt.export') }}" class="btn btn-sm btn-outline-success" style="border-radius: 6px !important;">
-            <i class="fas fa-file-excel me-1"></i>Esporta Excel
-        </a>
-        <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
-            <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
-            <span id="toggleFiltersText">
-                {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
-            </span>
-        </button>
-    </div>
-    
-    <div class="search-container" style="position: relative; width: 320px;">
+<!-- Barra di ricerca centrata sotto il titolo -->
+<div class="d-flex justify-content-center mb-3">
+    <div class="search-container" style="position: relative; width: 500px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
         <input 
             type="text" 
@@ -91,6 +79,21 @@ table.table td,
             placeholder="Cerca codice..." 
             aria-label="Cerca codice" 
             style="padding-left: 40px; border-radius: 6px !important;">
+    </div>
+</div>
+
+<!-- Filtri e azioni su riga separata -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex gap-2">
+        <a href="{{ route('codici-cpt.export') }}" class="btn btn-outline-success" style="border-radius: 6px !important;">
+            <i class="fas fa-file-excel me-1"></i>Esporta Excel
+        </a>
+        <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
+            <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
+            <span id="toggleFiltersText">
+                {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
+            </span>
+        </button>
     </div>
     
     <div>
