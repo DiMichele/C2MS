@@ -1,7 +1,8 @@
-# 🐛 BUGFIX REPORT - Correzione Colonna Presenze
+# 🐛 BUGFIX REPORT - Correzioni Dashboard v2.0
 
 **Data**: 6 Novembre 2025 - 13:15  
-**Versione**: 2.0.1  
+**Versione**: 2.0.2  
+**Bug Risolti**: 2  
 **Gravità**: ⚠️ MEDIA (bloccava dashboard)
 
 ---

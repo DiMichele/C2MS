@@ -90,11 +90,10 @@ class DashboardController extends Controller
                 'scadenze_critiche' => $this->contaScadenzeCritiche(),
                 
                 // Militari in evento oggi
+                // Ogni evento ha un militare (militare_id), quindi contiamo gli eventi attivi
                 'in_evento_oggi' => Evento::whereDate('data_inizio', '<=', $oggi)
                     ->whereDate('data_fine', '>=', $oggi)
-                    ->withCount('militari')
-                    ->get()
-                    ->sum('militari_count'),
+                    ->count(),
                 
                 // Pianificazioni mese corrente
                 'pianificazioni_mese' => PianificazioneMensile::where('mese', $oggi->month)
