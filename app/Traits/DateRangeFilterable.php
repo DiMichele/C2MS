@@ -8,7 +8,7 @@ namespace App\Traits;
  * Trait per aggiungere funzionalità di filtro su intervalli di date.
  * Fornisce scope queries comuni per filtrare entità basate su range temporali.
  * 
- * @package C2MS
+ * @package    SUGECO
  * @subpackage Traits
  * @version 1.0
  * @since 1.0

@@ -10,7 +10,7 @@ use Carbon\Carbon;
  * Trait per la gestione comune di certificati e idoneità.
  * Fornisce metodi per verificare validità, scadenze e stati dei certificati.
  * 
- * @package C2MS
+ * @package    SUGECO
  * @subpackage Traits
  * @version 1.0
  * @since 1.0

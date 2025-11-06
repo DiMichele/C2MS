@@ -3,9 +3,9 @@
 /**
  * SUGECO: Sistema Unico di Gestione e Controllo
  * 
- * Questo file fa parte del sistema C2MS per la gestione militare digitale.
+ * Questo file fa parte del sistema SUGECO per la gestione militare digitale.
  * 
- * @package    C2MS
+ * @package    SUGECO
  * @subpackage Models
  * @version    2.1.0
  * @author     Michele Di Gennaro
@@ -23,7 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
 /**
  * Modello per gli utenti del sistema
  * 
- * Questo modello rappresenta gli utenti che possono accedere al sistema C2MS.
+ * Questo modello rappresenta gli utenti che possono accedere al sistema SUGECO.
  * Estende la classe Authenticatable di Laravel per fornire funzionalità
  * di autenticazione e autorizzazione.
  * 

@@ -3,9 +3,9 @@
 /**
  * SUGECO: Sistema Unico di Gestione e Controllo
  * 
- * Questo file fa parte del sistema C2MS per la gestione militare digitale.
+ * Questo file fa parte del sistema SUGECO per la gestione militare digitale.
  * 
- * @package    C2MS
+ * @package    SUGECO
  * @subpackage Controllers
  * @version    2.1.0
  * @author     Michele Di Gennaro

@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  * Centralizza la logica di business per operazioni sui militari, valutazioni,
  * filtri, ricerche e gestione file.
  * 
- * @package C2MS
+ * @package    SUGECO
  * @subpackage Services
  * @version 1.0
  * @since 1.0

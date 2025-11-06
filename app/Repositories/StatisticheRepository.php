@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Cache;
  * Repository per la gestione delle statistiche e dei report della dashboard.
  * Centralizza le query complesse per le statistiche con sistema di cache ottimizzato.
  * 
- * @package C2MS
+ * @package    SUGECO
  * @subpackage Repositories
  * @version 1.0
  * @since 1.0
