@@ -227,6 +227,30 @@ class MilitareController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            // Trova il militare (senza scope per verificare esistenza)
+            $militare = Militare::withoutGlobalScopes()->findOrFail($id);
+            
+            // VERIFICA PERMESSI: Solo owner possono modificare
+            if (!$militare->isEditableBy(auth()->user())) {
+                Log::warning('Tentativo di modifica militare non autorizzato', [
+                    'user_id' => auth()->id(),
+                    'user_compagnia' => auth()->user()->compagnia_id,
+                    'militare_id' => $id,
+                    'militare_compagnia' => $militare->compagnia_id,
+                    'relation_type' => $militare->getRelationType(auth()->user())
+                ]);
+                
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.'
+                    ], 403);
+                }
+                
+                return redirect()->back()
+                    ->with('error', 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.');
+            }
+            
             if ($request->ajax() || $request->wantsJson()) {
                 $result = $this->militareService->updateMilitareAjax($id, $request->all());
                 return response()->json($result);
@@ -367,6 +391,14 @@ class MilitareController extends Controller
     public function updateNotes(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI: Solo owner possono modificare
+            if (!$militare->isEditableBy(auth()->user())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Non hai i permessi per modificare questo militare.'
+                ], 403);
+            }
+            
             $this->militareService->updateNotes($militare, $request->get('note'));
             
             return response()->json([
@@ -753,16 +785,23 @@ class MilitareController extends Controller
     public function updateField(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI: Solo owner possono modificare
+            if (!$militare->isEditableBy(auth()->user())) {
+                Log::warning('Tentativo di modifica campo militare non autorizzato', [
+                    'user_id' => auth()->id(),
+                    'militare_id' => $militare->id,
+                    'field' => $request->input('field'),
+                    'relation_type' => $militare->getRelationType(auth()->user())
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.'
+                ], 403);
+            }
+            
             $field = $request->input('field');
             $value = $request->input('value');
-            
-            // Log per debug
-            Log::info('updateField chiamato', [
-                'militare_id' => $militare->id,
-                'field' => $field,
-                'value' => $value,
-                'value_type' => gettype($value)
-            ]);
             
             if (is_null($field)) {
                 return response()->json([
@@ -942,6 +981,14 @@ class MilitareController extends Controller
     public function updateCampoCustom(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI: Solo owner possono modificare
+            if (!$militare->isEditableBy(auth()->user())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Non hai i permessi per modificare questo militare.'
+                ], 403);
+            }
+            
             $nomeCampo = $request->input('nome_campo');
             $valore = $request->input('valore');
             

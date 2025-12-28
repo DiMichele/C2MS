@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use App\Traits\BelongsToCompagnia;
+use App\Models\User;
 
 /**
  * SUGECO: Sistema Unico di Gestione e Controllo
@@ -683,5 +684,127 @@ class Militare extends Model
     public function getPhotoPath()
     {
         return $this->getFolderPath() . '/foto_profilo.jpg';
+    }
+
+    // ============================================
+    // METODI PER GESTIONE OWNER/ACQUIRED
+    // ============================================
+    
+    /**
+     * Verifica se il militare è "owner" per l'utente corrente.
+     * Owner = appartiene alla stessa compagnia dell'utente
+     * 
+     * @return bool
+     */
+    public function isOwnerFor(?User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+        
+        if (!$user || !$user->compagnia_id) {
+            return false;
+        }
+        
+        return $this->compagnia_id === $user->compagnia_id;
+    }
+    
+    /**
+     * Verifica se il militare è "acquisito" dalla compagnia dell'utente.
+     * Acquisito = partecipa ad attività della compagnia ma appartiene ad altra compagnia
+     * 
+     * @return bool
+     */
+    public function isAcquiredBy(?User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+        
+        if (!$user || !$user->compagnia_id) {
+            return false;
+        }
+        
+        // Se è owner, non è acquisito
+        if ($this->isOwnerFor($user)) {
+            return false;
+        }
+        
+        // Verifica partecipazione ad attività della compagnia dell'utente
+        return \DB::table('activity_militare')
+            ->join('board_activities', 'activity_militare.activity_id', '=', 'board_activities.id')
+            ->where('activity_militare.militare_id', $this->id)
+            ->where('board_activities.compagnia_id', $user->compagnia_id)
+            ->exists();
+    }
+    
+    /**
+     * Verifica se il militare è modificabile dall'utente corrente.
+     * Solo gli owner possono modificare.
+     * 
+     * @return bool
+     */
+    public function isEditableBy(?User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+        
+        if (!$user) {
+            return false;
+        }
+        
+        // Admin possono sempre modificare
+        if ($user->isAdmin()) {
+            return true;
+        }
+        
+        // Solo gli owner possono modificare
+        return $this->isOwnerFor($user);
+    }
+    
+    /**
+     * Verifica se il militare è in sola lettura per l'utente.
+     * 
+     * @return bool
+     */
+    public function isReadOnlyFor(?User $user = null): bool
+    {
+        return !$this->isEditableBy($user);
+    }
+    
+    /**
+     * Ottiene il tipo di relazione con l'utente corrente.
+     * 
+     * @return string 'owner', 'acquired', o 'none'
+     */
+    public function getRelationType(?User $user = null): string
+    {
+        $user = $user ?? auth()->user();
+        
+        if ($this->isOwnerFor($user)) {
+            return 'owner';
+        }
+        
+        if ($this->isAcquiredBy($user)) {
+            return 'acquired';
+        }
+        
+        return 'none';
+    }
+    
+    /**
+     * Relazione con le attività in cui il militare è assegnato
+     */
+    public function activities()
+    {
+        return $this->belongsToMany(
+            \App\Models\BoardActivity::class, 
+            'activity_militare', 
+            'militare_id', 
+            'activity_id'
+        );
+    }
+    
+    /**
+     * Ottiene le attività della compagnia specificata in cui il militare è coinvolto
+     */
+    public function activitiesForCompagnia(int $compagniaId)
+    {
+        return $this->activities()->where('board_activities.compagnia_id', $compagniaId);
     }
 }

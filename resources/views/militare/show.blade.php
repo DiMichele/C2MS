@@ -946,9 +946,24 @@
 @endsection
 
 @section('content')
+@php
+    $relationType = $militare->getRelationType(auth()->user());
+    $isReadOnly = $militare->isReadOnlyFor(auth()->user());
+    $isAcquired = $relationType === 'acquired';
+@endphp
+
 <!-- Header centralizzato -->
 <div class="text-center mb-5">
-    <h1 class="page-title mb-5">{{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</h1>
+    <h1 class="page-title mb-3">{{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</h1>
+    
+    @if($isAcquired)
+    <div class="mb-3">
+        <span class="badge bg-info fs-6 px-3 py-2" data-bs-toggle="tooltip" title="Questo militare appartiene ad un'altra compagnia ma è stato inserito in attività della tua compagnia. Puoi visualizzarlo ma non modificarlo.">
+            <i class="fas fa-user-friends me-2"></i>
+            Militare Acquisito - Sola Lettura
+        </span>
+    </div>
+    @endif
     
     <div class="action-buttons-center">
         @can('cpt.view')
@@ -956,16 +971,20 @@
             <i class="fas fa-calendar-alt"></i>
         </a>
         @endcan
-        @can('anagrafica.edit')
-        <a href="{{ route('anagrafica.edit', $militare->id) }}" class="action-btn action-btn-edit" data-bs-toggle="tooltip" data-bs-placement="top" title="Modifica">
-            <i class="fas fa-edit"></i>
-        </a>
-        @endcan
-        @can('anagrafica.delete')
-        <button type="button" class="action-btn action-btn-delete" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-toggle="tooltip" data-bs-placement="top" title="Elimina">
-            <i class="fas fa-trash-alt"></i>
-        </button>
-        @endcan
+        
+        {{-- I militari acquisiti NON possono essere modificati/eliminati --}}
+        @if(!$isReadOnly)
+            @can('anagrafica.edit')
+            <a href="{{ route('anagrafica.edit', $militare->id) }}" class="action-btn action-btn-edit" data-bs-toggle="tooltip" data-bs-placement="top" title="Modifica">
+                <i class="fas fa-edit"></i>
+            </a>
+            @endcan
+            @can('anagrafica.delete')
+            <button type="button" class="action-btn action-btn-delete" data-bs-toggle="modal" data-bs-target="#deleteModal" data-bs-toggle="tooltip" data-bs-placement="top" title="Elimina">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+            @endcan
+        @endif
     </div>
 </div>
 

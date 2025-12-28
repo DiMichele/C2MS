@@ -3,6 +3,51 @@
 
 @section('content')
 <style>
+/* ========================================
+   STILI MILITARI ACQUISITI (READ-ONLY)
+   ======================================== */
+.acquired-militare {
+    background-color: rgba(23, 162, 184, 0.08) !important;
+}
+
+.acquired-militare td {
+    position: relative;
+}
+
+.acquired-militare td::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #17a2b8;
+}
+
+.acquired-militare td:first-child::after {
+    border-radius: 3px 0 0 3px;
+}
+
+.acquired-militare:hover {
+    background-color: rgba(23, 162, 184, 0.15) !important;
+}
+
+/* Badge per militari acquisiti */
+.acquired-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #17a2b8;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+}
+
+/* ========================================
+   STILI TABELLA ORIGINALI
+   ======================================== */
 /* Effetto hover sulle righe come nel CPT */
 .table tbody tr:hover {
     background-color: rgba(10, 35, 66, 0.12) !important;
@@ -440,7 +485,16 @@ table.table td,
              </colgroup>
             <tbody id="militariTableBody">
             @forelse($militari as $m)
-                <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}" data-update-url="{{ route('anagrafica.update-field', $m->id) }}">
+                @php
+                    $isAcquired = $m->isAcquiredBy(auth()->user());
+                    $isReadOnly = $m->isReadOnlyFor(auth()->user());
+                @endphp
+                <tr id="militare-{{ $m->id }}" 
+                    class="militare-row {{ $isAcquired ? 'acquired-militare' : '' }}" 
+                    data-militare-id="{{ $m->id }}" 
+                    data-update-url="{{ route('anagrafica.update-field', $m->id) }}"
+                    data-read-only="{{ $isReadOnly ? 'true' : 'false' }}"
+                    @if($isAcquired) title="Militare acquisito - Sola lettura" @endif>
                     @foreach($campiCustom as $campo)
                         @include('militare.partials._campo_anagrafica', [
                             'militare' => $m,

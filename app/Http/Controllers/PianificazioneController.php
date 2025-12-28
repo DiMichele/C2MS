@@ -558,7 +558,7 @@ class PianificazioneController extends Controller
      */
     public function updateGiorno(Request $request, Militare $militare)
     {
-        // Verifica permessi
+        // Verifica permessi generali
         if (!auth()->user()->can('cpt.edit')) {
             return response()->json([
                 'success' => false,
@@ -566,12 +566,21 @@ class PianificazioneController extends Controller
             ], 403);
         }
         
-        try {
-            // Log per debug
-            \Log::info('UpdateGiorno request', [
+        // VERIFICA PERMESSI: Solo owner possono modificare CPT
+        if (!$militare->isEditableBy(auth()->user())) {
+            \Log::warning('Tentativo di modifica CPT militare acquisito', [
+                'user_id' => auth()->id(),
                 'militare_id' => $militare->id,
-                'request_data' => $request->all()
+                'relation_type' => $militare->getRelationType(auth()->user())
             ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Non puoi modificare il CPT di questo militare. I militari acquisiti sono in sola lettura.'
+            ], 403);
+        }
+        
+        try {
         
         $request->validate([
             'pianificazione_mensile_id' => 'required|exists:pianificazioni_mensili,id',
@@ -653,11 +662,19 @@ class PianificazioneController extends Controller
 
     public function updateGiorniRange(Request $request, Militare $militare)
     {
-        // Verifica permessi
+        // Verifica permessi generali
         if (!auth()->user()->can('cpt.edit')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Non hai i permessi per modificare il CPT'
+            ], 403);
+        }
+        
+        // VERIFICA PERMESSI: Solo owner possono modificare CPT
+        if (!$militare->isEditableBy(auth()->user())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non puoi modificare il CPT di questo militare. I militari acquisiti sono in sola lettura.'
             ], 403);
         }
         

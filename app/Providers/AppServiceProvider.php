@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Gate;
+use App\Models\Militare;
+use App\Policies\MilitarePolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Registra Observers
         \App\Models\TipoServizio::observe(\App\Observers\TipoServizioObserver::class);
+        
+        // Registra Policy per Militare (gestione owner/acquired)
+        Gate::policy(Militare::class, MilitarePolicy::class);
         
         // Registra Gate per i permessi personalizzati
         // Questo permette a @can di usare il nostro sistema di permessi
