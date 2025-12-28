@@ -90,13 +90,25 @@ class Compagnia extends Model
     }
 
     /**
-     * Relazione con i poli della compagnia
+     * Ottiene i poli che hanno militari di questa compagnia
+     * I poli sono entità globali condivise tra le compagnie
      * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * @return \Illuminate\Database\Eloquent\Collection
      */
-    public function poli()
+    public function getPoli()
     {
-        return $this->hasMany(Polo::class, 'compagnia_id');
+        return Polo::whereHas('militari', function($q) {
+            $q->where('compagnia_id', $this->id);
+        })->orderBy('nome')->get();
+    }
+    
+    /**
+     * Accessor per mantenere compatibilità con codice esistente
+     * Restituisce tutti i poli con i militari filtrati per compagnia
+     */
+    public function getPoliAttribute()
+    {
+        return $this->getPoli();
     }
 
     /**
@@ -153,14 +165,15 @@ class Compagnia extends Model
     }
 
     /**
-     * Scope per caricare le compagnie con i poli
+     * Scope per caricare le compagnie
+     * Nota: I poli sono globali, usare getPoli() per ottenerli
      * 
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeConPoli($query)
     {
-        return $query->with('poli');
+        return $query; // I poli sono globali, non c'è una relazione diretta
     }
 
     // ==========================================
@@ -178,13 +191,13 @@ class Compagnia extends Model
     }
 
     /**
-     * Ottiene il numero di poli nella compagnia
+     * Ottiene il numero di poli con militari della compagnia
      * 
      * @return int Numero di poli
      */
     public function getNumeroPoli()
     {
-        return $this->poli()->count();
+        return $this->getPoli()->count();
     }
 
     /**
@@ -250,7 +263,7 @@ class Compagnia extends Model
             'poli' => $this->getNumeroPoli(),
             'militari' => $this->getNumeroMilitari(),
             'plotoni_con_militari' => $this->plotoni()->whereHas('militari')->count(),
-            'poli_con_militari' => $this->poli()->whereHas('militari')->count()
+            'poli_con_militari' => $this->getNumeroPoli() // I poli globali che hanno militari di questa compagnia
         ];
     }
 

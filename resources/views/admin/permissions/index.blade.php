@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Gestione Ruoli')
 
@@ -255,7 +255,7 @@ table.table td,
                         @endforeach
                         <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center;">
                             @php
-                                // Solo il ruolo "amministratore" non può essere eliminato
+                                // Solo il ruolo "amministratore" non puÃ² essere eliminato
                                 $isSystemRole = ($role->name === 'amministratore');
                                 $usersCount = $role->users()->count();
                             @endphp
@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alertDiv.style.zIndex = '9999';
             alertDiv.innerHTML = `
                 <i class="fas fa-lock me-2"></i>
-                <strong>Ruolo Protetto:</strong> L'Amministratore ha automaticamente tutti i permessi e non può essere modificato.
+                <strong>Ruolo Protetto:</strong> L'Amministratore ha automaticamente tutti i permessi e non puÃ² essere modificato.
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             document.body.appendChild(alertDiv);
@@ -426,7 +426,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // BLOCCA il submit per i ruoli protetti
             if (roleData && roleData.isProtected) {
-                console.log('Tentativo di modifica ruolo protetto bloccato');
                 return;
             }
             
@@ -530,7 +529,7 @@ setTimeout(() => {
     });
 }, 5000);
 
-// Funzionalità di ricerca ruolo
+// FunzionalitÃ  di ricerca ruolo
 document.getElementById('searchRole').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('table tbody tr');
@@ -550,4 +549,5 @@ document.getElementById('searchRole').addEventListener('input', function() {
 });
 </script>
 @endpush
+
 

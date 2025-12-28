@@ -70,15 +70,6 @@ class Approntamento extends Model
         return $this->hasMany(Militare::class, 'approntamento_principale_id');
     }
 
-    /**
-     * Relazione many-to-many con i militari attraverso la tabella pivot
-     */
-    public function militari()
-    {
-        return $this->belongsToMany(Militare::class, 'militare_approntamenti')
-                    ->withPivot(['ruolo', 'data_assegnazione', 'data_fine_assegnazione', 'principale', 'note'])
-                    ->withTimestamps();
-    }
 
     /**
      * Assegnazioni dettagliate militare-approntamento

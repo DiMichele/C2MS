@@ -51,6 +51,14 @@
             {{ ucfirst($dataObj->locale('it')->isoFormat('dddd D MMMM YYYY')) }}
         </h5>
     </div>
+    
+    <!-- Pulsante Export Excel Floating -->
+    <button onclick="exportRuoliniExcel()" 
+            class="btn btn-success floating-export-btn" 
+            title="Esporta Excel"
+            style="position: fixed; bottom: 30px; right: 30px; z-index: 999; border-radius: 50px !important; padding: 15px 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+        <i class="fas fa-file-excel me-2"></i>Esporta Excel
+    </button>
 
     <!-- Filtri Compagnia/Plotone -->
     <div class="d-flex justify-content-center mb-4">
@@ -92,35 +100,201 @@
         </div>
     </div>
 
+    @php
+        $forzaEffettiva = $totali['Ufficiali']['totale'] + $totali['Sottufficiali']['totale'] + $totali['Graduati']['totale'] + $totali['Volontari']['totale'];
+        $totalePresenti = $totali['Ufficiali']['presenti'] + $totali['Sottufficiali']['presenti'] + $totali['Graduati']['presenti'] + $totali['Volontari']['presenti'];
+        $totaleAssenti = $totali['Ufficiali']['assenti'] + $totali['Sottufficiali']['assenti'] + $totali['Graduati']['assenti'] + $totali['Volontari']['assenti'];
+    @endphp
+
+    <!-- Riepilogo Forza Effettiva Totale -->
+    <div class="forza-effettiva-card mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center">
+                <div class="forza-stat forza-totale">
+                    <div class="forza-number">{{ $forzaEffettiva }}</div>
+                    <div class="forza-label">FORZA EFFETTIVA</div>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="forza-stat forza-presenti">
+                    <div class="forza-number">{{ $totalePresenti }}</div>
+                    <div class="forza-label">PRESENTI</div>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="forza-stat forza-assenti">
+                    <div class="forza-number">{{ $totaleAssenti }}</div>
+                    <div class="forza-label">ASSENTI</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Riepilogo Statistico per Categoria -->
-    <div class="row mb-4">
-        @foreach(['Ufficiali' => 'danger', 'Sottufficiali' => 'warning', 'Graduati' => 'info', 'Volontari' => 'secondary'] as $categoria => $colore)
+    <div class="row mb-5">
+        @foreach(['Ufficiali' => ['color' => '#dc3545', 'icon' => 'fa-star'], 'Sottufficiali' => ['color' => '#ffc107', 'icon' => 'fa-shield-alt'], 'Graduati' => ['color' => '#0dcaf0', 'icon' => 'fa-medal'], 'Volontari' => ['color' => '#6c757d', 'icon' => 'fa-users']] as $categoria => $config)
+            @if($totali[$categoria]['totale'] > 0)
             <div class="col-md-3">
-                <div class="card border-{{ $colore }} shadow-sm">
-                    <div class="card-header bg-{{ $colore }} text-white">
-                        <h6 class="mb-0 fw-bold">{{ $categoria }}</h6>
+                <div class="ruolino-card" style="border-top: 4px solid {{ $config['color'] }};">
+                    <div class="ruolino-header">
+                        <i class="fas {{ $config['icon'] }}" style="color: {{ $config['color'] }};"></i>
+                        <h6 class="ruolino-title">{{ $categoria }}</h6>
                     </div>
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="text-center flex-fill">
-                                <div class="fs-4 fw-bold text-success">{{ $totali[$categoria]['presenti'] }}</div>
-                                <small class="text-muted">Presenti</small>
+                    <div class="ruolino-body">
+                        <div class="ruolino-stats">
+                            <div class="stat-item">
+                                <div class="stat-number text-success">{{ $totali[$categoria]['presenti'] }}</div>
+                                <div class="stat-label">Presenti</div>
                             </div>
-                            <div class="vr"></div>
-                            <div class="text-center flex-fill">
-                                <div class="fs-4 fw-bold text-danger">{{ $totali[$categoria]['assenti'] }}</div>
-                                <small class="text-muted">Assenti</small>
+                            <div class="stat-divider"></div>
+                            <div class="stat-item">
+                                <div class="stat-number text-danger">{{ $totali[$categoria]['assenti'] }}</div>
+                                <div class="stat-label">Assenti</div>
                             </div>
                         </div>
-                        <hr class="my-2">
-                        <div class="text-center">
-                            <small class="text-muted">Totale: <strong>{{ $totali[$categoria]['totale'] }}</strong></small>
+                        <div class="ruolino-total">
+                            Totale: <strong>{{ $totali[$categoria]['totale'] }}</strong>
                         </div>
                     </div>
                 </div>
             </div>
+            @endif
         @endforeach
     </div>
+    
+    <style>
+    /* Forza Effettiva Card */
+    .forza-effettiva-card {
+        background: linear-gradient(135deg, #0a2342 0%, #1a4a7a 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 8px 24px rgba(10, 35, 66, 0.25);
+    }
+    
+    .forza-stat {
+        padding: 1rem;
+    }
+    
+    .forza-number {
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .forza-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .forza-totale .forza-number {
+        color: #ffffff;
+    }
+    
+    .forza-totale .forza-label {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .forza-presenti .forza-number {
+        color: #4ade80;
+    }
+    
+    .forza-presenti .forza-label {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .forza-assenti .forza-number {
+        color: #f87171;
+    }
+    
+    .forza-assenti .forza-label {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .ruolino-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .ruolino-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .ruolino-header {
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #f8f9fa;
+    }
+    
+    .ruolino-header i {
+        font-size: 1.25rem;
+    }
+    
+    .ruolino-title {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #212529;
+    }
+    
+    .ruolino-body {
+        padding: 1.25rem;
+    }
+    
+    .ruolino-stats {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+        flex: 1;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 500;
+    }
+    
+    .stat-divider {
+        width: 1px;
+        height: 40px;
+        background: #dee2e6;
+    }
+    
+    .ruolino-total {
+        text-align: center;
+        padding-top: 1rem;
+        border-top: 1px solid #dee2e6;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .ruolino-total strong {
+        color: #212529;
+        font-size: 1.1rem;
+    }
+    </style>
 
     <!-- Sezioni per Categoria -->
     @foreach(['Ufficiali' => 'danger', 'Sottufficiali' => 'warning', 'Graduati' => 'info', 'Volontari' => 'secondary'] as $categoria => $colore)
@@ -155,6 +329,8 @@
                                                     <th>COGNOME</th>
                                                     <th>NOME</th>
                                                     <th style="width: 120px;">PLOTONE</th>
+                                                    <th style="width: 150px;">TELEFONO</th>
+                                                    <th style="width: 200px;">ISTITUTI</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -171,6 +347,21 @@
                                                         </td>
                                                         <td>{{ $item['militare']->nome }}</td>
                                                         <td><small>{{ $item['militare']->plotone->nome ?? '-' }}</small></td>
+                                                        <td><small>{{ $item['militare']->telefono ?? '-' }}</small></td>
+                                                        <td>
+                                                            @php
+                                                                $istituti = $item['militare']->istituti ?? [];
+                                                            @endphp
+                                                            @if(!empty($istituti))
+                                                                <small>
+                                                                    @foreach($istituti as $istituto)
+                                                                        <span class="badge bg-info text-dark" style="font-size: 0.7rem; margin-right: 2px;">{{ $istituto }}</span>
+                                                                    @endforeach
+                                                                </small>
+                                                            @else
+                                                                <small class="text-muted">-</small>
+                                                            @endif
+                                                        </td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>
@@ -205,6 +396,8 @@
                                                     <th style="width: 100px;">GRADO</th>
                                                     <th>COGNOME</th>
                                                     <th>NOME</th>
+                                                    <th style="width: 150px;">TELEFONO</th>
+                                                    <th style="width: 200px;">ISTITUTI</th>
                                                     <th style="width: 200px;">MOTIVAZIONE</th>
                                                 </tr>
                                             </thead>
@@ -221,6 +414,21 @@
                                                             </a>
                                                         </td>
                                                         <td>{{ $item['militare']->nome }}</td>
+                                                        <td><small>{{ $item['militare']->telefono ?? '-' }}</small></td>
+                                                        <td>
+                                                            @php
+                                                                $istituti = $item['militare']->istituti ?? [];
+                                                            @endphp
+                                                            @if(!empty($istituti))
+                                                                <small>
+                                                                    @foreach($istituti as $istituto)
+                                                                        <span class="badge bg-info text-dark" style="font-size: 0.7rem; margin-right: 2px;">{{ $istituto }}</span>
+                                                                    @endforeach
+                                                                </small>
+                                                            @else
+                                                                <small class="text-muted">-</small>
+                                                            @endif
+                                                        </td>
                                                         <td>
                                                             <div class="d-flex flex-wrap gap-1">
                                                                 @foreach($item['impegni'] as $impegno)
@@ -255,68 +463,117 @@
 
 <style>
 .page-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--navy);
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #0a2342;
     margin: 0;
+    letter-spacing: -0.5px;
+    text-transform: uppercase;
 }
 
 .section-title {
     font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--navy);
+    font-weight: 700;
+    color: #0a2342;
+    letter-spacing: 0.5px;
 }
 
-/* Card styling */
+/* Card styling migliorato */
 .card {
-    border-radius: 8px !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 12px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none !important;
+    overflow: hidden;
 }
 
 .card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12) !important;
 }
 
 .card-header {
-    border-radius: 8px 8px 0 0 !important;
+    border-radius: 0 !important;
     font-weight: 600;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-/* Tabelle */
+.card.border-success {
+    box-shadow: 0 4px 16px rgba(40, 167, 69, 0.15);
+}
+
+.card.border-danger {
+    box-shadow: 0 4px 16px rgba(220, 53, 69, 0.15);
+}
+
+/* Header gradient effect */
+.card-header.bg-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+.card-header.bg-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #e57373 100%) !important;
+}
+
+/* Tabelle migliorate */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #495057;
+    padding: 0.875rem 0.75rem;
+}
+
 .table tbody tr {
-    transition: background-color 0.2s ease;
+    transition: all 0.2s ease;
 }
 
 .table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.08) !important;
+    background-color: rgba(10, 35, 66, 0.05) !important;
 }
 
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.15) !important;
+.table tbody td {
+    vertical-align: middle;
+    padding: 0.75rem;
+    border-color: #f0f0f0;
 }
 
-/* Badge impegni */
+/* Badge impegni migliorato */
 .impegno-badge {
     font-size: 0.7rem;
-    padding: 3px 6px;
+    padding: 4px 8px;
     font-weight: 600;
     cursor: help;
-    border-radius: 4px !important;
+    border-radius: 6px !important;
     white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
 }
 
-/* Link militari */
+.impegno-badge:hover {
+    transform: scale(1.05);
+}
+
+/* Link militari migliorato */
 .link-name {
     color: #0a2342;
     text-decoration: none;
     position: relative;
-    font-weight: 500;
+    font-weight: 600;
+    transition: color 0.2s ease;
 }
 
 .link-name:hover {
-    color: #0a2342;
-    text-decoration: none;
+    color: #d4af37;
 }
 
 .link-name::after {
@@ -326,12 +583,49 @@
     height: 2px;
     bottom: -2px;
     left: 0;
-    background-color: #d4af37;
+    background: linear-gradient(90deg, #d4af37, #f5d77f);
     transition: width 0.3s ease;
 }
 
 .link-name:hover::after {
     width: 100%;
+}
+
+/* Date selector migliorato */
+#dataSelect {
+    border: 2px solid #0a2342;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+#dataSelect:focus {
+    border-color: #d4af37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.25);
+}
+
+/* Filtri compagnia/plotone */
+.form-select {
+    border: 2px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    border-color: #0a2342;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.15);
+}
+
+/* Floating export button migliorato */
+.floating-export-btn {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+    border: none !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+
+.floating-export-btn:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4) !important;
 }
 
 /* Vertical divider */
@@ -342,10 +636,26 @@
     height: 3rem;
 }
 
+/* Badge istituti */
+.badge.bg-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #6dd5ed 100%) !important;
+    font-weight: 600;
+    padding: 3px 8px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .col-md-6 {
-        margin-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .page-title {
+        font-size: 1.75rem;
+    }
+    
+    .floating-export-btn {
+        padding: 12px 16px !important;
+        font-size: 0.85rem;
     }
 }
 </style>
@@ -399,6 +709,24 @@ function applicaFiltri() {
     }
     
     window.location.href = url;
+}
+
+// Funzione per esportare in Excel
+function exportRuoliniExcel() {
+    const data = document.getElementById('dataSelect').value;
+    const compagnia = document.getElementById('compagniaSelect').value;
+    const plotone = document.getElementById('plotoneSelect').value;
+    
+    const params = new URLSearchParams();
+    
+    if (data) params.append('data', data);
+    if (compagnia) params.append('compagnia_id', compagnia);
+    if (plotone) params.append('plotone_id', plotone);
+    
+    const queryString = params.toString();
+    const exportUrl = '{{ route("ruolini.export-excel") }}' + (queryString ? '?' + queryString : '');
+    
+    window.location.href = exportUrl;
 }
 </script>
 @endsection

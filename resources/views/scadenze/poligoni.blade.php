@@ -4,6 +4,31 @@
 
 @section('content')
 <style>
+/* Container tabella con scroll */
+.table-container {
+    position: relative;
+    background: white;
+}
+
+.table-container::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
 /* Stili uniformi come le altre pagine */
 .table tbody tr:hover {
     background-color: rgba(10, 35, 66, 0.12) !important;
@@ -31,57 +56,29 @@ table.table td,
     border-color: rgba(10, 35, 66, 0.20) !important;
 }
 
-/* Colonne sticky per grado, cognome, nome */
+/* Colonne con larghezza minima ma senza sticky */
 .table th:nth-child(1),
 .table td:nth-child(1) {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    font-weight: 600;
-    min-width: 60px !important;
-}
-
-.table th:nth-child(2),
-.table td:nth-child(2) {
-    position: sticky;
-    left: 60px;
-    z-index: 5;
     font-weight: 600;
     min-width: 120px !important;
 }
 
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    font-weight: 600;
+    min-width: 80px !important;
+}
+
 .table th:nth-child(3),
 .table td:nth-child(3) {
-    position: sticky;
-    left: 180px;
-    z-index: 5;
     font-weight: 600;
-    min-width: 100px !important;
+    min-width: 140px !important;
 }
 
-.table thead th:nth-child(1),
-.table thead th:nth-child(2),
-.table thead th:nth-child(3) {
-    background-color: #0a2342 !important;
-    z-index: 15;
-}
-
-.table tbody tr:nth-of-type(odd) td:nth-child(1),
-.table tbody tr:nth-of-type(odd) td:nth-child(2),
-.table tbody tr:nth-of-type(odd) td:nth-child(3) {
-    background-color: #ffffff;
-}
-
-.table tbody tr:nth-of-type(even) td:nth-child(1),
-.table tbody tr:nth-of-type(even) td:nth-child(2),
-.table tbody tr:nth-of-type(even) td:nth-child(3) {
-    background-color: #fafafa;
-}
-
-.table tbody tr:hover td:nth-child(1),
-.table tbody tr:hover td:nth-child(2),
-.table tbody tr:hover td:nth-child(3) {
-    background-color: rgba(10, 35, 66, 0.12) !important;
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    font-weight: 600;
+    min-width: 120px !important;
 }
 
 /* Celle scadenze - Data colorata con background */
@@ -272,17 +269,29 @@ table.table td,
     width: 100%;
 }
 
-/* Stili filtri - come altre pagine */
-.filters-section {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 4px;
-    margin-bottom: 20px;
-    border: 1px solid #dee2e6;
+/* Select wrapper per filtri con X di cancellazione */
+.select-wrapper {
+    position: relative;
 }
 
-.filter-select {
-    border-radius: 0 !important;
+.select-wrapper .clear-filter {
+    position: absolute;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #dc3545;
+    font-size: 12px;
+    z-index: 10;
+}
+
+.select-wrapper .clear-filter:hover {
+    color: #c82333;
+}
+
+.filter-select.applied {
+    border-color: #0a2342;
+    background-color: rgba(10, 35, 66, 0.05);
 }
 </style>
 
@@ -310,64 +319,101 @@ table.table td,
         <i class="fas fa-filter me-2"></i> <span id="filterToggleText">Mostra Filtri</span>
     </button>
     <div class="d-flex gap-2 align-items-center">
-        <span class="badge bg-primary">{{ $data->count() }} militari</span>
         <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
-        <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza (≤30gg)</span>
+        <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
         <span class="badge" style="background-color: #f8d7da; color: #721c24;"><i class="fas fa-times"></i> Scaduto</span>
         <span class="badge" style="background-color: #e9ecef; color: #6c757d;"><i class="fas fa-minus"></i> Mancante</span>
     </div>
 </div>
 
-<!-- Sezione Filtri -->
-<div class="filters-section" id="filtersSection" style="display: none;">
-    <form id="filterForm" method="GET" action="{{ route('scadenze.poligoni') }}">
-        <div class="row g-3">
-            <div class="col-md-2">
-                <label class="form-label">Tiri Approntamento:</label>
-                <select name="tiri_approntamento" class="form-select filter-select">
-                    <option value="">Tutti</option>
-                    <option value="valido">Valido</option>
-                    <option value="in_scadenza">In Scadenza</option>
-                    <option value="scaduto">Scaduto</option>
-                    <option value="mancante">Mancante</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Mant. Arma Lunga:</label>
-                <select name="mantenimento_arma_lunga" class="form-select filter-select">
-                    <option value="">Tutti</option>
-                    <option value="valido">Valido</option>
-                    <option value="in_scadenza">In Scadenza</option>
-                    <option value="scaduto">Scaduto</option>
-                    <option value="mancante">Mancante</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Mant. Arma Corta:</label>
-                <select name="mantenimento_arma_corta" class="form-select filter-select">
-                    <option value="">Tutti</option>
-                    <option value="valido">Valido</option>
-                    <option value="in_scadenza">In Scadenza</option>
-                    <option value="scaduto">Scaduto</option>
-                    <option value="mancante">Mancante</option>
-                </select>
-            </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Filtra</button>
-            </div>
+<!-- Sezione Filtri (usa lo stesso stile delle altre pagine) -->
+<div class="filter-card mb-4" id="filtersSection" style="display: none;">
+    <div class="filter-card-header d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-filter me-2"></i> Filtri avanzati
         </div>
-    </form>
+    </div>
+    <div class="card-body p-3">
+        <form id="filterForm" method="GET" action="{{ route('poligoni.index') }}">
+            <div class="row">
+                <div class="col mb-2">
+                    <label for="tiri_approntamento" class="form-label small">Teatro Operativo</label>
+                    <div class="select-wrapper">
+                        <select name="tiri_approntamento" id="tiri_approntamento" class="form-select form-select-sm filter-select {{ request()->filled('tiri_approntamento') ? 'applied' : '' }}">
+                            <option value="">Tutti</option>
+                            <option value="valido" {{ request('tiri_approntamento') == 'valido' ? 'selected' : '' }}>✓ Valido</option>
+                            <option value="in_scadenza" {{ request('tiri_approntamento') == 'in_scadenza' ? 'selected' : '' }}>⚠ In Scadenza</option>
+                            <option value="scaduto" {{ request('tiri_approntamento') == 'scaduto' ? 'selected' : '' }}>✗ Scaduto</option>
+                            <option value="mancante" {{ request('tiri_approntamento') == 'mancante' ? 'selected' : '' }}>- Mancante</option>
+                        </select>
+                        @if(request()->filled('tiri_approntamento'))
+                            <span class="clear-filter" data-filter="tiri_approntamento" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                        @endif
+                    </div>
+                </div>
+                
+                <div class="col mb-2">
+                    <label for="mantenimento_arma_lunga" class="form-label small">Mant. Arma Lunga</label>
+                    <div class="select-wrapper">
+                        <select name="mantenimento_arma_lunga" id="mantenimento_arma_lunga" class="form-select form-select-sm filter-select {{ request()->filled('mantenimento_arma_lunga') ? 'applied' : '' }}">
+                            <option value="">Tutti</option>
+                            <option value="valido" {{ request('mantenimento_arma_lunga') == 'valido' ? 'selected' : '' }}>✓ Valido</option>
+                            <option value="in_scadenza" {{ request('mantenimento_arma_lunga') == 'in_scadenza' ? 'selected' : '' }}>⚠ In Scadenza</option>
+                            <option value="scaduto" {{ request('mantenimento_arma_lunga') == 'scaduto' ? 'selected' : '' }}>✗ Scaduto</option>
+                            <option value="mancante" {{ request('mantenimento_arma_lunga') == 'mancante' ? 'selected' : '' }}>- Mancante</option>
+                        </select>
+                        @if(request()->filled('mantenimento_arma_lunga'))
+                            <span class="clear-filter" data-filter="mantenimento_arma_lunga" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                        @endif
+                    </div>
+                </div>
+                
+                <div class="col mb-2">
+                    <label for="mantenimento_arma_corta" class="form-label small">Mant. Arma Corta</label>
+                    <div class="select-wrapper">
+                        <select name="mantenimento_arma_corta" id="mantenimento_arma_corta" class="form-select form-select-sm filter-select {{ request()->filled('mantenimento_arma_corta') ? 'applied' : '' }}">
+                            <option value="">Tutti</option>
+                            <option value="valido" {{ request('mantenimento_arma_corta') == 'valido' ? 'selected' : '' }}>✓ Valido</option>
+                            <option value="in_scadenza" {{ request('mantenimento_arma_corta') == 'in_scadenza' ? 'selected' : '' }}>⚠ In Scadenza</option>
+                            <option value="scaduto" {{ request('mantenimento_arma_corta') == 'scaduto' ? 'selected' : '' }}>✗ Scaduto</option>
+                            <option value="mancante" {{ request('mantenimento_arma_corta') == 'mancante' ? 'selected' : '' }}>- Mancante</option>
+                        </select>
+                        @if(request()->filled('mantenimento_arma_corta'))
+                            <span class="clear-filter" data-filter="mantenimento_arma_corta" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            
+            @php
+                $activeFilters = [];
+                foreach(['tiri_approntamento', 'mantenimento_arma_lunga', 'mantenimento_arma_corta'] as $filter) {
+                    if(request()->filled($filter)) $activeFilters[] = $filter;
+                }
+                $activeCount = count($activeFilters);
+            @endphp
+            
+            <div class="d-flex justify-content-center mt-3">
+                @if($activeCount > 0)
+                <a href="{{ route('poligoni.index') }}" class="btn btn-danger">
+                    <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri ({{ $activeCount }})
+                </a>
+                @endif
+            </div>
+        </form>
+    </div>
 </div>
 
-<!-- Tabella con scroll orizzontale -->
-<div class="table-responsive" style="max-height: 70vh; overflow: auto;">
-    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable">
+<!-- Tabella con scroll orizzontale e verticale -->
+<div class="table-container" style="max-height: calc(100vh - 350px); overflow-x: auto; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 8px;">
+    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable" style="min-width: 1400px;">
         <thead style="position: sticky; top: 0; z-index: 10;">
             <tr style="background-color: #0a2342; color: white;">
+                <th>Compagnia</th>
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
-                <th style="min-width: 160px;">Tiri di Approntamento</th>
+                <th style="min-width: 160px;">Teatro Operativo</th>
                 <th style="min-width: 180px;">Mantenimento Arma Lunga</th>
                 <th style="min-width: 180px;">Mantenimento Arma Corta</th>
             </tr>
@@ -376,6 +422,7 @@ table.table td,
             @foreach($data as $item)
             <tr data-militare-id="{{ $item['militare']->id }}" 
                 data-militare-nome="{{ $item['militare']->grado->abbreviazione ?? '' }} {{ $item['militare']->cognome }} {{ $item['militare']->nome }}">
+                <td><strong>{{ $item['militare']->compagnia->nome ?? 'N/A' }}</strong></td>
                 <td>{{ $item['militare']->grado->abbreviazione ?? '' }}</td>
                 <td>
                     <a href="{{ route('anagrafica.show', $item['militare']->id) }}" class="link-name">
@@ -466,11 +513,40 @@ document.getElementById('toggleFilters').addEventListener('click', function() {
     if (filtersSection.style.display === 'none') {
         filtersSection.style.display = 'block';
         toggleText.textContent = 'Nascondi Filtri';
+        this.classList.add('active');
     } else {
         filtersSection.style.display = 'none';
         toggleText.textContent = 'Mostra Filtri';
+        this.classList.remove('active');
     }
 });
+
+// Auto-submit quando cambia un filtro
+document.querySelectorAll('.filter-select').forEach(function(select) {
+    select.addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+});
+
+// Gestione click sulle X di cancellazione filtri individuali
+document.querySelectorAll('.clear-filter').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const filterName = this.getAttribute('data-filter');
+        const select = document.getElementById(filterName);
+        if (select) {
+            select.value = '';
+            document.getElementById('filterForm').submit();
+        }
+    });
+});
+
+// Se ci sono filtri attivi, mostra la sezione filtri
+@if(request()->filled('tiri_approntamento') || request()->filled('mantenimento_arma_lunga') || request()->filled('mantenimento_arma_corta'))
+document.getElementById('filtersSection').style.display = 'block';
+document.getElementById('filterToggleText').textContent = 'Nascondi Filtri';
+document.getElementById('toggleFilters').classList.add('active');
+@endif
 
 // Ricerca live
 document.getElementById('searchInput').addEventListener('input', function() {
@@ -536,8 +612,6 @@ function saveScadenza() {
     const campo = currentCell.getAttribute('data-campo');
     const nuovaData = document.getElementById('modalDataConseguimento').value;
     
-    console.log('Salvataggio:', { militareId, campo, nuovaData });
-    
     // Salva riferimento per ripristinare dopo errore
     const cellToUpdate = currentCell;
     
@@ -547,7 +621,7 @@ function saveScadenza() {
     // URL BASE CORRETTA
     const baseUrl = window.location.origin + '/SUGECO/public';
     
-    fetch(`${baseUrl}/scadenze/poligoni/${militareId}/update-singola`, {
+    fetch(`${baseUrl}/poligoni/${militareId}/update-singola`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -560,14 +634,12 @@ function saveScadenza() {
         })
     })
     .then(response => {
-        console.log('Response status:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Response data:', data);
         if (data.success) {
             location.reload();
         } else {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Militare;
 use App\Models\ScadenzaMilitare;
+use App\Models\ConfigurazioneCorsoSpp;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -18,28 +19,46 @@ class RsppController extends Controller
      */
     public function index(Request $request)
     {
-        // Ottieni tutti i militari con le loro scadenze
-        $militari = Militare::with('scadenza')
+        // Recupera tutti i corsi attivi di tipo 'formazione' ordinati
+        $corsi = ConfigurazioneCorsoSpp::attivi()
+            ->perTipo('formazione')
+            ->ordinati()
+            ->get();
+        
+        // Ottieni tutti i militari con le loro scadenze SPP
+        $militari = Militare::with(['scadenzeCorsiSpp.corso'])
             ->orderByGradoENome()
             ->get();
         
         // Calcola le scadenze per ogni militare
-        $data = $militari->map(function ($militare) {
-            $scadenza = $militare->scadenza;
-            
-            return [
+        $data = $militari->map(function ($militare) use ($corsi) {
+            $row = [
                 'militare' => $militare,
-                'lavoratore_4h' => $this->calcolaScadenza($scadenza?->lavoratore_4h_data_conseguimento, 4), // 4 anni
-                'lavoratore_8h' => $this->calcolaScadenza($scadenza?->lavoratore_8h_data_conseguimento, 4), // 4 anni
-                'preposto' => $this->calcolaScadenza($scadenza?->preposto_data_conseguimento, 2), // 2 anni
-                'dirigente' => $this->calcolaScadenza($scadenza?->dirigenti_data_conseguimento, 4), // 4 anni (CORRETTO!)
-                'antincendio' => $this->calcolaScadenza($scadenza?->antincendio_data_conseguimento, 1), // 1 anno
-                'blsd' => $this->calcolaScadenza($scadenza?->blsd_data_conseguimento, 2), // 2 anni (CORRETTO!)
-                'primo_soccorso_aziendale' => $this->calcolaScadenza($scadenza?->primo_soccorso_aziendale_data_conseguimento, 2), // 2 anni
             ];
+            
+            // Per ogni corso, recupera la scadenza del militare
+            foreach ($corsi as $corso) {
+                $scadenzaCorso = $militare->scadenzeCorsiSpp->firstWhere('configurazione_corso_spp_id', $corso->id);
+                
+                if ($scadenzaCorso) {
+                    $row[$corso->codice_corso] = $scadenzaCorso->calcolaScadenza();
+                } else {
+                    // Nessuna scadenza registrata per questo corso
+                    $row[$corso->codice_corso] = [
+                        'data_scadenza' => null,
+                        'stato' => 'mancante',
+                        'classe' => 'mancante',
+                        'giorni_rimanenti' => null,
+                        'data_conseguimento' => null,
+                        'durata' => $corso->durata_anni,
+                    ];
+                }
+            }
+            
+            return $row;
         });
         
-        return view('scadenze.rspp', compact('data'));
+        return view('scadenze.rspp', compact('data', 'corsi'));
     }
     
     /**
@@ -48,32 +67,26 @@ class RsppController extends Controller
     public function updateSingola(Request $request, Militare $militare)
     {
         $request->validate([
-            'campo' => 'required|string',
+            'corso_id' => 'required|exists:configurazione_corsi_spp,id',
             'data' => 'nullable|date',
         ]);
         
-        // Ottieni o crea il record scadenza
-        $scadenza = $militare->scadenza;
-        if (!$scadenza) {
-            $scadenza = new ScadenzaMilitare();
-            $scadenza->militare_id = $militare->id;
-            $scadenza->save(); // Salva prima il record con solo il militare_id
-        }
+        $corsoId = $request->corso_id;
+        $data = $request->data;
         
-        $campo = $request->campo;
+        // Trova o crea la scadenza per questo militare e corso
+        $scadenzaCorso = \App\Models\ScadenzaCorsoSpp::updateOrCreate(
+            [
+                'militare_id' => $militare->id,
+                'configurazione_corso_spp_id' => $corsoId,
+            ],
+            [
+                'data_conseguimento' => $data,
+            ]
+        );
         
-        $scadenza->$campo = $request->data;
-        $scadenza->save();
-        
-        // Calcola la nuova scadenza (durate corrette!)
-        $anni = match($campo) {
-            'lavoratore_4h_data_conseguimento', 'lavoratore_8h_data_conseguimento', 'dirigenti_data_conseguimento' => 4, // 4 anni
-            'preposto_data_conseguimento', 'primo_soccorso_aziendale_data_conseguimento', 'blsd_data_conseguimento' => 2, // 2 anni
-            'antincendio_data_conseguimento' => 1, // 1 anno
-            default => 1
-        };
-        
-        $scadenzaCalcolata = $this->calcolaScadenza($scadenza->$campo, $anni);
+        // Calcola e restituisci la nuova scadenza
+        $scadenzaCalcolata = $scadenzaCorso->calcolaScadenza();
         
         return response()->json([
             'success' => true,

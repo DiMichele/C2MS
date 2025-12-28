@@ -35,16 +35,28 @@ class RolesAndPermissionsSeeder extends Seeder
         $permissions['anagrafica.view'] = Permission::create(['name' => 'anagrafica.view', 'display_name' => 'Visualizza Anagrafica', 'category' => 'personale', 'type' => 'read']);
         $permissions['anagrafica.edit'] = Permission::create(['name' => 'anagrafica.edit', 'display_name' => 'Modifica Anagrafica', 'category' => 'personale', 'type' => 'write']);
         
-        // PERSONALE - Scadenze
-        $permissions['scadenze.view'] = Permission::create(['name' => 'scadenze.view', 'display_name' => 'Visualizza Scadenze', 'category' => 'personale', 'type' => 'read']);
-        $permissions['scadenze.edit'] = Permission::create(['name' => 'scadenze.edit', 'display_name' => 'Modifica Scadenze', 'category' => 'personale', 'type' => 'write']);
+        // PERSONALE - Scadenze SPP
+        $permissions['scadenze.view'] = Permission::create(['name' => 'scadenze.view', 'display_name' => 'Visualizza Scadenze SPP', 'category' => 'personale', 'type' => 'read']);
+        $permissions['scadenze.edit'] = Permission::create(['name' => 'scadenze.edit', 'display_name' => 'Modifica Scadenze SPP', 'category' => 'personale', 'type' => 'write']);
         
         // PERSONALE - Organigramma
         $permissions['organigramma.view'] = Permission::create(['name' => 'organigramma.view', 'display_name' => 'Visualizza Organigramma', 'category' => 'personale', 'type' => 'read']);
         
-        // BOARD
+        // PERSONALE - Assenze
+        $permissions['assenze.view'] = Permission::create(['name' => 'assenze.view', 'display_name' => 'Visualizza Assenze', 'category' => 'personale', 'type' => 'read']);
+        $permissions['assenze.edit'] = Permission::create(['name' => 'assenze.edit', 'display_name' => 'Modifica Assenze', 'category' => 'personale', 'type' => 'write']);
+        
+        // BOARD ATTIVITÀ
         $permissions['board.view'] = Permission::create(['name' => 'board.view', 'display_name' => 'Visualizza Board', 'category' => 'board', 'type' => 'read']);
         $permissions['board.edit'] = Permission::create(['name' => 'board.edit', 'display_name' => 'Modifica Board', 'category' => 'board', 'type' => 'write']);
+        
+        // EVENTI
+        $permissions['eventi.view'] = Permission::create(['name' => 'eventi.view', 'display_name' => 'Visualizza Eventi', 'category' => 'eventi', 'type' => 'read']);
+        $permissions['eventi.edit'] = Permission::create(['name' => 'eventi.edit', 'display_name' => 'Modifica Eventi', 'category' => 'eventi', 'type' => 'write']);
+        
+        // PIANIFICAZIONE
+        $permissions['pianificazione.view'] = Permission::create(['name' => 'pianificazione.view', 'display_name' => 'Visualizza Pianificazione', 'category' => 'pianificazione', 'type' => 'read']);
+        $permissions['pianificazione.edit'] = Permission::create(['name' => 'pianificazione.edit', 'display_name' => 'Modifica Pianificazione', 'category' => 'pianificazione', 'type' => 'write']);
         
         // SERVIZI (generale)
         $permissions['servizi.view'] = Permission::create(['name' => 'servizi.view', 'display_name' => 'Visualizza Servizi', 'category' => 'servizi', 'type' => 'read']);
@@ -56,25 +68,27 @@ class RolesAndPermissionsSeeder extends Seeder
         // SERVIZI - Trasparenza
         $permissions['trasparenza.view'] = Permission::create(['name' => 'trasparenza.view', 'display_name' => 'Visualizza Trasparenza', 'category' => 'servizi', 'type' => 'read']);
         
-        // ADMIN
+        // ADMIN - Pannello Generale
         $permissions['admin.access'] = Permission::create(['name' => 'admin.access', 'display_name' => 'Accesso Pannello Admin', 'category' => 'admin', 'type' => 'write']);
         $permissions['admin.users'] = Permission::create(['name' => 'admin.users', 'display_name' => 'Gestione Utenti', 'category' => 'admin', 'type' => 'write']);
+        
+        // PROFILO UTENTE
+        $permissions['profile.view'] = Permission::create(['name' => 'profile.view', 'display_name' => 'Visualizza Profilo', 'category' => 'profilo', 'type' => 'read']);
+        $permissions['profile.edit'] = Permission::create(['name' => 'profile.edit', 'display_name' => 'Modifica Profilo', 'category' => 'profilo', 'type' => 'write']);
         
         $this->command->info('✅ ' . count($permissions) . ' permessi creati');
         $this->command->info('');
         $this->command->info('👥 Creazione ruoli...');
         
-        // RUOLO: Admin (pannello gestione utenti)
+        // RUOLO: Admin (ACCESSO COMPLETO A TUTTO)
         $admin = Role::create([
             'name' => 'admin',
             'display_name' => 'Admin',
-            'description' => 'Accesso completo al pannello admin.',
+            'description' => 'Accesso completo a tutto il sistema.',
             'compagnia_id' => null
         ]);
-        $admin->permissions()->attach([
-            $permissions['admin.access']->id,
-            $permissions['admin.users']->id,
-        ]);
+        // Admin ha TUTTI i permessi
+        $admin->permissions()->attach(array_map(fn($p) => $p->id, $permissions));
         
         // RUOLO: Amministratore (gestionale completo)
         $amministratore = Role::create([
@@ -93,14 +107,22 @@ class RolesAndPermissionsSeeder extends Seeder
             $permissions['scadenze.view']->id,
             $permissions['scadenze.edit']->id,
             $permissions['organigramma.view']->id,
+            $permissions['assenze.view']->id,
+            $permissions['assenze.edit']->id,
             $permissions['board.view']->id,
             $permissions['board.edit']->id,
+            $permissions['eventi.view']->id,
+            $permissions['eventi.edit']->id,
+            $permissions['pianificazione.view']->id,
+            $permissions['pianificazione.edit']->id,
             $permissions['servizi.view']->id,
             $permissions['turni.view']->id,
             $permissions['turni.edit']->id,
             $permissions['trasparenza.view']->id,
             $permissions['admin.access']->id,
             $permissions['admin.users']->id,
+            $permissions['profile.view']->id,
+            $permissions['profile.edit']->id,
         ]);
         
         // RUOLO: Comandante (globale, vede tutte le compagnie)
@@ -120,12 +142,20 @@ class RolesAndPermissionsSeeder extends Seeder
             $permissions['scadenze.view']->id,
             // NOTA: scadenze.edit rimosso - solo RSSP e Amministratore
             $permissions['organigramma.view']->id,
+            $permissions['assenze.view']->id,
+            $permissions['assenze.edit']->id,
             $permissions['board.view']->id,
             $permissions['board.edit']->id,
+            $permissions['eventi.view']->id,
+            $permissions['eventi.edit']->id,
+            $permissions['pianificazione.view']->id,
+            $permissions['pianificazione.edit']->id,
             $permissions['servizi.view']->id,
             $permissions['turni.view']->id,
             $permissions['turni.edit']->id,
             $permissions['trasparenza.view']->id,
+            $permissions['profile.view']->id,
+            $permissions['profile.edit']->id,
         ]);
         
         // RUOLO: RSSP (globale, vede tutte le scadenze)
@@ -164,12 +194,20 @@ class RolesAndPermissionsSeeder extends Seeder
                 $permissions['scadenze.view']->id,
                 // NOTA: scadenze.edit rimosso - solo RSSP e Amministratore
                 $permissions['organigramma.view']->id,
+                $permissions['assenze.view']->id,
+                $permissions['assenze.edit']->id,
                 $permissions['board.view']->id,
                 $permissions['board.edit']->id,
+                $permissions['eventi.view']->id,
+                $permissions['eventi.edit']->id,
+                $permissions['pianificazione.view']->id,
+                $permissions['pianificazione.edit']->id,
                 $permissions['servizi.view']->id,
                 $permissions['turni.view']->id,
                 $permissions['turni.edit']->id,
                 $permissions['trasparenza.view']->id,
+                $permissions['profile.view']->id,
+                $permissions['profile.edit']->id,
             ]);
             
             $this->command->info('  ✓ ' . $roleUfficio->display_name);

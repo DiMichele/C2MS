@@ -46,10 +46,11 @@ class TurniController extends Controller
         $request->validate([
             'militare_id' => 'required|exists:militari,id',
             'data' => 'required|date',
+            'exclude_activity_id' => 'nullable|exists:board_activities,id', // Attività da escludere
         ]);
 
         $militare = Militare::find($request->militare_id);
-        $disponibilita = $militare->isDisponibile($request->data);
+        $disponibilita = $militare->isDisponibile($request->data, $request->exclude_activity_id);
 
         return response()->json($disponibilita);
     }

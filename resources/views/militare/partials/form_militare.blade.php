@@ -177,6 +177,75 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="data_nascita" class="form-label">Data di Nascita</label>
+                                    <input type="date" class="form-control @error('data_nascita') is-invalid @enderror" id="data_nascita" name="data_nascita" value="{{ old('data_nascita', isset($militare) && $militare->data_nascita ? $militare->data_nascita->format('Y-m-d') : '') }}">
+                                    @error('data_nascita')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="sesso" class="form-label">Sesso</label>
+                                    <select class="form-select @error('sesso') is-invalid @enderror" id="sesso" name="sesso">
+                                        <option value="">--</option>
+                                        <option value="M" {{ old('sesso', $militare->sesso ?? '') == 'M' ? 'selected' : '' }}>M</option>
+                                        <option value="F" {{ old('sesso', $militare->sesso ?? '') == 'F' ? 'selected' : '' }}>F</option>
+                                    </select>
+                                    @error('sesso')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="luogo_nascita" class="form-label">Comune di Nascita</label>
+                                    <input type="text" class="form-control @error('luogo_nascita') is-invalid @enderror" id="luogo_nascita" name="luogo_nascita" value="{{ old('luogo_nascita', $militare->luogo_nascita ?? '') }}" placeholder="Es: Roma, Milano, Napoli..." autocomplete="off">
+                                    @error('luogo_nascita')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="form-text text-muted">Inserisci il nome del comune</small>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="provincia_nascita" class="form-label">Provincia</label>
+                                    <input type="text" class="form-control @error('provincia_nascita') is-invalid @enderror" id="provincia_nascita" name="provincia_nascita" value="{{ old('provincia_nascita', $militare->provincia_nascita ?? '') }}" maxlength="2" placeholder="RM" style="text-transform: uppercase;">
+                                    @error('provincia_nascita')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="codice_fiscale" class="form-label">
+                                        <i class="fas fa-id-card me-1 text-primary"></i>Codice Fiscale
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control @error('codice_fiscale') is-invalid @enderror" id="codice_fiscale" name="codice_fiscale" value="{{ old('codice_fiscale', $militare->codice_fiscale ?? '') }}" maxlength="16" style="text-transform: uppercase; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 2px; font-size: 1.1rem;">
+                                        <span class="input-group-text bg-secondary text-white" id="cf-status" title="Completa tutti i campi per calcolare il CF">
+                                            <i class="fas fa-calculator"></i>
+                                        </span>
+                                    </div>
+                                    @error('codice_fiscale')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-magic me-1"></i>Calcolato automaticamente da: Cognome, Nome, Data di Nascita, Sesso e Comune
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Informazioni Organizzative -->
@@ -330,10 +399,23 @@
     </div>
 </div>
 
-@section('page_scripts')
+@push('scripts')
+{{-- Database comuni italiani per calcolo CF --}}
+<script src="{{ asset('js/comuni-italiani.js') }}?v={{ time() }}"></script>
+{{-- Script calcolo codice fiscale --}}
+<script src="{{ asset('js/calcola-codice-fiscale.js') }}?v={{ time() }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Funzioni di validazione e interazioni UI qui se necessarie
+    // Uppercase automatico per provincia e codice fiscale
+    const uppercaseFields = ['provincia_nascita', 'codice_fiscale', 'luogo_nascita'];
+    uppercaseFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.addEventListener('input', function() {
+                this.value = this.value.toUpperCase();
+            });
+        }
+    });
 });
 </script>
-@endsection
+@endpush

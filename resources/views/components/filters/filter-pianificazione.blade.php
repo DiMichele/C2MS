@@ -9,7 +9,7 @@
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'compleanno', 'giorno'] as $filter) {
+    foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'stato_impegno', 'compleanno', 'giorno'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $activeCount = count($activeFilters);
@@ -23,11 +23,13 @@
         <div class="select-wrapper">
             <select name="compagnia" id="compagnia" class="form-select form-select-sm filter-select {{ request()->filled('compagnia') ? 'applied' : '' }}">
                 <option value="">Tutte</option>
-                <option value="1" {{ request('compagnia') == '1' ? 'selected' : '' }}>1a</option>
-                <option value="2" {{ request('compagnia') == '2' ? 'selected' : '' }}>2a</option>
-                <option value="3" {{ request('compagnia') == '3' ? 'selected' : '' }}>3a</option>
-                <option value="4" {{ request('compagnia') == '4' ? 'selected' : '' }}>4a</option>
-                <option value="5" {{ request('compagnia') == '5' ? 'selected' : '' }}>5a</option>
+                @if(isset($compagnie))
+                    @foreach($compagnie as $compagnia)
+                        <option value="{{ $compagnia->id }}" {{ request('compagnia') == $compagnia->id ? 'selected' : '' }}>
+                            {{ $compagnia->nome }}
+                        </option>
+                    @endforeach
+                @endif
             </select>
             @if(request()->filled('compagnia'))
                 <span class="clear-filter" data-filter="compagnia" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
@@ -55,15 +57,20 @@
         </div>
     </div>
     
-    {{-- Filtro Plotone --}}
+    {{-- Filtro Plotone (disabilitato finché non si seleziona una compagnia) --}}
     <div class="col mb-2">
         <label for="plotone_id" class="form-label small">Plotone</label>
         <div class="select-wrapper">
-            <select name="plotone_id" id="plotone_id" class="form-select form-select-sm filter-select {{ request()->filled('plotone_id') ? 'applied' : '' }}">
-                <option value="">Tutti</option>
+            <select name="plotone_id" id="plotone_id" 
+                    class="form-select form-select-sm filter-select {{ request()->filled('plotone_id') ? 'applied' : '' }}"
+                    {{ !request()->filled('compagnia') ? 'disabled' : '' }}
+                    title="{{ !request()->filled('compagnia') ? 'Seleziona prima una compagnia' : '' }}">
+                <option value="">{{ !request()->filled('compagnia') ? 'Seleziona prima compagnia' : 'Tutti' }}</option>
                 @if(isset($plotoni))
                     @foreach($plotoni as $plotone)
-                        <option value="{{ $plotone->id }}" {{ request('plotone_id') == $plotone->id ? 'selected' : '' }}>
+                        <option value="{{ $plotone->id }}" 
+                                data-compagnia-id="{{ $plotone->compagnia_id }}"
+                                {{ request('plotone_id') == $plotone->id ? 'selected' : '' }}>
                             {{ $plotone->nome }}
                         </option>
                     @endforeach
@@ -93,9 +100,9 @@
         </div>
     </div>
 
-    {{-- Filtro Approntamento --}}
+    {{-- Filtro Teatro Operativo --}}
     <div class="col mb-2">
-        <label for="approntamento_id" class="form-label small">Approntamento</label>
+        <label for="approntamento_id" class="form-label small">Teatro Operativo</label>
         <div class="select-wrapper">
             <select name="approntamento_id" id="approntamento_id" class="form-select form-select-sm filter-select {{ request()->filled('approntamento_id') ? 'applied' : '' }}">
                 <option value="">Tutti</option>
@@ -131,6 +138,25 @@
             </select>
             @if(request()->filled('impegno'))
                 <span class="clear-filter" data-filter="impegno" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            @endif
+        </div>
+    </div>
+
+    {{-- Filtro Stato Impegno (Presenti/Assenti) --}}
+    <div class="col mb-2">
+        <label for="stato_impegno" class="form-label small">Stato Oggi</label>
+        <div class="select-wrapper">
+            <select name="stato_impegno" id="stato_impegno" class="form-select form-select-sm filter-select {{ request()->filled('stato_impegno') ? 'applied' : '' }}">
+                <option value="">Tutti</option>
+                <option value="libero" {{ request('stato_impegno') == 'libero' ? 'selected' : '' }}>
+                    <span class="text-success">✓</span> Presenti (Liberi)
+                </option>
+                <option value="impegnato" {{ request('stato_impegno') == 'impegnato' ? 'selected' : '' }}>
+                    <span class="text-danger">✗</span> Assenti (Impegnati)
+                </option>
+            </select>
+            @if(request()->filled('stato_impegno'))
+                <span class="clear-filter" data-filter="stato_impegno" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
             @endif
         </div>
     </div>

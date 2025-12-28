@@ -1,12 +1,12 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
-@section('title', 'Calendario Attività')
+@section('title', 'Calendario AttivitÃ ')
 
 @section('content')
 <div class="container-fluid">
     <!-- Header Minimal Solo Titolo -->
 <div class="text-center mb-4">
-    <h1 class="page-title">Calendario Attività</h1>
+    <h1 class="page-title">Calendario AttivitÃ </h1>
 </div>
     
     <div class="text-end mb-3">
@@ -14,7 +14,7 @@
             <i class="fas fa-columns"></i> Vista Board
         </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createActivityModal">
-            <i class="fas fa-plus"></i> Nuova Attività
+            <i class="fas fa-plus"></i> Nuova AttivitÃ 
         </button>
     </div>
 
@@ -26,20 +26,28 @@
                 </h5>
                 <div class="calendar-legend d-flex gap-3 flex-wrap mt-2 mt-md-0">
                     <span class="d-flex align-items-center">
-                        <div class="legend-dot me-2" style="background-color: #dc3545; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
-                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Urgenti</span>
+                        <div class="legend-dot me-2" style="background-color: #6c757d; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
+                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Servizi Isolati</span>
+                    </span>
+                    <span class="d-flex align-items-center">
+                        <div class="legend-dot me-2" style="background-color: #28a745; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
+                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Cattedre</span>
+                    </span>
+                    <span class="d-flex align-items-center">
+                        <div class="legend-dot me-2" style="background-color: #007bff; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
+                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Corsi</span>
                     </span>
                     <span class="d-flex align-items-center">
                         <div class="legend-dot me-2" style="background-color: #ffc107; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
-                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">In scadenza</span>
+                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Esercitazioni</span>
                     </span>
                     <span class="d-flex align-items-center">
-                        <div class="legend-dot me-2" style="background-color: #198754; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
-                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Pianificate</span>
+                        <div class="legend-dot me-2" style="background-color: #fd7e14; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
+                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Stand-by</span>
                     </span>
                     <span class="d-flex align-items-center">
-                        <div class="legend-dot me-2" style="background-color: #0dcaf0; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
-                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Fuori porta</span>
+                        <div class="legend-dot me-2" style="background-color: #dc3545; width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(27, 31, 36, 0.15);"></div>
+                        <span style="font-size: 13px; color: #24292f; font-weight: 500;">Operazioni</span>
                     </span>
                 </div>
             </div>
@@ -56,14 +64,14 @@
                 </div>
                 <div id="calendar-error" class="alert alert-danger m-3 d-none">
                     <i class="fas fa-exclamation-circle me-2"></i>
-                    <span>Errore durante il caricamento del calendario. Riprova più tardi.</span>
+                    <span>Errore durante il caricamento del calendario. Riprova piÃ¹ tardi.</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal per la creazione di nuove attività -->
+<!-- Modal per la creazione di nuove attivitÃ  -->
 <div class="modal fade" id="createActivityModal" tabindex="-1" aria-labelledby="createActivityModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -71,19 +79,30 @@
                 @csrf
                 <div class="modal-header bg-light">
                     <h5 class="modal-title" id="createActivityModalLabel">
-                        <i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Nuova AttivitÃ 
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label for="compagnia_mounting_id" class="form-label fw-bold">Compagnia Organizzatrice *</label>
+                        <select class="form-control" id="compagnia_mounting_id" name="compagnia_mounting_id" required>
+                            <option value="">-- Seleziona compagnia --</option>
+                            @foreach(App\Models\Compagnia::orderBy('nome')->get() as $compagnia)
+                            <option value="{{ $compagnia->id }}">{{ $compagnia->nome }}</option>
+                            @endforeach
+                        </select>
+                        <small class="form-text text-muted">Indica quale compagnia organizza l'attivitÃ </small>
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="title" class="form-label fw-bold">Titolo *</label>
-                        <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'attività" required>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'attivitÃ " required>
                     </div>
                     
                     <div class="mb-3">
                         <label for="description" class="form-label fw-bold">Descrizione</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrivi l'attività (opzionale)"></textarea>
+                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrivi l'attivitÃ  (opzionale)"></textarea>
                     </div>
                     
                     <div class="row">
@@ -94,13 +113,14 @@
                         <div class="col-md-6 mb-3">
                             <label for="end_date" class="form-label fw-bold">Data Fine</label>
                             <input type="date" class="form-control" id="end_date" name="end_date">
-                            <small class="form-text text-muted">Se non specificata, sarà considerata la stessa data di inizio</small>
+                            <small class="form-text text-muted">Se non specificata, sarÃ  considerata la stessa data di inizio</small>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="column_id" class="form-label fw-bold">Stato *</label>
+                        <label for="column_id" class="form-label fw-bold">Tipologia *</label>
                         <select class="form-control" id="column_id" name="column_id" required>
+                            <option value="">-- Seleziona tipologia --</option>
                             @foreach(App\Models\BoardColumn::orderBy('order')->get() as $column)
                             <option value="{{ $column->id }}">{{ $column->name }}</option>
                             @endforeach
@@ -117,7 +137,7 @@
                             </option>
                             @endforeach
                         </select>
-                        <small class="form-text text-muted">Seleziona uno o più militari coinvolti nell'attività</small>
+                        <small class="form-text text-muted">Seleziona uno o piÃ¹ militari coinvolti nell'attivitÃ </small>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -197,10 +217,10 @@
 @endsection
 
 @section('styles')
-<!-- FullCalendar CSS -->
-<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet' />
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<!-- FullCalendar CSS (LOCALE) -->
+<link href="{{ asset('vendor/css/fullcalendar.min.css') }}" rel='stylesheet' />
+<link href="{{ asset('vendor/css/select2.min.css') }}" rel="stylesheet" />
+<link href="{{ asset('vendor/css/select2-bootstrap-5-theme.min.css') }}" rel="stylesheet" />
 <style>
     /* Stili migliorati per il calendario */
     #calendar-container {
@@ -215,7 +235,7 @@
         font-family: 'Roboto', sans-serif;
     }
     
-    /* Stili delle celle del calendario più professionali */
+    /* Stili delle celle del calendario piÃ¹ professionali */
     .fc .fc-daygrid-day {
         transition: all 0.15s ease-in-out;
         border: 1px solid #d0d7de !important;
@@ -249,7 +269,7 @@
         margin: 4px !important;
     }
     
-    /* Numeri dei giorni più leggibili */
+    /* Numeri dei giorni piÃ¹ leggibili */
     .fc .fc-daygrid-day-number {
         color: #24292f !important;
         font-weight: 500 !important;
@@ -268,7 +288,7 @@
         letter-spacing: 0.5px !important;
     }
     
-    /* Feedback visivo più sobrio per drop zone */
+    /* Feedback visivo piÃ¹ sobrio per drop zone */
     .fc .fc-daygrid-day.fc-drag-over {
         background: #f0f9ff !important;
         border: 1px solid #0969da !important;
@@ -306,7 +326,7 @@
         border-color: rgba(255,255,255,0.2) !important;
     }
     
-    /* Migliore leggibilità del testo negli eventi */
+    /* Migliore leggibilitÃ  del testo negli eventi */
     .fc-event-title {
         font-weight: 500 !important;
         font-size: 12px !important;
@@ -386,7 +406,7 @@
         color: #ffffff !important;
     }
     
-    /* Toolbar styling più professionale */
+    /* Toolbar styling piÃ¹ professionale */
     .fc-toolbar {
         margin-bottom: 1.5rem !important;
         padding: 0 !important;
@@ -398,7 +418,7 @@
         gap: 4px !important;
     }
     
-    /* Titolo del mese più istituzionale */
+    /* Titolo del mese piÃ¹ istituzionale */
     .fc-toolbar-title {
         font-weight: 600 !important;
         font-size: 1.5rem !important;
@@ -436,32 +456,44 @@
         font-size: 0.9rem;
     }
     
-    /* Colori per le diverse colonne */
-    .event-urgenti {
-        background-color: #dc3545 !important;
-        border-color: #dc3545 !important;
+    /* Colori per le diverse colonne - corrispondono agli slug reali */
+    .event-servizi-isolati {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
         color: white !important;
     }
     
-    .event-in-scadenza {
-        background-color: #ffc107 !important;
-        border-color: #ffc107 !important;
-        color: #212529 !important;
-    }
-    
-    .event-pianificate {
+    .event-cattedre {
         background-color: #28a745 !important;
         border-color: #28a745 !important;
         color: white !important;
     }
     
-    .event-fuori-porta {
-        background-color: #17a2b8 !important;
-        border-color: #17a2b8 !important;
+    .event-corsi {
+        background-color: #007bff !important;
+        border-color: #007bff !important;
         color: white !important;
     }
     
-    /* Miglioramento accessibilità */
+    .event-esercitazioni {
+        background-color: #ffc107 !important;
+        border-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+    
+    .event-stand-by {
+        background-color: #fd7e14 !important;
+        border-color: #fd7e14 !important;
+        color: white !important;
+    }
+    
+    .event-operazioni {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: white !important;
+    }
+    
+    /* Miglioramento accessibilitÃ  */
     .fc-event-title {
         font-weight: 500 !important;
         overflow: hidden;
@@ -561,10 +593,10 @@
 @endsection
 
 @push('scripts')
-<!-- Carica FullCalendar prima dei moduli SUGECO -->
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales/it.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<!-- FullCalendar (LOCALE) -->
+<script src="{{ asset('vendor/js/fullcalendar.min.js') }}"></script>
+<script src="{{ asset('vendor/js/fullcalendar-it.min.js') }}"></script>
+<script src="{{ asset('vendor/js/select2.min.js') }}"></script>
 
 <!-- Inizializzazione calendario in IIFE isolata -->
 <script>
@@ -772,27 +804,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Callback evento trascinato con animazione migliorata
                 eventDrop: function(info) {
-                    // Effetto di "snap" al completamento del drop
-                    const eventEl = info.el;
-                    eventEl.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                    eventEl.style.transform = 'scale(1.1)';
-                    
-                    setTimeout(() => {
-                        eventEl.style.transform = 'scale(1)';
-                        eventEl.style.boxShadow = '0 4px 20px rgba(40, 167, 69, 0.3)';
-                        
-                        setTimeout(() => {
-                            eventEl.style.boxShadow = '';
-                            eventEl.style.transition = '';
-                        }, 800);
-                    }, 100);
-                    
                     // Dati da inviare al server
                     const eventId = info.event.id;
                     const startDate = info.event.start.toISOString().split('T')[0];
                     
-                    // Calcola la data di fine (sottraendo 1 giorno poiché FullCalendar usa date inclusive)
-                    let endDate = startDate; // Default è la stessa data di inizio
+                    // Calcola la data di fine (sottraendo 1 giorno poichÃ© FullCalendar usa date inclusive)
+                    let endDate = startDate; // Default Ã¨ la stessa data di inizio
                     if (info.event.end) {
                         const end = new Date(info.event.end);
                         end.setDate(end.getDate() - 1);
@@ -802,12 +819,78 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Ottieni il token CSRF
                     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
                     if (!csrfToken) {
+                        console.error('Token CSRF mancante');
                         info.revert();
                         showError('Errore di sicurezza: token CSRF mancante');
                         return;
                     }
                     
                     // Chiamata fetch per aggiornare le date
+                    fetch('{{ route('board.activities.update-dates') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            activity_id: eventId,
+                            start_date: startDate,
+                            end_date: endDate
+                        })
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                console.error('Server error response:', text);
+                                throw new Error(`Errore server: ${response.status}`);
+                            });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Effetto di successo sull'evento
+                            const eventEl = info.el;
+                            if (eventEl) {
+                                eventEl.style.transition = 'all 0.3s ease';
+                                eventEl.style.boxShadow = '0 4px 20px rgba(40, 167, 69, 0.3)';
+                                setTimeout(() => {
+                                    eventEl.style.boxShadow = '';
+                                    eventEl.style.transition = '';
+                                }, 800);
+                            }
+                            showSuccess('Date aggiornate con successo');
+                        } else {
+                            throw new Error(data.message || 'Errore sconosciuto');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        info.revert();
+                        showError(`Errore: ${error.message}`);
+                    });
+                },
+                
+                // Callback per il resize dell'evento
+                eventResize: function(info) {
+                    const eventId = info.event.id;
+                    const startDate = info.event.start.toISOString().split('T')[0];
+                    
+                    let endDate = startDate;
+                    if (info.event.end) {
+                        const end = new Date(info.event.end);
+                        end.setDate(end.getDate() - 1);
+                        endDate = end.toISOString().split('T')[0];
+                    }
+                    
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    if (!csrfToken) {
+                        info.revert();
+                        showError('Errore di sicurezza: token CSRF mancante');
+                        return;
+                    }
+                    
                     fetch('{{ route('board.activities.update-dates') }}', {
                         method: 'POST',
                         headers: {
@@ -885,11 +968,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             const dateEnd = new Date(info.event.end);
                             dateEnd.setDate(dateEnd.getDate() - 1);
                             
-                            // Se l'evento è nello stesso giorno, mostra solo la data una volta
+                            // Se l'evento Ã¨ nello stesso giorno, mostra solo la data una volta
                             if (dateStart.toDateString() === dateEnd.toDateString()) {
                                 // Non fare nulla, usa solo la data di inizio
                             } else {
-                                // Se l'evento è nello stesso mese, mostra solo il giorno finale
+                                // Se l'evento Ã¨ nello stesso mese, mostra solo il giorno finale
                                 if (dateStart.getMonth() === dateEnd.getMonth() && 
                                     dateStart.getFullYear() === dateEnd.getFullYear()) {
                                     dateText += ` - ${dateEnd.getDate()} ${dateEnd.toLocaleDateString('it-IT', {month: 'long', year: 'numeric'})}`;
@@ -908,18 +991,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         eventStatus.textContent = info.event.extendedProps.column;
                         eventStatus.className = 'badge fs-6 mt-2';
                         
-                        // Applica classe di colore appropriata
+                        // Applica classe di colore appropriata - usa gli slug reali delle colonne
                         const slugToClass = {
-                            'urgenti': 'bg-danger',
-                            'in-scadenza': 'bg-warning',
-                            'pianificate': 'bg-success',
-                            'fuori-porta': 'bg-info',
+                            'servizi-isolati': 'bg-secondary',
+                            'cattedre': 'bg-success',
+                            'corsi': 'bg-primary',
+                            'esercitazioni': 'bg-warning text-dark',
+                            'stand-by': 'bg-warning text-dark',
+                            'operazioni': 'bg-danger',
                             'default': 'bg-secondary'
                         };
                         
                         const columnSlug = info.event.extendedProps.columnSlug;
                         const className = slugToClass[columnSlug] || slugToClass['default'];
-                        eventStatus.classList.add(className);
+                        className.split(' ').forEach(cls => eventStatus.classList.add(cls));
                         
                         // Aggiungi animazione di entrata
                         eventStatus.style.opacity = '0';
@@ -992,3 +1077,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+

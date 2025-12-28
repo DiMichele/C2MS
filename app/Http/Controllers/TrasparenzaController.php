@@ -23,6 +23,9 @@ class TrasparenzaController extends Controller
         $anno = $request->input('anno', Carbon::now()->year);
         $mese = $request->input('mese', Carbon::now()->month);
         
+        // Calcola i totali annuali per ciascun militare
+        $totaliAnnuali = $this->calcolaTotaliAnnuali($anno);
+        
         // Festività italiane per anno
         $festivitaPerAnno = [
             2025 => [
@@ -58,30 +61,22 @@ class TrasparenzaController extends Controller
         $festivitaFisse = $festivitaPerAnno[$anno] ?? [];
         
         // Ottieni militari ordinati per compagnia, grado e cognome
-        // Escludi militari con codici servizio "trasferimento" (se presenti)
         $militari = Militare::with(['grado', 'compagnia'])
-            ->get()
-            ->sortBy(function ($m) {
-                return [
-                    $m->compagnia_id ?? 999,
-                    $m->grado->ordine ?? 999,
-                    $m->cognome
-                ];
-            });
+            ->orderBy('compagnia_id')
+            ->orderByGradoENome()
+            ->get();
         
         // Calcola numero di giorni nel mese
         $giorniNelMese = Carbon::create($anno, $mese)->daysInMonth;
         
         // CARICA SOLO LE ASSEGNAZIONI TURNO (Turni Settimanali), non il CPT completo
-        // DISABILITATO - tabella assegnazioni_turno non esiste
         $dataInizio = Carbon::create($anno, $mese, 1)->startOfDay();
         $dataFine = Carbon::create($anno, $mese, $giorniNelMese)->endOfDay();
         
-        // $assegnazioniTurno = \App\Models\AssegnazioneTurno::whereBetween('data_servizio', [$dataInizio, $dataFine])
-        //     ->with('servizioTurno')
-        //     ->get()
-        //     ->groupBy('militare_id');
-        $assegnazioniTurno = collect(); // Collezione vuota
+        $assegnazioniTurno = \App\Models\AssegnazioneTurno::whereBetween('data_servizio', [$dataInizio, $dataFine])
+            ->with('servizioTurno')
+            ->get()
+            ->groupBy('militare_id');
         
         // Prepara i dati per la vista e mappa dei nomi servizi
         $datiMilitari = [];
@@ -134,8 +129,56 @@ class TrasparenzaController extends Controller
             'giorniNelMese',
             'nomiMesi',
             'mappaNomiServizi',
-            'festivitaFisse'
+            'festivitaFisse',
+            'totaliAnnuali'
         ));
+    }
+    
+    /**
+     * Calcola i totali annuali per tutti i militari
+     */
+    private function calcolaTotaliAnnuali($anno)
+    {
+        $totali = [];
+        
+        // Per ogni mese dell'anno, calcola i servizi
+        for ($mese = 1; $mese <= 12; $mese++) {
+            $giorniNelMese = Carbon::create($anno, $mese)->daysInMonth;
+            $dataInizio = Carbon::create($anno, $mese, 1)->startOfDay();
+            $dataFine = Carbon::create($anno, $mese, $giorniNelMese)->endOfDay();
+            
+            // Carica le assegnazioni turno per questo mese
+            $assegnazioniTurno = \App\Models\AssegnazioneTurno::whereBetween('data_servizio', [$dataInizio, $dataFine])
+                ->with('servizioTurno')
+                ->get();
+            
+            foreach ($assegnazioniTurno as $assegnazione) {
+                $militareId = $assegnazione->militare_id;
+                if (!isset($totali[$militareId])) {
+                    $totali[$militareId] = [
+                        'feriali' => 0,
+                        'festivi' => 0,
+                        'superfestivi' => 0,
+                        'totale' => 0
+                    ];
+                }
+                
+                // Determina il tipo di giorno
+                $data = Carbon::parse($assegnazione->data_servizio);
+                $tipoGiorno = $this->determinaTipoGiorno($data);
+                
+                $totali[$militareId]['totale']++;
+                if ($tipoGiorno === 'festivo') {
+                    $totali[$militareId]['festivi']++;
+                } elseif ($tipoGiorno === 'superfestivo') {
+                    $totali[$militareId]['superfestivi']++;
+                } else {
+                    $totali[$militareId]['feriali']++;
+                }
+            }
+        }
+        
+        return $totali;
     }
 
 
@@ -256,14 +299,9 @@ class TrasparenzaController extends Controller
             
             // Ottieni dati
             $militari = Militare::with(['grado', 'compagnia'])
-                ->get()
-                ->sortBy(function ($m) {
-                    return [
-                        $m->compagnia_id ?? 999,
-                        $m->grado->ordine ?? 999,
-                        $m->cognome
-                    ];
-                });
+                ->orderBy('compagnia_id')
+                ->orderByGradoENome()
+                ->get();
             
             $giorniNelMese = Carbon::create($anno, $mese)->daysInMonth;
             
@@ -274,15 +312,13 @@ class TrasparenzaController extends Controller
                 ->first();
             
             // CARICA SOLO LE ASSEGNAZIONI TURNO (Turni Settimanali), non il CPT completo
-            // DISABILITATO - tabella assegnazioni_turno non esiste
             $dataInizio = Carbon::create($anno, $mese, 1)->startOfDay();
             $dataFine = Carbon::create($anno, $mese, $giorniNelMese)->endOfDay();
             
-            // $assegnazioniTurno = \App\Models\AssegnazioneTurno::whereBetween('data_servizio', [$dataInizio, $dataFine])
-            //     ->with('servizioTurno')
-            //     ->get()
-            //     ->groupBy('militare_id');
-            $assegnazioniTurno = collect(); // Collezione vuota
+            $assegnazioniTurno = \App\Models\AssegnazioneTurno::whereBetween('data_servizio', [$dataInizio, $dataFine])
+                ->with('servizioTurno')
+                ->get()
+                ->groupBy('militare_id');
             
             // Stile header
             $headerStyle = [

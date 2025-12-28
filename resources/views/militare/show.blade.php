@@ -903,6 +903,18 @@
         text-decoration: none;
     }
     
+    .action-btn-calendar {
+        border-color: #0d6efd;
+        color: #0d6efd;
+    }
+    
+    .action-btn-calendar:hover {
+        background: #0d6efd;
+        color: #ffffff;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+    }
+    
     .action-btn-edit {
         border-color: #ffc107;
         color: #ffc107;
@@ -939,6 +951,11 @@
     <h1 class="page-title mb-5">{{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</h1>
     
     <div class="action-buttons-center">
+        @can('cpt.view')
+        <a href="{{ route('disponibilita.militare', $militare->id) }}" class="action-btn action-btn-calendar" data-bs-toggle="tooltip" data-bs-placement="top" title="Vedi Impegni">
+            <i class="fas fa-calendar-alt"></i>
+        </a>
+        @endcan
         @can('anagrafica.edit')
         <a href="{{ route('anagrafica.edit', $militare->id) }}" class="action-btn action-btn-edit" data-bs-toggle="tooltip" data-bs-placement="top" title="Modifica">
             <i class="fas fa-edit"></i>

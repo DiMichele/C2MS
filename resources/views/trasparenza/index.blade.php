@@ -60,9 +60,13 @@
                     @for($g = 1; $g <= $giorniNelMese; $g++)
                         <col style="width:70px">
                     @endfor
-                    <col style="width:80px">
-                    <col style="width:80px">
-                    <col style="width:110px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:70px">
                 </colgroup>
                 <thead>
                     <tr>
@@ -88,15 +92,36 @@
                             </th>
                         @endfor
                         
-                        <!-- Totali -->
+                        <!-- Totali Mensili -->
                         <th class="text-center" style="background: rgba(52, 103, 81, 0.1);">
-                            <strong>FERIALI</strong>
+                            <strong>FER.</strong>
+                            <small class="d-block text-muted">mese</small>
                         </th>
                         <th class="text-center" style="background: rgba(220, 53, 69, 0.1);">
-                            <strong>FESTIVI</strong>
+                            <strong>FEST.</strong>
+                            <small class="d-block text-muted">mese</small>
                         </th>
                         <th class="text-center" style="background: rgba(255, 193, 7, 0.1);">
-                            <strong>SUPERFESTIVI</strong>
+                            <strong>SUP.</strong>
+                            <small class="d-block text-muted">mese</small>
+                        </th>
+                        
+                        <!-- Totali Annuali -->
+                        <th class="text-center" style="background: rgba(10, 35, 66, 0.15); border-left: 2px solid #0a2342;">
+                            <strong>FER.</strong>
+                            <small class="d-block" style="color: #0a2342;">anno</small>
+                        </th>
+                        <th class="text-center" style="background: rgba(10, 35, 66, 0.15);">
+                            <strong>FEST.</strong>
+                            <small class="d-block" style="color: #0a2342;">anno</small>
+                        </th>
+                        <th class="text-center" style="background: rgba(10, 35, 66, 0.15);">
+                            <strong>SUP.</strong>
+                            <small class="d-block" style="color: #0a2342;">anno</small>
+                        </th>
+                        <th class="text-center" style="background: rgba(10, 35, 66, 0.25);">
+                            <strong>TOT.</strong>
+                            <small class="d-block" style="color: #0a2342;">anno</small>
                         </th>
                     </tr>
                 </thead>
@@ -114,9 +139,13 @@
                     @for($g = 1; $g <= $giorniNelMese; $g++)
                         <col style="width:70px">
                     @endfor
-                    <col style="width:80px">
-                    <col style="width:80px">
-                    <col style="width:110px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:60px">
+                    <col style="width:70px">
                 </colgroup>
                 <tbody id="militariTableBody">
                     @foreach($datiMilitari as $dato)
@@ -163,7 +192,7 @@
                                 </td>
                             @endfor
                             
-                            <!-- Totali -->
+                            <!-- Totali Mensili -->
                             <td class="text-center" style="padding: 4px; background: rgba(52, 103, 81, 0.05);">
                                 <strong style="color: #346751;">{{ $dato['totali']['feriali'] }}</strong>
                             </td>
@@ -172,6 +201,23 @@
                             </td>
                             <td class="text-center" style="padding: 4px; background: rgba(255, 193, 7, 0.05);">
                                 <strong style="color: #f59e0b;">{{ $dato['totali']['superfestivi'] }}</strong>
+                            </td>
+                            
+                            <!-- Totali Annuali -->
+                            @php
+                                $annuale = $totaliAnnuali[$dato['militare']->id] ?? ['feriali' => 0, 'festivi' => 0, 'superfestivi' => 0, 'totale' => 0];
+                            @endphp
+                            <td class="text-center" style="padding: 4px; background: rgba(10, 35, 66, 0.08); border-left: 2px solid #0a2342;">
+                                <strong style="color: #0a2342;">{{ $annuale['feriali'] }}</strong>
+                            </td>
+                            <td class="text-center" style="padding: 4px; background: rgba(10, 35, 66, 0.08);">
+                                <strong style="color: #0a2342;">{{ $annuale['festivi'] }}</strong>
+                            </td>
+                            <td class="text-center" style="padding: 4px; background: rgba(10, 35, 66, 0.08);">
+                                <strong style="color: #0a2342;">{{ $annuale['superfestivi'] }}</strong>
+                            </td>
+                            <td class="text-center" style="padding: 4px; background: rgba(10, 35, 66, 0.15);">
+                                <strong style="color: #0a2342; font-size: 0.9rem;">{{ $annuale['totale'] }}</strong>
                             </td>
                         </tr>
                     @endforeach

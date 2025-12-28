@@ -8,16 +8,14 @@
     <!-- Meta CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts (LOCALE) -->
+    <link rel="stylesheet" href="{{ asset('vendor/css/google-fonts.css') }}">
     
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 5 CSS (LOCALE) -->
+    <link href="{{ asset('vendor/css/bootstrap.min.css') }}" rel="stylesheet">
     
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome 6 (LOCALE) -->
+    <link rel="stylesheet" href="{{ asset('vendor/css/fontawesome.min.css') }}">
     
     <style>
         :root {

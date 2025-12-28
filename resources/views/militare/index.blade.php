@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 @section('title', 'Anagrafica - SUGECO')
 
 @section('content')
@@ -50,7 +50,7 @@ table.table td,
     background-color: #ffffff;
 }
 
-/* Bordi leggermente più scuri dell'hover */
+/* Bordi leggermente piÃ¹ scuri dell'hover */
 .table-bordered > :not(caption) > * > * {
     border-color: rgba(10, 35, 66, 0.20) !important;
 }
@@ -134,7 +134,7 @@ table.table td,
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email_istituzionale', 'telefono'] as $filter) {
+    foreach(['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'ruolo_id', 'email_istituzionale', 'telefono', 'presenza', 'compleanno'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $hasActiveFilters = count($activeFilters) > 0;
@@ -170,15 +170,11 @@ table.table td,
         </span>
     </button>
     
-    <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-primary">{{ $militari->count() }} militari</span>
-        
-        @can('anagrafica.create')
-        <a href="{{ route('anagrafica.create') }}" class="btn btn-success" style="border-radius: 6px !important;">
-            <i class="fas fa-plus me-2"></i>Nuovo Militare
-        </a>
-        @endcan
-    </div>
+    @can('anagrafica.create')
+    <a href="{{ route('anagrafica.create') }}" class="btn btn-success" style="border-radius: 6px !important;">
+        <i class="fas fa-plus me-2"></i>Nuovo Militare
+    </a>
+    @endcan
 </div>
 
 <!-- Filtri con sezione migliorata -->
@@ -201,15 +197,10 @@ table.table td,
                         <div class="select-wrapper">
                             <select name="compagnia" id="compagnia" class="form-select filter-select {{ request()->filled('compagnia') ? 'applied' : '' }}">
                                 <option value="">Tutte le compagnie</option>
-                                @php
-                                    $compagnieMap = [
-                                        1 => '124',
-                                        2 => '110',
-                                        3 => '127'
-                                    ];
-                                @endphp
-                                @foreach($compagnieMap as $compagniaId => $compagniaNumero)
-                                    <option value="{{ $compagniaId }}" {{ request('compagnia') == $compagniaId ? 'selected' : '' }}>{{ $compagniaNumero }}</option>
+                                @foreach($compagnie as $compagnia)
+                                    <option value="{{ $compagnia->id }}" {{ request('compagnia') == $compagnia->id ? 'selected' : '' }}>
+                                        {{ $compagnia->numero ?? $compagnia->nome }}
+                                    </option>
                                 @endforeach
                             </select>
                             @if(request()->filled('compagnia'))
@@ -289,7 +280,7 @@ table.table td,
                         <div class="select-wrapper">
                             <select name="mansione_id" id="mansione_id" class="form-select filter-select {{ request()->filled('mansione_id') ? 'applied' : '' }}">
                                 <option value="">Tutti gli incarichi</option>
-                                @foreach(\App\Models\Mansione::all() as $mansione)
+                                @foreach($mansioni as $mansione)
                                     <option value="{{ $mansione->id }}" {{ request('mansione_id') == $mansione->id ? 'selected' : '' }}>
                                         {{ $mansione->nome }}
                                     </option>
@@ -356,6 +347,29 @@ table.table td,
                     </div>
                 </div>
                 
+                {{-- Terza riga filtri (Ruolo) --}}
+                <div class="row mb-3">
+                    {{-- Filtro Ruolo --}}
+                    <div class="col-md-3">
+                        <label for="ruolo_id" class="form-label">
+                            <i class="fas fa-user-tag me-1"></i> Ruolo
+                        </label>
+                        <div class="select-wrapper">
+                            <select name="ruolo_id" id="ruolo_id" class="form-select filter-select {{ request()->filled('ruolo_id') ? 'applied' : '' }}">
+                                <option value="">Tutti i ruoli</option>
+                                @foreach($ruoli as $ruolo)
+                                    <option value="{{ $ruolo->id }}" {{ request('ruolo_id') == $ruolo->id ? 'selected' : '' }}>
+                                        {{ $ruolo->nome }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if(request()->filled('ruolo_id'))
+                                <span class="clear-filter" data-filter="ruolo_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="d-flex justify-content-center mt-3">
                     @if($hasActiveFilters)
                     <a href="{{ route('anagrafica.index') }}" class="btn btn-danger">
@@ -370,41 +384,45 @@ table.table td,
 
 <!-- Table contenente i militari -->
 <!-- Tabella con intestazione fissa e scroll -->
+@php
+    // Calcola la larghezza totale della tabella basandosi sui campi attivi
+    $larghezzeColonne = [
+        'compagnia' => 160,
+        'grado' => 200,
+        'cognome' => 230,
+        'nome' => 170,
+        'plotone' => 190,
+        'ufficio' => 190,
+        'incarico' => 210,
+        'patenti' => 180,
+        'nos' => 140,
+        'anzianita' => 180,  // Aumentata per mostrare date complete
+        'data_nascita' => 180,  // Aumentata per mostrare date complete
+        'email_istituzionale' => 270,
+        'telefono' => 210,
+        'codice_fiscale' => 200,
+        'istituti' => 350,
+    ];
+    $larghezzaTotale = 150; // Azioni
+    foreach($campiCustom as $campo) {
+        $larghezzaTotale += $larghezzeColonne[$campo->nome_campo] ?? 180;
+    }
+@endphp
 <div class="table-container" style="position: relative; height: 600px; overflow: auto; overflow-x: auto;">
     <!-- Intestazione fissa -->
      <div class="table-header-fixed" style="position: sticky; top: 0; z-index: 10; background: white;">
-         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: 2480px; min-width: 2480px;">
+         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ $larghezzaTotale }}px; min-width: {{ $larghezzaTotale }}px;">
              <colgroup>
-                 <col style="width:160px">
-                 <col style="width:200px">
-                 <col style="width:230px">
-                 <col style="width:170px">
-                 <col style="width:190px">
-                 <col style="width:190px">
-                 <col style="width:210px">
-                 <col style="width:180px">
-                 <col style="width:140px">
-                 <col style="width:150px">
-                 <col style="width:150px">
-                 <col style="width:270px">
-                 <col style="width:210px">
+                 @foreach($campiCustom as $campo)
+                 <col style="width:{{ $larghezzeColonne[$campo->nome_campo] ?? 180 }}px">
+                 @endforeach
                  <col style="width:150px">
              </colgroup>
             <thead class="table-dark" style="user-select:none;">
                 <tr>
-                    <th class="text-center">Compagnia</th>
-                    <th class="text-center">Grado</th>
-                    <th class="text-center">Cognome</th>
-                    <th class="text-center">Nome</th>
-                    <th class="text-center">Plotone</th>
-                    <th class="text-center">Ufficio</th>
-                    <th class="text-center">Incarico</th>
-                    <th class="text-center">Patenti</th>
-                    <th class="text-center">NOS</th>
-                    <th class="text-center">Anzianità</th>
-                    <th class="text-center">Data di Nascita</th>
-                    <th class="text-center">Email Istituzionale</th>
-                    <th class="text-center">Cellulare</th>
+                    @foreach($campiCustom as $campo)
+                    <th class="text-center">{{ $campo->etichetta }}</th>
+                    @endforeach
                     <th class="text-center">Azioni</th>
                 </tr>
             </thead>
@@ -413,156 +431,27 @@ table.table td,
     
     <!-- Corpo scrollabile -->
      <div class="table-body-scroll">
-         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: 2480px; min-width: 2480px;">
+         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ $larghezzaTotale }}px; min-width: {{ $larghezzaTotale }}px;">
              <colgroup>
-                 <col style="width:160px">
-                 <col style="width:200px">
-                 <col style="width:230px">
-                 <col style="width:170px">
-                 <col style="width:190px">
-                 <col style="width:190px">
-                 <col style="width:210px">
-                 <col style="width:180px">
-                 <col style="width:140px">
-                 <col style="width:150px">
-                 <col style="width:150px">
-                 <col style="width:270px">
-                 <col style="width:210px">
+                 @foreach($campiCustom as $campo)
+                 <col style="width:{{ $larghezzeColonne[$campo->nome_campo] ?? 180 }}px">
+                 @endforeach
                  <col style="width:150px">
              </colgroup>
             <tbody id="militariTableBody">
             @forelse($militari as $m)
                 <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}" data-update-url="{{ route('anagrafica.update-field', $m->id) }}">
-                    <td class="text-center">
-                        <select class="form-select form-select-sm editable-field compagnia-select" data-field="compagnia" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                            <option value="">--</option>
-                            @php
-                                $compagnieMap = [
-                                    1 => '124',
-                                    2 => '110', 
-                                    3 => '127'
-                                ];
-                            @endphp
-                            @foreach($compagnieMap as $compagniaId => $compagniaNumero)
-                                <option value="{{ $compagniaId }}" {{ $m->compagnia_id == $compagniaId ? 'selected' : '' }}>{{ $compagniaNumero }}</option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="grado_id" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                            <option value="">--</option>
-                            @foreach($gradi as $grado)
-                                <option value="{{ $grado->id }}" {{ $m->grado_id == $grado->id ? 'selected' : '' }}>
-                                    {{ $grado->abbreviazione ?? $grado->nome }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td>
-                        <a href="{{ route('anagrafica.show', $m->id) }}" class="link-name">
-                            {{ $m->cognome }}
-                        </a>
-                    </td>
-                    <td>
-                        {{ $m->nome }}
-                    </td>
-                    <td class="text-center">
-                        <select class="form-select form-select-sm editable-field plotone-select" data-field="plotone_id" data-militare-id="{{ $m->id }}" data-row-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                            <option value="">--</option>
-                            @foreach($plotoni as $plotone)
-                                <option value="{{ $plotone->id }}" data-compagnia-id="{{ $plotone->compagnia_id }}" {{ $m->plotone_id == $plotone->id ? 'selected' : '' }}>
-                                    {{ $plotone->nome }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="polo_id" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                            <option value="">--</option>
-                            @foreach($poli as $polo)
-                                <option value="{{ $polo->id }}" {{ $m->polo_id == $polo->id ? 'selected' : '' }}>
-                                    {{ $polo->nome }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="mansione_id" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                            <option value="">--</option>
-                            @foreach(\App\Models\Mansione::all() as $mansione)
-                                <option value="{{ $mansione->id }}" {{ $m->mansione_id == $mansione->id ? 'selected' : '' }}>
-                                    {{ $mansione->nome }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td class="text-center" style="padding: 4px;">
-                        <div class="patenti-container">
-                            @php
-                                $patentiMilitare = $m->patenti->pluck('categoria')->toArray();
-                            @endphp
-                            <div class="patenti-row">
-                                @foreach(['2', '3'] as $patente)
-                                    <div class="form-check form-check-inline mb-0">
-                                        <input type="checkbox" 
-                                               class="form-check-input patente-checkbox" 
-                                               id="patente_{{ $m->id }}_{{ $patente }}"
-                                               data-militare-id="{{ $m->id }}" 
-                                               data-patente="{{ $patente }}" 
-                                               {{ in_array($patente, $patentiMilitare) ? 'checked' : '' }}
-                                               {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}
-                                               style="cursor: pointer;">
-                                        <label class="form-check-label" 
-                                               for="patente_{{ $m->id }}_{{ $patente }}" 
-                                               style="cursor: pointer;">
-                                            {{ $patente }}
-                                        </label>
-                                    </div>
-                                @endforeach
-                            </div>
-                            <div class="patenti-row">
-                                @foreach(['4', '5', '6'] as $patente)
-                                    <div class="form-check form-check-inline mb-0">
-                                        <input type="checkbox" 
-                                               class="form-check-input patente-checkbox" 
-                                               id="patente_{{ $m->id }}_{{ $patente }}"
-                                               data-militare-id="{{ $m->id }}" 
-                                               data-patente="{{ $patente }}" 
-                                               {{ in_array($patente, $patentiMilitare) ? 'checked' : '' }}
-                                               {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}
-                                               style="cursor: pointer;">
-                                        <label class="form-check-label" 
-                                               for="patente_{{ $m->id }}_{{ $patente }}" 
-                                               style="cursor: pointer;">
-                                            {{ $patente }}
-                                        </label>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </td>
-                    <td class="text-center">
-                        <select class="form-select form-select-sm editable-field" data-field="nos_status" data-militare-id="{{ $m->id }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                            <option value="">--</option>
-                            <option value="si" {{ $m->nos_status == 'si' ? 'selected' : '' }}>SI</option>
-                            <option value="no" {{ $m->nos_status == 'no' ? 'selected' : '' }}>NO</option>
-                            <option value="da richiedere" {{ $m->nos_status == 'da richiedere' ? 'selected' : '' }}>Da Richiedere</option>
-                            <option value="non previsto" {{ $m->nos_status == 'non previsto' ? 'selected' : '' }}>Non Previsto</option>
-                            <option value="in attesa" {{ $m->nos_status == 'in attesa' ? 'selected' : '' }}>In Attesa</option>
-                        </select>
-                    </td>
-                     <td>
-                         <input type="date" class="form-control form-control-sm editable-field" data-field="anzianita" data-militare-id="{{ $m->id }}" value="{{ $m->anzianita ? $m->anzianita->format('Y-m-d') : '' }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                     </td>
-                    <td>
-                        <input type="date" class="form-control form-control-sm editable-field" data-field="data_nascita" data-militare-id="{{ $m->id }}" value="{{ $m->data_nascita ? $m->data_nascita->format('Y-m-d') : '' }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                    </td>
-                    <td>
-                        <input type="email" class="form-control form-control-sm editable-field" data-field="email_istituzionale" data-militare-id="{{ $m->id }}" value="{{ $m->email_istituzionale }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                    </td>
-                    <td>
-                        <input type="tel" class="form-control form-control-sm editable-field" data-field="telefono" data-militare-id="{{ $m->id }}" value="{{ $m->telefono }}" style="width: 100%;" {{ auth()->user()->hasPermission('anagrafica.edit') ? '' : 'disabled' }}>
-                    </td>
+                    @foreach($campiCustom as $campo)
+                        @include('militare.partials._campo_anagrafica', [
+                            'militare' => $m,
+                            'campo' => $campo,
+                            'gradi' => $gradi,
+                            'plotoni' => $plotoni,
+                            'poli' => $poli,
+                            'compagnie' => $compagnie ?? collect()
+                        ])
+                    @endforeach
+                    
                      <td class="text-center">
                          <div class="d-flex justify-content-center gap-1">
                              <a href="{{ route('anagrafica.show', $m->id) }}" class="btn btn-sm btn-outline-primary" title="Visualizza">
@@ -620,7 +509,7 @@ table.table td,
         <h5 class="fw-bold mb-4" id="militare-to-delete"></h5>
         
         <div class="alert alert-danger bg-danger bg-opacity-10 border-0 mb-4">
-          <small><i class="fas fa-exclamation-circle me-1"></i> Questa azione è irreversibile</small>
+          <small><i class="fas fa-exclamation-circle me-1"></i> Questa azione Ã¨ irreversibile</small>
         </div>
         
         <div class="d-grid gap-2">
@@ -628,7 +517,7 @@ table.table td,
               @csrf
               @method('DELETE')
               <button type="submit" class="btn btn-danger w-100 mb-2">
-                <i class="fas fa-trash-alt me-2"></i>Sì, Elimina
+                <i class="fas fa-trash-alt me-2"></i>SÃ¬, Elimina
               </button>
           </form>
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
@@ -663,15 +552,13 @@ function confirmDelete(militareId) {
     const deleteUrl = '{{ url("anagrafica") }}/' + militareId;
     deleteForm.action = deleteUrl;
     
-    console.log('Form action impostato a:', deleteUrl);
-    
     // Mostra il modal
     const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
     deleteModal.show();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Forza l'inizializzazione dei filtri se non già fatto
+    // Forza l'inizializzazione dei filtri se non giÃ  fatto
     if (window.SUGECO && window.SUGECO.Filters) {
         window.SUGECO.Filters.init();
     }
@@ -732,12 +619,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     value: value
                 })
             })
-            .then(response => {
+            .then(async response => {
                 // Gestione specifica per 403 (permessi mancanti)
                 if (response.status === 403) {
-                    return response.json().then(data => {
-                        throw new Error(data.message || 'Non hai i permessi per eseguire questa azione');
-                    });
+                    const data = await response.json();
+                    throw new Error(data.message || 'Non hai i permessi per eseguire questa azione');
+                }
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Errore HTTP ${response.status}`);
                 }
                 return response.json();
             })
@@ -749,7 +639,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.target.style.backgroundColor = '';
                     }, 1000);
                     
-                    // Se è stata cambiata la compagnia, resetta e filtra i plotoni
+                    // Se Ã¨ stata cambiata la compagnia, resetta e filtra i plotoni
                     if (field === 'compagnia' && data.plotone_reset) {
                         const rowId = e.target.getAttribute('data-row-id');
                         const plotoneSelect = document.querySelector(`.plotone-select[data-row-id="${rowId}"]`);
@@ -766,8 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 2000);
                     
                     // Messaggio non invasivo (solo console)
-                    console.warn('Aggiornamento non riuscito:', data.message || 'Errore sconosciuto');
-                }
+                    }
             })
             .catch(error => {
                 console.error('Errore:', error);
@@ -778,8 +667,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.target.style.backgroundColor = '';
                 }, 2000);
                 
-                // Non mostrare più alert, solo console per debugging
-                // L'utente vede il campo tornare al colore originale = operazione non riuscita
+                // Mostra il messaggio di errore se disponibile
+                if (error.message) {
+                    console.error('Dettaglio errore:', error.message);
+                }
             });
         }
         
@@ -831,8 +722,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     formCheck.style.transform = 'scale(1)';
                     
                     // Messaggio non invasivo (solo console)
-                    console.warn('Aggiornamento patente non riuscito:', data.message || 'Errore sconosciuto');
-                }
+                    }
             })
             .catch(error => {
                 console.error('Errore durante aggiornamento patente:', error);
@@ -841,7 +731,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 checkbox.checked = !isChecked;
                 formCheck.style.transform = 'scale(1)';
                 
-                // Non mostrare più alert, solo console per debugging
+                // Non mostrare piÃ¹ alert, solo console per debugging
+            });
+        }
+        
+        // Gestione istituti checkbox
+        if (e.target.classList.contains('istituto-input')) {
+            const militareId = e.target.getAttribute('data-militare-id');
+            const istituto = e.target.value;
+            const istitutiContainer = e.target.closest('.istituti-container');
+            const checkboxes = istitutiContainer.querySelectorAll('.istituto-input');
+            
+            // Raccogli tutti gli istituti selezionati
+            const istitutiSelezionati = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+            
+            // Trova la riga per l'URL
+            const row = e.target.closest('tr.militare-row');
+            const updateUrl = row ? row.getAttribute('data-update-url') : null;
+            if (!updateUrl) {
+                console.error('URL aggiornamento non trovato sulla riga');
+                return;
+            }
+            
+            // Feedback visivo
+            istitutiContainer.style.opacity = '0.6';
+            
+            fetch(updateUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    field: 'istituti',
+                    value: istitutiSelezionati
+                })
+            })
+            .then(response => {
+                if (response.status === 403) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Non hai i permessi per eseguire questa azione');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Feedback visivo positivo
+                    istitutiContainer.style.backgroundColor = '#d4edda';
+                    setTimeout(() => {
+                        istitutiContainer.style.backgroundColor = '';
+                        istitutiContainer.style.opacity = '1';
+                    }, 1000);
+                } else {
+                    // Feedback visivo negativo
+                    istitutiContainer.style.backgroundColor = '#f8d7da';
+                    setTimeout(() => {
+                        istitutiContainer.style.backgroundColor = '';
+                        istitutiContainer.style.opacity = '1';
+                    }, 2000);
+                    }
+            })
+            .catch(error => {
+                console.error('Errore:', error);
+                istitutiContainer.style.backgroundColor = '#f8d7da';
+                setTimeout(() => {
+                    istitutiContainer.style.backgroundColor = '';
+                    istitutiContainer.style.opacity = '1';
+                }, 2000);
             });
         }
     });
@@ -879,8 +840,71 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // ============================
+    // GESTIONE CAMPI CUSTOM DINAMICI
+    // ============================
+    
+    // Listener per campi custom (select, input, checkbox, textarea)
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('campo-custom-field')) {
+            const militareId = e.target.dataset.militareId;
+            const nomeCampo = e.target.dataset.campoNome;
+            let valore;
+            
+            // Gestisci checkbox
+            if (e.target.type === 'checkbox') {
+                // Se ci sono piÃ¹ checkbox per lo stesso campo (checkbox multipli con opzioni)
+                const allCheckboxes = document.querySelectorAll(`.campo-custom-field[data-campo-nome="${nomeCampo}"][data-militare-id="${militareId}"]`);
+                
+                if (allCheckboxes.length > 1) {
+                    // Raccogli tutti i valori selezionati
+                    const valoriSelezionati = Array.from(allCheckboxes)
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.value);
+                    valore = valoriSelezionati.join(',');
+                } else {
+                    // Checkbox singolo
+                    valore = e.target.checked ? '1' : '0';
+                }
+            } else {
+                valore = e.target.value;
+            }
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            
+            fetch(`{{ url('anagrafica') }}/${militareId}/update-campo-custom`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    nome_campo: nomeCampo,
+                    valore: valore
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Feedback visivo con bordo verde
+                    window.SUGECO.showSaveFeedback(e.target, true, 2000);
+                } else {
+                    // Feedback visivo con bordo rosso
+                    window.SUGECO.showSaveFeedback(e.target, false, 2000);
+                    console.error('Errore salvataggio campo custom:', data.message);
+                }
+            })
+            .catch(error => {
+                window.SUGECO.showSaveFeedback(e.target, false, 2000);
+                console.error('Errore:', error);
+            });
+        }
+    });
 });
 </script>
 <!-- File JavaScript per pagina militare -->
 <script src="{{ asset('js/militare.js') }}"></script>
 @endpush
+

@@ -1,0 +1,261 @@
+/**
+ * SUGECO: Selettore Militari Custom
+ * Sistema completamente custom senza Select2
+ * Design pulito, minimal e professionale
+ */
+
+/* ==========================================
+   CONTENITORE PRINCIPALE
+   ========================================== */
+
+.militari-selector-wrapper {
+    border: 1px solid #CBD5E0;
+    border-radius: 8px;
+    background: white;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+}
+
+/* ==========================================
+   BARRA DI RICERCA - IN ALTO
+   ========================================== */
+
+.militari-search-section {
+    padding: 16px;
+    background: #F4F2ED;
+    border-bottom: 2px solid #E2E8F0;
+}
+
+.militari-search-input {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px;
+    font-size: 1rem;
+    font-family: 'Roboto', sans-serif;
+    color: #0A2342;
+    background: white;
+    border: 1px solid #CBD5E0;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.militari-search-input:focus {
+    outline: none;
+    border-color: #0A2342;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.08);
+}
+
+.militari-search-input::placeholder {
+    color: #718096;
+}
+
+/* ==========================================
+   MILITARI SELEZIONATI - BADGES
+   ========================================== */
+
+.militari-selected-section {
+    min-height: 80px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 12px;
+    background: white;
+    border-bottom: 1px solid #E2E8F0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+}
+
+.militari-selected-section.empty {
+    align-items: center;
+    justify-content: center;
+}
+
+.militari-selected-section .empty-message {
+    color: #A0AEC0;
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+.militare-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 11px;
+    background: #0A2342;
+    color: white;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    cursor: default;
+    max-width: 100%;
+}
+
+.militare-badge:hover {
+    background: #0F3A6D;
+}
+
+.militare-badge-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.militare-badge-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s ease;
+    margin-left: 2px;
+}
+
+.militare-badge-remove:hover {
+    color: #BF9D5E;
+}
+
+/* ==========================================
+   LISTA MILITARI DISPONIBILI
+   ========================================== */
+
+.militari-list-section {
+    max-height: 320px;
+    overflow-y: auto;
+    background: white;
+}
+
+.militari-group {
+    margin-bottom: 0;
+}
+
+.militari-group-header {
+    padding: 10px 16px;
+    background: #F7FAFC;
+    border-bottom: 1px solid #E2E8F0;
+    border-top: 1px solid #E2E8F0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: 'Oswald', sans-serif;
+    color: #0A2342;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.militare-item {
+    display: flex;
+    align-items: center;
+    padding: 11px 16px;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    border-left: 3px solid transparent;
+    background: white;
+}
+
+.militare-item:hover {
+    background: #F4F2ED;
+    border-left-color: #BF9D5E;
+}
+
+.militare-item.selected {
+    background: #e8f4f8;
+    color: #0A2342;
+}
+
+.militare-item.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #F7FAFC;
+}
+
+.militare-item-icon {
+    color: #718096;
+    font-size: 0.85rem;
+    margin-right: 10px;
+    width: 16px;
+}
+
+.militare-item-name {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #2D3748;
+}
+
+.militare-item.selected .militare-item-name {
+    font-weight: 500;
+}
+
+.militare-item-check {
+    color: #0A2342;
+    font-size: 1rem;
+    margin-left: 8px;
+}
+
+/* ==========================================
+   SCROLLBAR
+   ========================================== */
+
+.militari-selected-section::-webkit-scrollbar,
+.militari-list-section::-webkit-scrollbar {
+    width: 5px;
+}
+
+.militari-selected-section::-webkit-scrollbar-track,
+.militari-list-section::-webkit-scrollbar-track {
+    background: #F7FAFC;
+}
+
+.militari-selected-section::-webkit-scrollbar-thumb,
+.militari-list-section::-webkit-scrollbar-thumb {
+    background: #CBD5E0;
+    border-radius: 3px;
+}
+
+.militari-selected-section::-webkit-scrollbar-thumb:hover,
+.militari-list-section::-webkit-scrollbar-thumb:hover {
+    background: #A0AEC0;
+}
+
+/* ==========================================
+   MESSAGGIO NESSUN RISULTATO
+   ========================================== */
+
+.militari-no-results {
+    padding: 40px 20px;
+    text-align: center;
+    color: #718096;
+    font-size: 0.9rem;
+}
+
+.militari-no-results i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    opacity: 0.3;
+}
+
+/* ==========================================
+   COUNTER SELEZIONATI
+   ========================================== */
+
+.militari-counter {
+    padding: 8px 16px;
+    background: #F7FAFC;
+    border-top: 1px solid #E2E8F0;
+    font-size: 0.85rem;
+    color: #718096;
+    text-align: center;
+}
+
+.militari-counter strong {
+    color: #0A2342;
+    font-weight: 600;
+}
+

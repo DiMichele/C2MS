@@ -5,27 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'SUGECO - Sistema Unico di Gestione e Controllo')</title>
     
+    <!-- Favicon SUGECO -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/sugeco-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/sugeco-icon.png') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/sugeco-icon.png') }}">
+    
     <!-- Meta CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <!-- Google Fonts: Roboto e Oswald -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Roboto e Oswald (LOCALE per intranet) -->
+    <link rel="stylesheet" href="{{ asset('vendor/css/google-fonts.css') }}">
     
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 5 CSS (LOCALE) -->
+    <link href="{{ asset('vendor/css/bootstrap.min.css') }}" rel="stylesheet">
     
-    <!-- Font Awesome 6 - CDN Primario con Fallback -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
-          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
-          crossorigin="anonymous" referrerpolicy="no-referrer">
-    
-    <!-- Fallback Font Awesome 6 da altro CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
-          integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" 
-          crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Font Awesome 6 (LOCALE) -->
+    <link rel="stylesheet" href="{{ asset('vendor/css/fontawesome.min.css') }}">
     
     <!-- CSS Custom Radius per coerenza visiva -->
     <link href="{{ asset('css/custom-radius.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
@@ -39,6 +35,7 @@
     <link rel="stylesheet" href="{{ asset('css/layout.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/toast-system.css') }}?v={{ config('app.asset_version', time()) }}">
     <link href="{{ asset('css/dashboard.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
+    <link href="{{ asset('css/militari-selector.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
     
     @yield('styles')
 </head>
@@ -61,7 +58,7 @@
         <nav class="nav-center">
             <ul class="nav-menu" id="nav-menu">
                 @auth
-                @if(Auth::user()->hasPermission('dashboard.view'))
+                @if(Auth::check() && Auth::user()->hasPermission('dashboard.view'))
                 <li class="nav-menu-item {{ request()->is('/') ? 'active' : '' }}">
                     <a href="{{ url('/') }}">
                         Dashboard
@@ -70,18 +67,18 @@
                 @endif
                 @endauth
                 
-                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('ruolini*') || request()->is('organigramma*') ? 'active' : '' }}">
+                <li class="nav-menu-item {{ request()->is('cpt*') || request()->is('anagrafica*') || request()->is('ruolini*') || request()->is('organigramma*') || request()->is('disponibilita*') ? 'active' : '' }}">
                     <a href="#">
                         Personale
                     </a>
                     <ul class="nav-dropdown">
                         @auth
-                        @if(Auth::user()->hasPermission('cpt.view'))
+                        @if(Auth::check() && Auth::user()->hasPermission('cpt.view'))
                         <li class="nav-dropdown-item {{ request()->is('cpt*') ? 'active' : '' }}">
                             <a href="{{ route('pianificazione.index') }}">CPT</a>
                         </li>
                         @endif
-                        @if(Auth::user()->hasPermission('anagrafica.view'))
+                        @if(Auth::check() && Auth::user()->hasPermission('anagrafica.view'))
                         <li class="nav-dropdown-item {{ request()->is('ruolini*') ? 'active' : '' }}">
                             <a href="{{ route('ruolini.index') }}">Ruolini</a>
                         </li>
@@ -91,9 +88,14 @@
                             <a href="{{ route('anagrafica.index') }}">Anagrafica</a>
                         </li>
                         @auth
-                        @if(Auth::user()->hasPermission('anagrafica.view'))
+                        @if(Auth::check() && Auth::user()->hasPermission('anagrafica.view'))
                         <li class="nav-dropdown-item {{ request()->is('organigramma*') ? 'active' : '' }}">
                             <a href="{{ url('/organigramma') }}">Organigramma</a>
+                        </li>
+                        @endif
+                        @if(Auth::check() && Auth::user()->hasPermission('cpt.view'))
+                        <li class="nav-dropdown-item {{ request()->is('disponibilita*') ? 'active' : '' }}">
+                            <a href="{{ route('disponibilita.index') }}">Disponibilità</a>
                         </li>
                         @endif
                         @endauth
@@ -101,28 +103,37 @@
                 </li>
                 
                 @auth
-                @if(Auth::user()->hasPermission('scadenze.view'))
-                <li class="nav-menu-item {{ request()->is('scadenze*') ? 'active' : '' }}">
-                    <a href="#">
-                        Scadenze
+                @if(Auth::check() && Auth::user()->hasPermission('scadenze.view'))
+                <li class="nav-menu-item {{ request()->is('spp/*') ? 'active' : '' }}">
+                    <a href="#" onclick="event.preventDefault();">
+                        SPP
                     </a>
                     <ul class="nav-dropdown">
-                        <li class="nav-dropdown-item {{ request()->is('scadenze/rspp*') ? 'active' : '' }}">
-                            <a href="{{ route('scadenze.rspp') }}">RSPP</a>
+                        <li class="nav-dropdown-item {{ request()->is('spp/corsi-di-formazione*') ? 'active' : '' }}">
+                            <a href="{{ route('spp.corsi-di-formazione') }}">Corsi di Formazione</a>
                         </li>
-                        <li class="nav-dropdown-item {{ request()->is('scadenze/idoneita*') ? 'active' : '' }}">
-                            <a href="{{ route('scadenze.idoneita') }}">Idoneità Sanitarie</a>
-                        </li>
-                        <li class="nav-dropdown-item {{ request()->is('scadenze/poligoni*') ? 'active' : '' }}">
-                            <a href="{{ route('scadenze.poligoni') }}">Poligoni</a>
+                        <li class="nav-dropdown-item {{ request()->is('spp/corsi-accordo-stato-regione*') ? 'active' : '' }}">
+                            <a href="{{ route('spp.corsi-accordo-stato-regione') }}">Corsi Accordo Stato Regione</a>
                         </li>
                     </ul>
+                </li>
+                
+                <li class="nav-menu-item {{ request()->is('poligoni*') ? 'active' : '' }}">
+                    <a href="{{ route('poligoni.index') }}">
+                        Poligoni
+                    </a>
+                </li>
+                
+                <li class="nav-menu-item {{ request()->is('idoneita*') ? 'active' : '' }}">
+                    <a href="{{ route('idoneita.index') }}">
+                        Idoneità
+                    </a>
                 </li>
                 @endif
                 @endauth
                 
                 @auth
-                @if(Auth::user()->hasPermission('board.view'))
+                @if(Auth::check() && Auth::user()->hasPermission('board.view'))
                 <li class="nav-menu-item {{ request()->is('board*') ? 'active' : '' }}">
                     <a href="{{ route('board.index') }}">
                         Board Attività
@@ -138,7 +149,7 @@
                 </li>
                 @endif
                 
-                @if(Auth::user()->hasPermission('servizi.view'))
+                @if(Auth::check() && Auth::user()->hasPermission('servizi.view'))
                 <li class="nav-menu-item {{ request()->is('servizi*') || request()->is('trasparenza*') ? 'active' : '' }}">
                     <a href="#">
                         Servizi
@@ -154,8 +165,8 @@
                 </li>
                 @endif
                 
-                @if(Auth::user()->hasPermission('admin.access'))
-                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') ? 'active' : '' }}">
+                @if(Auth::check() && Auth::user()->hasPermission('admin.access'))
+                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') || request()->is('gestione-ruolini*') || request()->is('gestione-spp*') || request()->is('gestione-poligoni*') || request()->is('gestione-idoneita*') || request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
                     <a href="#">
                         Admin
                     </a>
@@ -168,6 +179,21 @@
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('codici-cpt*') ? 'active' : '' }}">
                             <a href="{{ route('codici-cpt.index') }}">Codici CPT</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('gestione-ruolini*') ? 'active' : '' }}">
+                            <a href="{{ route('gestione-ruolini.index') }}">Gestione Ruolini</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('gestione-spp*') ? 'active' : '' }}">
+                            <a href="{{ route('gestione-spp.index') }}">Gestione SPP</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('gestione-poligoni*') ? 'active' : '' }}">
+                            <a href="{{ route('gestione-poligoni.index') }}">Gestione Poligoni</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('gestione-idoneita*') ? 'active' : '' }}">
+                            <a href="{{ route('gestione-idoneita.index') }}">Gestione Idoneità</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
+                            <a href="{{ route('gestione-anagrafica-config.index') }}">Gestione Anagrafica</a>
                         </li>
                     </ul>
                 </li>
@@ -216,11 +242,11 @@
     <!-- Toast container -->
     <div class="toast-container"></div>
     
-    <!-- jQuery (necessario per molti plugin) -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- jQuery (LOCALE) -->
+    <script src="{{ asset('vendor/js/jquery.min.js') }}"></script>
     
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS (LOCALE) -->
+    <script src="{{ asset('vendor/js/bootstrap.bundle.min.js') }}"></script>
     
     <!-- Configuration and Error Handling (caricati per primi) -->
     <script src="{{ asset('js/config.js') }}?v={{ time() }}"></script>
@@ -292,8 +318,146 @@
     <!-- Scripts specifici per la pagina corrente -->
     @stack('scripts')
     
+    <!-- Fix globale per problemi di luminosità/opacità -->
+    <script>
+        (function() {
+            // Funzione per rimuovere overlay e classi problematiche
+            function fixGlobalOpacity() {
+                // Rimuovi classi cert-modal-open se non ci sono modal attivi
+                const activeModals = document.querySelectorAll('.cert-modal-container.active, .modal.show');
+                if (activeModals.length === 0) {
+                    document.body.classList.remove('cert-modal-open');
+                }
+                
+                // Rimuovi overlay attivi se non ci sono modal
+                const overlays = document.querySelectorAll('.cert-modal-container, .modal-overlay, .custom-confirm-overlay');
+                overlays.forEach(overlay => {
+                    const computedStyle = window.getComputedStyle(overlay);
+                    if (computedStyle.display !== 'none' && !overlay.closest('.modal.show')) {
+                        overlay.style.display = 'none';
+                        overlay.classList.remove('active', 'show');
+                    }
+                });
+                
+                // Assicura che body e main-content abbiano opacità corretta
+                if (document.body.style.opacity && parseFloat(document.body.style.opacity) < 1) {
+                    document.body.style.opacity = '';
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                if (mainContent && mainContent.style.opacity && parseFloat(mainContent.style.opacity) < 1) {
+                    mainContent.style.opacity = '';
+                }
+                
+                // Rimuovi filtri CSS applicati al body
+                if (document.body.style.filter) {
+                    document.body.style.filter = '';
+                }
+            }
+            
+            // Esegui il fix quando il DOM è caricato
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fixGlobalOpacity);
+            } else {
+                fixGlobalOpacity();
+            }
+            
+            // Esegui il fix dopo un breve delay
+            setTimeout(fixGlobalOpacity, 100);
+            setTimeout(fixGlobalOpacity, 500);
+            setTimeout(fixGlobalOpacity, 1000);
+            
+            // Esegui quando la pagina diventa visibile
+            document.addEventListener('visibilitychange', function() {
+                if (!document.hidden) {
+                    fixGlobalOpacity();
+                }
+            });
+            
+            // Listener per quando si chiudono i modal Bootstrap
+            document.addEventListener('hidden.bs.modal', fixGlobalOpacity);
+            
+            // Esegui periodicamente per sicurezza (ogni 3 secondi)
+            setInterval(fixGlobalOpacity, 3000);
+        })();
+    </script>
+    
+    <!-- CSS globale per forzare opacità corretta -->
+    <style>
+        /* Fix per problemi di opacità globale */
+        body:not(.cert-modal-open):not(.modal-open) {
+            opacity: 1 !important;
+            filter: none !important;
+        }
+        
+        .main-content {
+            opacity: 1 !important;
+        }
+        
+        /* Nascondi overlay non attivi */
+        .cert-modal-container:not(.active),
+        .modal-overlay:not(.show),
+        .custom-confirm-overlay:not(.show) {
+            display: none !important;
+        }
+        
+        /* ========================================
+           FEEDBACK VISIVO SALVATAGGIO GLOBALE
+           ======================================== */
+        /* Classe globale per feedback salvataggio con successo */
+        .saved-success,
+        input.saved-success,
+        select.saved-success,
+        textarea.saved-success,
+        .form-control.saved-success,
+        .form-select.saved-success {
+            border-color: #28a745 !important;
+            border-width: 3px !important;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.15) !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        /* Classe globale per feedback salvataggio con errore */
+        .saved-error,
+        input.saved-error,
+        select.saved-error,
+        textarea.saved-error,
+        .form-control.saved-error,
+        .form-select.saved-error {
+            border-color: #dc3545 !important;
+            border-width: 3px !important;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15) !important;
+            transition: all 0.3s ease !important;
+        }
+    </style>
+    
     <!-- Fallback locale se necessario -->
     <script>
+        // ========================================
+        // UTILITY GLOBALE: Feedback Visivo Salvataggio
+        // ========================================
+        window.SUGECO = window.SUGECO || {};
+        
+        /**
+         * Mostra feedback visivo di salvataggio su un elemento
+         * @param {HTMLElement} element - L'elemento da evidenziare
+         * @param {boolean} success - true per successo (verde), false per errore (rosso)
+         * @param {number} duration - Durata in millisecondi (default: 2000)
+         */
+        window.SUGECO.showSaveFeedback = function(element, success = true, duration = 2000) {
+            if (!element) return;
+            
+            const className = success ? 'saved-success' : 'saved-error';
+            
+            // Aggiungi la classe
+            element.classList.add(className);
+            
+            // Rimuovi la classe dopo la durata specificata
+            setTimeout(function() {
+                element.classList.remove(className);
+            }, duration);
+        };
+        
         // Verifica se Font Awesome è caricato
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {

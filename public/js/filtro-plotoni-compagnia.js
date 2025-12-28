@@ -1,6 +1,8 @@
 /**
  * Script per filtrare i plotoni in base alla compagnia selezionata
  * Gestisce la dipendenza Compagnia -> Plotone nei filtri
+ * Usa l'attributo data-compagnia-id per determinare l'appartenenza
+ * Il filtro plotone è DISABILITATO finché non si seleziona una compagnia
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -11,60 +13,73 @@ document.addEventListener('DOMContentLoaded', function() {
         return; // Non siamo in una pagina con questi filtri
     }
     
-    // Salva tutte le opzioni dei plotoni all'avvio
-    const tuttiIPlotoni = Array.from(plotoneSelect.options).slice(1); // Escludi "Tutti"
+    // Salva tutte le opzioni dei plotoni all'avvio (escludi la prima opzione)
+    const tuttiIPlotoni = Array.from(plotoneSelect.options).slice(1).map(option => ({
+        value: option.value,
+        text: option.text,
+        compagniaId: option.getAttribute('data-compagnia-id'),
+        selected: option.selected
+    }));
     
-    // Mappa compagnia -> plotoni (basato sul nome del plotone)
-    // Formato: "1° Plotone", "2° Plotone", "3° Plotone", "4° Plotone", "5° Plotone"
-    // Ciascun plotone appartiene alla compagnia con lo stesso numero
-    const plotoniPerCompagnia = {
-        '1': ['1° Plotone', 'Plotone 1'],
-        '2': ['2° Plotone', 'Plotone 2'],
-        '3': ['3° Plotone', 'Plotone 3'],
-        '4': ['4° Plotone', 'Plotone 4'],
-        '5': ['5° Plotone', 'Plotone 5']
-    };
-    
-    function filtraPlotoni() {
+    function aggiornaStatoPlotone() {
         const compagniaSelezionata = compagniaSelect.value;
+        const plotoneAttuale = plotoneSelect.value;
+        
+        // Se nessuna compagnia selezionata, disabilita il select
+        if (!compagniaSelezionata) {
+            plotoneSelect.disabled = true;
+            plotoneSelect.title = 'Seleziona prima una compagnia';
+            
+            // Rimuovi tutte le opzioni tranne la prima
+            while (plotoneSelect.options.length > 1) {
+                plotoneSelect.remove(1);
+            }
+            plotoneSelect.options[0].text = 'Seleziona prima compagnia';
+            plotoneSelect.value = '';
+            return;
+        }
+        
+        // Abilita il select
+        plotoneSelect.disabled = false;
+        plotoneSelect.title = '';
+        plotoneSelect.options[0].text = 'Tutti';
         
         // Rimuovi tutte le opzioni tranne "Tutti"
         while (plotoneSelect.options.length > 1) {
             plotoneSelect.remove(1);
         }
         
-        if (!compagniaSelezionata) {
-            // Nessuna compagnia selezionata, mostra tutti i plotoni
-            tuttiIPlotoni.forEach(option => {
-                plotoneSelect.add(option.cloneNode(true));
-            });
-        } else {
-            // Mostra solo i plotoni della compagnia selezionata
-            const plotoniDaMostrare = plotoniPerCompagnia[compagniaSelezionata] || [];
-            tuttiIPlotoni.forEach(option => {
-                // Controlla se il nome del plotone contiene il numero della compagnia
-                if (plotoniDaMostrare.some(nome => option.text.includes(nome) || option.text.includes(compagniaSelezionata))) {
-                    plotoneSelect.add(option.cloneNode(true));
+        // Filtra e aggiungi i plotoni della compagnia selezionata
+        tuttiIPlotoni.forEach(plotone => {
+            if (plotone.compagniaId === compagniaSelezionata) {
+                const option = document.createElement('option');
+                option.value = plotone.value;
+                option.text = plotone.text;
+                option.setAttribute('data-compagnia-id', plotone.compagniaId);
+                
+                // Mantieni la selezione se il plotone è ancora visibile
+                if (plotone.value === plotoneAttuale) {
+                    option.selected = true;
                 }
-            });
+                
+                plotoneSelect.add(option);
+            }
+        });
+        
+        // Se il plotone attualmente selezionato non è più visibile, resetta
+        const plotoneVisibile = Array.from(plotoneSelect.options).some(
+            opt => opt.value === plotoneAttuale && opt.value !== ''
+        );
+        if (!plotoneVisibile && plotoneAttuale) {
+            plotoneSelect.value = '';
         }
     }
     
     // Applica il filtro quando cambia la compagnia
     compagniaSelect.addEventListener('change', function() {
-        filtraPlotoni();
-        // Reset del plotone selezionato se non è più visibile
-        const plotoneAttualeVisibile = Array.from(plotoneSelect.options).some(
-            opt => opt.selected && opt.value !== ''
-        );
-        if (!plotoneAttualeVisibile) {
-            plotoneSelect.value = '';
-        }
+        aggiornaStatoPlotone();
     });
     
-    // Applica il filtro all'avvio se c'è già una compagnia selezionata
-    if (compagniaSelect.value) {
-        filtraPlotoni();
-    }
+    // Applica lo stato iniziale
+    aggiornaStatoPlotone();
 });
-

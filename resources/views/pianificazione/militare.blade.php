@@ -69,7 +69,7 @@
                             <div>{{ $militare->plotone->nome ?? 'N/A' }}</div>
                         </div>
                         <div class="col-12">
-                            <small class="text-muted">Approntamento Principale</small>
+                            <small class="text-muted">Teatro Operativo</small>
                             <div>{{ $militare->approntamentoPrincipale->nome ?? 'Nessuno' }}</div>
                         </div>
                         @if($militare->nos_status)

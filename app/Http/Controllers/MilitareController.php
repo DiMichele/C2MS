@@ -149,6 +149,24 @@ class MilitareController extends Controller
             return redirect()->route('anagrafica.index')
                 ->with('success', 'Militare creato con successo!');
                 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Errori di validazione - mostra messaggi user-friendly
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors());
+                
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Errori database - traduci in messaggi comprensibili
+            Log::error('Errore database nella creazione del militare', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode()
+            ]);
+            
+            $message = $this->translateDatabaseError($e);
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => $message]);
+                
         } catch (\Exception $e) {
             Log::error('Errore nella creazione del militare', [
                 'error' => $e->getMessage(),
@@ -157,8 +175,33 @@ class MilitareController extends Controller
             
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['error' => 'Errore durante la creazione: ' . $e->getMessage()]);
+                ->withErrors(['error' => 'Si è verificato un errore durante la creazione del militare. Riprova.']);
         }
+    }
+    
+    /**
+     * Traduce gli errori del database in messaggi user-friendly
+     */
+    private function translateDatabaseError(\Illuminate\Database\QueryException $e): string
+    {
+        $message = $e->getMessage();
+        
+        // Codice fiscale nullo o duplicato
+        if (str_contains($message, 'codice_fiscale') && str_contains($message, 'cannot be null')) {
+            return 'Il codice fiscale è obbligatorio. Compila tutti i campi anagrafici per calcolarlo automaticamente.';
+        }
+        
+        if (str_contains($message, 'codice_fiscale') && str_contains($message, 'Duplicate entry')) {
+            return 'Questo codice fiscale è già presente nel sistema. Verifica i dati inseriti.';
+        }
+        
+        // Vincoli di chiave esterna
+        if (str_contains($message, 'foreign key constraint')) {
+            return 'Uno dei valori selezionati non è valido. Verifica i campi del form.';
+        }
+        
+        // Errore generico
+        return 'Si è verificato un errore durante il salvataggio. Verifica i dati e riprova.';
     }
 
     /**
@@ -191,26 +234,55 @@ class MilitareController extends Controller
             
             $this->militareService->updateMilitare($id, $request->all());
             
-            return redirect()->route('militare.show', $id)
+            return redirect()->route('anagrafica.show', $id)
                 ->with('success', 'Militare aggiornato con successo!');
                 
-        } catch (\Exception $e) {
-            Log::error('Errore nell\'aggiornamento del militare', [
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => implode(', ', collect($e->errors())->flatten()->all())
+                ], 422);
+            }
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($e->errors());
+                
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('Errore database nell\'aggiornamento del militare', [
                 'militare_id' => $id,
-                'error' => $e->getMessage(),
-                'data' => $request->all()
+                'error' => $e->getMessage()
             ]);
+            
+            $message = $this->translateDatabaseError($e);
             
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore: ' . $e->getMessage()
+                    'message' => $message
                 ], 500);
             }
             
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['error' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()]);
+                ->withErrors(['error' => $message]);
+                
+        } catch (\Exception $e) {
+            Log::error('Errore nell\'aggiornamento del militare', [
+                'militare_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Si è verificato un errore durante l\'aggiornamento.'
+                ], 500);
+            }
+            
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['error' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.']);
         }
     }
 
@@ -327,7 +399,7 @@ class MilitareController extends Controller
         try {
             $this->militareService->saveValutazione($militare, $request->all());
             
-            return redirect()->route('militare.show', $militare->id)
+            return redirect()->route('anagrafica.show', $militare->id)
                 ->with('success', 'Valutazione salvata con successo!');
                 
         } catch (\Exception $e) {
@@ -684,9 +756,28 @@ class MilitareController extends Controller
             $field = $request->input('field');
             $value = $request->input('value');
             
+            // Log per debug
+            Log::info('updateField chiamato', [
+                'militare_id' => $militare->id,
+                'field' => $field,
+                'value' => $value,
+                'value_type' => gettype($value)
+            ]);
+            
+            if (is_null($field)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Campo non specificato'
+                ], 400);
+            }
+            
             // Mapping dei campi frontend -> database
             $fieldMapping = [
                 'compagnia' => 'compagnia_id',
+                'grado' => 'grado_id',
+                'plotone' => 'plotone_id',
+                'ufficio' => 'polo_id',
+                'incarico' => 'mansione_id',
             ];
             
             // Applica il mapping se necessario
@@ -703,18 +794,101 @@ class MilitareController extends Controller
             if (!in_array($dbField, $allowedFields)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Campo non consentito'
+                    'message' => 'Campo non consentito: ' . $dbField
                 ], 400);
             }
             
+            // Converti il valore in null se è stringa vuota o "0" per i campi nullable
+            $nullableFields = ['compagnia_id', 'grado_id', 'plotone_id', 'polo_id', 'mansione_id', 'ruolo_id'];
+            if (in_array($dbField, $nullableFields)) {
+                if ($value === '' || $value === null || $value === '0' || $value === 0) {
+                    $value = null;
+                }
+            }
+            
+            // Converti in intero per i campi ID (solo se non è null)
+            $idFields = ['compagnia_id', 'grado_id', 'plotone_id', 'polo_id', 'mansione_id', 'ruolo_id'];
+            if (in_array($dbField, $idFields) && $value !== null) {
+                // Converti in intero, gestendo anche stringhe numeriche
+                $intValue = is_numeric($value) ? (int) $value : null;
+                
+                if ($intValue === null || $intValue <= 0) {
+                    // Se il valore non è un numero valido, imposta null
+                    $value = null;
+                } else {
+                    $value = $intValue;
+                    
+                    // Valida che il valore esista nella tabella di riferimento (solo per foreign keys)
+                    // Nota: per compagnia_id, la validazione è opzionale perché la view usa un array hardcoded
+                    if ($dbField === 'compagnia_id') {
+                        // Verifica se la compagnia esiste, ma non blocca se non esiste (per compatibilità)
+                        $compagnia = \App\Models\Compagnia::find($value);
+                        if (!$compagnia) {
+                            Log::warning('Compagnia non trovata nel database', [
+                                'compagnia_id' => $value,
+                                'militare_id' => $militare->id
+                            ]);
+                            // Non bloccare, permettere il salvataggio comunque
+                            // Il database gestirà il foreign key constraint se necessario
+                        }
+                    } elseif ($dbField === 'grado_id') {
+                        if (!\App\Models\Grado::find($value)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Grado non valido'
+                            ], 400);
+                        }
+                    } elseif ($dbField === 'plotone_id') {
+                        if (!\App\Models\Plotone::find($value)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Plotone non valido'
+                            ], 400);
+                        }
+                    } elseif ($dbField === 'polo_id') {
+                        if (!\App\Models\Polo::find($value)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Polo non valido'
+                            ], 400);
+                        }
+                    } elseif ($dbField === 'mansione_id') {
+                        if (!\App\Models\Mansione::find($value)) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Mansione non valida'
+                            ], 400);
+                        }
+                    }
+                }
+            }
+            
             // Se cambia la compagnia, azzera il plotone (perché non appartiene più alla compagnia)
-            if ($dbField === 'compagnia_id' && $value != $militare->compagnia_id) {
-                $militare->plotone_id = null;
+            if ($dbField === 'compagnia_id') {
+                $oldCompagniaId = $militare->compagnia_id;
+                // Confronta usando == per gestire null correttamente
+                if ($value != $oldCompagniaId) {
+                    $militare->plotone_id = null;
+                }
             }
             
             // Aggiorna il campo
-            $militare->$dbField = $value;
-            $militare->save();
+            try {
+                $militare->$dbField = $value;
+                $militare->save();
+            } catch (\Illuminate\Database\QueryException $e) {
+                // Se c'è un errore di foreign key, prova a gestirlo
+                if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
+                    Log::error('Foreign key constraint violation', [
+                        'field' => $dbField,
+                        'value' => $value,
+                        'militare_id' => $militare->id,
+                        'error' => $e->getMessage()
+                    ]);
+                    throw $e; // Rilancia per essere gestito dal catch esterno
+                }
+                throw $e;
+            }
             
             return response()->json([
                 'success' => true,
@@ -722,10 +896,73 @@ class MilitareController extends Controller
                 'plotone_reset' => ($dbField === 'compagnia_id') // Indica se il plotone è stato resettato
             ]);
             
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('Errore database nell\'aggiornamento campo militare', [
+                'militare_id' => $militare->id,
+                'field' => $request->input('field'),
+                'value' => $request->input('value'),
+                'error' => $e->getMessage(),
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings()
+            ]);
+            
+            $errorMessage = 'Errore durante l\'aggiornamento';
+            // Se è un errore di foreign key constraint, fornisci un messaggio più chiaro
+            if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
+                $errorMessage = 'Il valore selezionato non è valido o non esiste nel database';
+            } elseif (strpos($e->getMessage(), 'Integrity constraint violation') !== false) {
+                $errorMessage = 'Violazione di vincolo di integrità: il valore non è valido';
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => $errorMessage,
+                'error_detail' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         } catch (\Exception $e) {
             Log::error('Errore nell\'aggiornamento campo militare', [
                 'militare_id' => $militare->id,
                 'field' => $request->input('field'),
+                'value' => $request->input('value'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage(),
+                'error_detail' => config('app.debug') ? $e->getTraceAsString() : null
+            ], 500);
+        }
+    }
+
+    /**
+     * Aggiorna il valore di un campo custom per un militare
+     */
+    public function updateCampoCustom(Request $request, Militare $militare)
+    {
+        try {
+            $nomeCampo = $request->input('nome_campo');
+            $valore = $request->input('valore');
+            
+            $success = $militare->setValoreCampoCustom($nomeCampo, $valore);
+            
+            if (!$success) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Campo custom non trovato'
+                ], 404);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Campo aggiornato con successo'
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Errore nell\'aggiornamento campo custom', [
+                'militare_id' => $militare->id,
+                'nome_campo' => $request->input('nome_campo'),
                 'error' => $e->getMessage()
             ]);
             

@@ -1,6 +1,6 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
-@section('title', 'RSPP - Sicurezza sul Lavoro')
+@section('title', 'Corsi di Formazione SPP')
 
 @section('content')
 <style>
@@ -31,57 +31,29 @@ table.table td,
     border-color: rgba(10, 35, 66, 0.20) !important;
 }
 
-/* Colonne sticky per grado, cognome, nome */
+/* Colonne con larghezza minima ma senza sticky */
 .table th:nth-child(1),
 .table td:nth-child(1) {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    font-weight: 600;
-    min-width: 60px !important;
-}
-
-.table th:nth-child(2),
-.table td:nth-child(2) {
-    position: sticky;
-    left: 60px;
-    z-index: 5;
     font-weight: 600;
     min-width: 120px !important;
 }
 
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    font-weight: 600;
+    min-width: 80px !important;
+}
+
 .table th:nth-child(3),
 .table td:nth-child(3) {
-    position: sticky;
-    left: 180px;
-    z-index: 5;
     font-weight: 600;
-    min-width: 100px !important;
+    min-width: 140px !important;
 }
 
-.table thead th:nth-child(1),
-.table thead th:nth-child(2),
-.table thead th:nth-child(3) {
-    background-color: #0a2342 !important;
-    z-index: 15;
-}
-
-.table tbody tr:nth-of-type(odd) td:nth-child(1),
-.table tbody tr:nth-of-type(odd) td:nth-child(2),
-.table tbody tr:nth-of-type(odd) td:nth-child(3) {
-    background-color: #ffffff;
-}
-
-.table tbody tr:nth-of-type(even) td:nth-child(1),
-.table tbody tr:nth-of-type(even) td:nth-child(2),
-.table tbody tr:nth-of-type(even) td:nth-child(3) {
-    background-color: #fafafa;
-}
-
-.table tbody tr:hover td:nth-child(1),
-.table tbody tr:hover td:nth-child(2),
-.table tbody tr:hover td:nth-child(3) {
-    background-color: rgba(10, 35, 66, 0.12) !important;
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    font-weight: 600;
+    min-width: 120px !important;
 }
 
 /* Celle scadenze - Data colorata con background */
@@ -275,7 +247,7 @@ table.table td,
 
 <!-- Header Minimal Solo Titolo -->
 <div class="text-center mb-4">
-    <h1 class="page-title">RSPP - SICUREZZA SUL LAVORO</h1>
+    <h1 class="page-title">CORSI DI FORMAZIONE SPP</h1>
 </div>
 
 <!-- Barra di ricerca centrata sotto il titolo -->
@@ -299,7 +271,6 @@ table.table td,
     </button>
     
     <div class="d-flex gap-2 align-items-center">
-        <span class="badge bg-primary">{{ $data->count() }} militari</span>
         <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
         <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
         <span class="badge" style="background-color: #f8d7da; color: #721c24;"><i class="fas fa-times"></i> Scaduto</span>
@@ -314,11 +285,12 @@ table.table td,
             <i class="fas fa-filter me-2"></i> Filtri avanzati
         </div>
         <div class="card-body p-3">
-            <form id="filtroForm">
+            <form id="filtroForm" onsubmit="return false;">
                 <div class="row mb-3">
-                    <div class="col-md-2">
-                        <label class="form-label">Lavoratore 4h:</label>
-                        <select name="lavoratore_4h" class="form-select filter-select">
+                    @foreach($corsi as $corso)
+                    <div class="col-md-3">
+                        <label class="form-label">{{ $corso->nome_corso }}:</label>
+                        <select name="{{ $corso->codice_corso }}" class="form-select filter-select">
                             <option value="">Tutti</option>
                             <option value="valido">Valido</option>
                             <option value="in_scadenza">In Scadenza</option>
@@ -326,46 +298,7 @@ table.table td,
                             <option value="mancante">Mancante</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Lavoratore 8h:</label>
-                        <select name="lavoratore_8h" class="form-select filter-select">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Preposto:</label>
-                        <select name="preposto" class="form-select filter-select">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Dirigente:</label>
-                        <select name="dirigente" class="form-select filter-select">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">Antincendio:</label>
-                        <select name="antincendio" class="form-select filter-select">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
+                    @endforeach
                 </div>
             </form>
         </div>
@@ -373,26 +306,24 @@ table.table td,
 </div>
 
 <!-- Tabella con scroll orizzontale -->
-<div class="table-responsive" style="max-height: 70vh; overflow: auto;">
-    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable">
+<div style="max-height: 70vh; overflow-x: auto !important; overflow-y: auto; width: 100%; display: block;">
+    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable" style="width: 1800px; table-layout: fixed;">
         <thead style="position: sticky; top: 0; z-index: 10;">
             <tr style="background-color: #0a2342; color: white;">
+                <th>Compagnia</th>
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
-                <th style="min-width: 130px;">Lavoratore 4h</th>
-                <th style="min-width: 130px;">Lavoratore 8h</th>
-                <th style="min-width: 130px;">Preposto</th>
-                <th style="min-width: 130px;">Dirigente</th>
-                <th style="min-width: 130px;">Antincendio</th>
-                <th style="min-width: 130px;">BLSD</th>
-                <th style="min-width: 160px;">Primo Soccorso Az.</th>
+                @foreach($corsi as $corso)
+                <th style="min-width: 130px;">{{ $corso->nome_corso }}</th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
             @foreach($data as $item)
             <tr data-militare-id="{{ $item['militare']->id }}" 
                 data-militare-nome="{{ $item['militare']->grado->abbreviazione ?? '' }} {{ $item['militare']->cognome }} {{ $item['militare']->nome }}">
+                <td><strong>{{ $item['militare']->compagnia->nome ?? 'N/A' }}</strong></td>
                 <td>{{ $item['militare']->grado->abbreviazione ?? '' }}</td>
                 <td>
                     <a href="{{ route('anagrafica.show', $item['militare']->id) }}" class="link-name">
@@ -401,9 +332,9 @@ table.table td,
                 </td>
                 <td>{{ $item['militare']->nome }}</td>
                 
-                @foreach(['lavoratore_4h', 'lavoratore_8h', 'preposto', 'dirigente', 'antincendio', 'blsd', 'primo_soccorso_aziendale'] as $campo)
+                @foreach($corsi as $corso)
                 @php
-                    $scadenza = $item[$campo];
+                    $scadenza = $item[$corso->codice_corso];
                     $classeColore = match($scadenza['stato']) {
                         'valido' => 'scadenza-valido',
                         'in_scadenza' => 'scadenza-in-scadenza',
@@ -411,26 +342,24 @@ table.table td,
                         'mancante' => 'scadenza-mancante',
                         default => 'scadenza-mancante'
                     };
-                    $testoData = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('d/m/Y') : 'Non presente';
-                    // Fix: dirigente -> dirigenti nel DB
-                    $campoDB = ($campo === 'dirigente' ? 'dirigenti' : $campo) . '_data_conseguimento';
+                    
+                    // Se durata = 0 e c'è¨ data conseguimento, mostra "Nessuna scadenza"
+                    if ($scadenza['durata'] == 0 && $scadenza['data_conseguimento']) {
+                        $testoData = 'Nessuna scadenza';
+                    } else {
+                        $testoData = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('d/m/Y') : 'Non presente';
+                    }
+                    
                     $dataScadenzaISO = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('Y-m-d') : '';
-                    // Durate in anni
-                    $durata = match($campo) {
-                        'lavoratore_4h', 'lavoratore_8h', 'dirigente' => 4,
-                        'preposto', 'blsd', 'primo_soccorso_aziendale' => 2,
-                        'antincendio' => 1,
-                        default => 1
-                    };
                 @endphp
                 
                 <td class="scadenza-cell {{ $classeColore }}" 
                     data-militare-id="{{ $item['militare']->id }}"
-                    data-campo="{{ $campoDB }}"
-                    data-campo-nome="{{ ucwords(str_replace('_', ' ', $campo)) }}"
+                    data-corso-id="{{ $corso->id }}"
+                    data-corso-nome="{{ $corso->nome_corso }}"
                     data-data-conseguimento="{{ $scadenza['data_conseguimento'] ? $scadenza['data_conseguimento']->format('Y-m-d') : '' }}"
                     data-data-scadenza="{{ $dataScadenzaISO }}"
-                    data-durata="{{ $durata }}"
+                    data-durata="{{ $scadenza['durata'] ?? $corso->durata_anni }}"
                     data-stato="{{ $scadenza['stato'] }}"
                     @can('scadenze.edit')
                     onclick="openScadenzaModal(this)"
@@ -495,23 +424,78 @@ document.getElementById('toggleFilters').addEventListener('click', function() {
     }
 });
 
-// Ricerca live
-document.getElementById('searchMilitare').addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
+// Funzione per applicare tutti i filtri
+function applicaFiltri() {
+    const searchTerm = document.getElementById('searchMilitare').value.toLowerCase();
     const rows = document.querySelectorAll('#scadenzeTable tbody tr');
     
-    console.log('Totale righe nella tabella:', rows.length);
-    console.log('Termine ricerca:', searchTerm);
+    // Leggi tutti i filtri dalle select dinamicamente
+    const filterSelects = document.querySelectorAll('.filter-select');
+    const filtriAttivi = {};
+    filterSelects.forEach(select => {
+        const name = select.getAttribute('name');
+        const value = select.value;
+        if (value) {
+            filtriAttivi[name] = value;
+        }
+    });
     
     let visibili = 0;
     rows.forEach(row => {
         const militareNome = row.getAttribute('data-militare-nome');
-        if (!militareNome) {
-            console.warn('Riga senza data-militare-nome:', row);
-            return;
+        if (!militareNome) return;
+        
+        // Check ricerca
+        const matchRicerca = !searchTerm || militareNome.toLowerCase().includes(searchTerm);
+        
+        // Check filtri per ogni campo
+        let matchFiltri = true;
+        const celle = row.querySelectorAll('.scadenza-cell');
+        
+        // Verifica ogni filtro attivo
+        for (const [filtroKey, filtroValue] of Object.entries(filtriAttivi)) {
+            // Trova la cella che corrisponde al filtro
+            let cellaMatch = null;
+            for (let i = 0; i < celle.length; i++) {
+                const cell = celle[i];
+                const corsoId = cell.getAttribute('data-corso-id');
+                // Usa data-corso-id per abbinare, ma se non esiste prova con l'indice
+                const cellaCorso = cell.closest('td');
+                // Controlla se questa cella appartiene al corso giusto
+                if (cellaCorso) {
+                    const allCells = Array.from(row.querySelectorAll('.scadenza-cell'));
+                    const cellIndex = allCells.indexOf(cell);
+                    
+                    // Cerca se questa è¨ la cella giusta confrontando con i filtri
+                    // Basandoci sull'ordine delle colonne nella thead
+                    const thead = document.querySelector('#scadenzeTable thead tr');
+                    const headers = Array.from(thead.querySelectorAll('th'));
+                    // Salta le prime 4 colonne (Compagnia, Grado, Cognome, Nome)
+                    const corsoHeaders = headers.slice(4);
+                    
+                    if (cellIndex < corsoHeaders.length) {
+                        const corsoHeader = corsoHeaders[cellIndex]?.textContent.trim();
+                        const selectLabel = document.querySelector(`select[name="${filtroKey}"]`)?.previousElementSibling?.textContent.replace(':', '').trim();
+                        
+                        if (corsoHeader === selectLabel) {
+                            cellaMatch = cell;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (cellaMatch) {
+                const statoCell = cellaMatch.getAttribute('data-stato');
+                if (statoCell !== filtroValue) {
+                    matchFiltri = false;
+                    break;
+                }
+            }
         }
         
-        if (militareNome.toLowerCase().includes(searchTerm)) {
+        // Mostra/nascondi riga
+        if (matchRicerca && matchFiltri) {
             row.style.display = '';
             visibili++;
         } else {
@@ -519,7 +503,59 @@ document.getElementById('searchMilitare').addEventListener('input', function() {
         }
     });
     
-    console.log('Righe visibili dopo filtro:', visibili);
+    }
+
+// Ricerca live
+document.getElementById('searchMilitare').addEventListener('input', applicaFiltri);
+
+// Applica filtri quando cambiano le select
+document.querySelectorAll('.filter-select').forEach(select => {
+    select.addEventListener('change', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        applicaFiltri();
+    });
+});
+
+// Impedisci il submit del form filtri (deve essere tutto client-side)
+const filtroForm = document.getElementById('filtroForm');
+if (filtroForm) {
+    filtroForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    });
+}
+
+// Inizializza tooltip per le celle scadenze
+document.querySelectorAll('.scadenza-cell').forEach(cell => {
+    const dataConseguimento = cell.getAttribute('data-data-conseguimento');
+    const durata = parseInt(cell.getAttribute('data-durata'));
+    const corsoNome = cell.getAttribute('data-corso-nome');
+    
+    let tooltipText = `<strong>${corsoNome}</strong><br>`;
+    
+    if (dataConseguimento) {
+        const dataObj = new Date(dataConseguimento);
+        const dataFormatted = dataObj.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        tooltipText += `Data Conseguimento: ${dataFormatted}<br>`;
+        
+        if (durata === 0) {
+            tooltipText += `Durata validitè : Nessuna scadenza`;
+        } else {
+            tooltipText += `Durata validitè : ${durata} ${durata === 1 ? 'anno' : 'anni'}`;
+        }
+    } else {
+        tooltipText += `Non presente`;
+    }
+    
+    // Usa Bootstrap tooltip
+    new bootstrap.Tooltip(cell, {
+        html: true,
+        title: tooltipText,
+        placement: 'top',
+        trigger: 'hover'
+    });
 });
 
 function openScadenzaModal(cell) {
@@ -528,7 +564,7 @@ function openScadenzaModal(cell) {
     @endcannot
     
     currentCell = cell;
-    const campoNome = cell.getAttribute('data-campo-nome');
+    const corsoNome = cell.getAttribute('data-corso-nome');
     const dataConseguimento = cell.getAttribute('data-data-conseguimento');
     const dataScadenza = cell.getAttribute('data-data-scadenza');
     const durata = parseInt(cell.getAttribute('data-durata'));
@@ -536,7 +572,7 @@ function openScadenzaModal(cell) {
     const row = cell.closest('tr');
     const militareNome = row.getAttribute('data-militare-nome');
     
-    document.getElementById('modalTitle').textContent = `Modifica ${campoNome}`;
+    document.getElementById('modalTitle').textContent = `Modifica ${corsoNome}`;
     document.getElementById('modalMilitareInfo').textContent = militareNome;
     document.getElementById('modalDataConseguimento').value = dataConseguimento;
     document.getElementById('modalDataScadenza').value = dataScadenza;
@@ -562,15 +598,13 @@ function closeScadenzaModal() {
 
 function saveScadenza() {
     if (!currentCell) {
-        console.error('currentCell è null!');
+        console.error('currentCell è¨ null!');
         return;
     }
     
     const militareId = currentCell.getAttribute('data-militare-id');
-    const campo = currentCell.getAttribute('data-campo');
+    const corsoId = currentCell.getAttribute('data-corso-id');
     const nuovaData = document.getElementById('modalDataConseguimento').value;
-    
-    console.log('Salvataggio:', { militareId, campo, nuovaData });
     
     // Salva riferimento per ripristinare dopo errore
     const cellToUpdate = currentCell;
@@ -581,7 +615,7 @@ function saveScadenza() {
     // URL BASE CORRETTA
     const baseUrl = window.location.origin + '/SUGECO/public';
     
-    fetch(`${baseUrl}/scadenze/rspp/${militareId}/update-singola`, {
+    fetch(`${baseUrl}/spp/corsi-di-formazione/${militareId}/update-singola`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -589,19 +623,17 @@ function saveScadenza() {
             'Accept': 'application/json'
         },
         body: JSON.stringify({
-            campo: campo,
+            corso_id: corsoId,
             data: nuovaData
         })
     })
     .then(response => {
-        console.log('Response status:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Response data:', data);
         if (data.success) {
             location.reload();
         } else {
@@ -627,24 +659,10 @@ document.addEventListener('keydown', function(e) {
 
 // Export Excel
 document.getElementById('exportExcel').addEventListener('click', function() {
-    window.location.href = '/SUGECO/public/scadenze/rspp/export-excel';
+    window.location.href = '/SUGECO/public/spp/corsi-di-formazione/export-excel';
 });
 
-// DEBUG: Verifica righe al caricamento
-document.addEventListener('DOMContentLoaded', function() {
-    const rows = document.querySelectorAll('#scadenzeTable tbody tr');
-    console.log('=== DEBUG RSPP ===');
-    console.log('Righe renderizzate:', rows.length);
-    console.log('Badge count:', '{{ $data->count() }}');
-    
-    rows.forEach((row, index) => {
-        const militareNome = row.getAttribute('data-militare-nome');
-        const display = window.getComputedStyle(row).display;
-        if (display === 'none') {
-            console.warn(`Riga ${index + 1} nascosta:`, militareNome);
-        }
-    });
-    console.log('==================');
-});
 </script>
 @endpush
+
+

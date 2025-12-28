@@ -69,9 +69,14 @@ class AdminController extends Controller
             'role_id.required' => 'Seleziona un ruolo',
         ]);
 
+        // Genera email automaticamente basata sullo username
+        $username = strtolower($validated['username']);
+        $email = $username . '@sugeco.local';
+
         $user = User::create([
             'name' => $validated['name'],
-            'username' => strtolower($validated['username']),
+            'username' => $username,
+            'email' => $email,
             'password' => Hash::make('11Reggimento'),
             'must_change_password' => true, // Richiede cambio password al primo accesso
         ]);
@@ -124,10 +129,10 @@ class AdminController extends Controller
      */
     public function destroy(User $user)
     {
-        // Previeni eliminazione dell'ultimo admin
-        if ($user->hasRole('admin')) {
+        // Previeni eliminazione dell'ultimo admin/amministratore
+        if ($user->hasRole('admin') || $user->hasRole('amministratore')) {
             $adminCount = User::whereHas('roles', function($q) {
-                $q->where('name', 'admin');
+                $q->whereIn('name', ['admin', 'amministratore']);
             })->count();
             
             if ($adminCount <= 1) {
@@ -162,10 +167,10 @@ class AdminController extends Controller
      */
     public function updatePermissions(Request $request, Role $role)
     {
-        // PROTEGGI IL RUOLO AMMINISTRATORE - Non può essere modificato
-        if ($role->name === 'amministratore') {
+        // PROTEGGI I RUOLI ADMIN E AMMINISTRATORE - Non possono essere modificati
+        if ($role->name === 'admin' || $role->name === 'amministratore') {
             return redirect()->route('admin.permissions.index')
-                ->with('error', 'Il ruolo Amministratore è protetto e non può essere modificato. Ha automaticamente tutti i permessi.');
+                ->with('error', 'Il ruolo ' . $role->display_name . ' è protetto e non può essere modificato. Ha automaticamente tutti i permessi.');
         }
         
         $request->validate([
@@ -229,10 +234,10 @@ class AdminController extends Controller
      */
     public function destroyRole(Role $role)
     {
-        // Solo il ruolo "amministratore" non può essere eliminato
-        if ($role->name === 'amministratore') {
+        // I ruoli "admin" e "amministratore" non possono essere eliminati
+        if ($role->name === 'admin' || $role->name === 'amministratore') {
             return redirect()->route('admin.permissions.index')
-                ->with('error', 'Impossibile eliminare il ruolo Amministratore!');
+                ->with('error', 'Impossibile eliminare il ruolo ' . $role->display_name . '! È un ruolo di sistema protetto.');
         }
 
         $name = $role->display_name;

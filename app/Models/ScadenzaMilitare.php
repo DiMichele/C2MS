@@ -31,6 +31,14 @@ class ScadenzaMilitare extends Model
         'mantenimento_arma_corta_data_conseguimento',
         'poligono_approntamento_data_conseguimento',
         'poligono_mantenimento_data_conseguimento',
+        // Corsi Accordo Stato Regione
+        'abilitazione_trattori_data_conseguimento',
+        'abilitazione_mmt_data_conseguimento',
+        'abilitazione_muletto_data_conseguimento',
+        'abilitazione_ple_data_conseguimento',
+        'corso_motosega_data_conseguimento',
+        'addetti_funi_catene_data_conseguimento',
+        'corso_rls_data_conseguimento',
     ];
 
     protected $casts = [
@@ -51,6 +59,14 @@ class ScadenzaMilitare extends Model
         'mantenimento_arma_corta_data_conseguimento' => 'date',
         'poligono_approntamento_data_conseguimento' => 'date',
         'poligono_mantenimento_data_conseguimento' => 'date',
+        // Corsi Accordo Stato Regione
+        'abilitazione_trattori_data_conseguimento' => 'date',
+        'abilitazione_mmt_data_conseguimento' => 'date',
+        'abilitazione_muletto_data_conseguimento' => 'date',
+        'abilitazione_ple_data_conseguimento' => 'date',
+        'corso_motosega_data_conseguimento' => 'date',
+        'addetti_funi_catene_data_conseguimento' => 'date',
+        'corso_rls_data_conseguimento' => 'date',
     ];
 
     // Relazione con Militare

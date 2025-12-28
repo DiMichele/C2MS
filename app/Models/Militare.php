@@ -36,11 +36,7 @@ use Carbon\Carbon;
  * @property-read \App\Models\Polo|null $polo
  * @property-read \App\Models\Ruolo|null $ruoloCertificati
  * @property-read \App\Models\Mansione|null $mansione
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Presenza[] $presenze
- * @property-read \App\Models\Presenza|null $presenzaOggi
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Evento[] $eventi
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\MilitareValutazione[] $valutazioni
- * @property-read float $media_valutazioni
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ScadenzaIdoneita[] $scadenzeIdoneita
  */
 class Militare extends Model
 {
@@ -71,14 +67,19 @@ class Militare extends Model
         'mansione_id',
         'approntamento_principale_id',
         'data_nascita',
+        'sesso',
+        'luogo_nascita',
+        'provincia_nascita',
+        'codice_comune',
+        'anzianita',
         'codice_fiscale',
         'email',
         'telefono',
         'certificati_note',
         'idoneita_note', 
         'note',
+        'istituti',
         'foto_path',
-        'ultimo_poligono_id',
         'data_ultimo_poligono',
         'nos_status',
         'nos_scadenza',
@@ -96,6 +97,7 @@ class Militare extends Model
         'updated_at' => 'datetime',
         'data_nascita' => 'date',
         'anzianita' => 'date',
+        'istituti' => 'array',
     ];
 
     /**
@@ -283,27 +285,6 @@ class Militare extends Model
     }
 
     /**
-     * Relazione con la presenza odierna del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function presenzaOggi()
-    {
-        return $this->hasOne(Presenza::class, 'militare_id')
-                    ->where('data', Carbon::today()->format('Y-m-d'));
-    }
-    
-    /**
-     * Relazione con tutte le presenze del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function presenze()
-    {
-        return $this->hasMany(Presenza::class, 'militare_id');
-    }
-
-    /**
      * Relazione con il ruolo per i certificati
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -323,37 +304,6 @@ class Militare extends Model
         return $this->belongsTo(Mansione::class, 'mansione_id');
     }
 
-    
-    /**
-     * Relazione con le note del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function note()
-    {
-        return $this->hasMany(Nota::class, 'militare_id');
-    }
-    
-    /**
-     * Relazione con gli eventi del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function eventi()
-    {
-        return $this->hasMany(Evento::class, 'militare_id');
-    }
-
-    /**
-     * Relazione con le valutazioni del militare
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function valutazioni()
-    {
-        return $this->hasMany(MilitareValutazione::class);
-    }
-
     /**
      * Relazione con l'approntamento principale
      * 
@@ -364,17 +314,6 @@ class Militare extends Model
         return $this->belongsTo(Approntamento::class, 'approntamento_principale_id');
     }
 
-    /**
-     * Relazione many-to-many con gli approntamenti
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function approntamenti()
-    {
-        return $this->belongsToMany(Approntamento::class, 'militare_approntamenti')
-                    ->withPivot(['ruolo', 'data_assegnazione', 'data_fine_assegnazione', 'principale', 'note'])
-                    ->withTimestamps();
-    }
 
     /**
      * Relazione con le assegnazioni agli approntamenti
@@ -404,6 +343,115 @@ class Militare extends Model
         return $this->hasOne(ScadenzaMilitare::class, 'militare_id');
     }
 
+    /**
+     * Relazione con le scadenze corsi SPP (dinamica)
+     */
+    public function scadenzeCorsiSpp()
+    {
+        return $this->hasMany(ScadenzaCorsoSpp::class, 'militare_id');
+    }
+
+    /**
+     * Relazione con i campi custom dell'anagrafica
+     */
+    public function campiCustom()
+    {
+        return $this->hasMany(ValoreCampoAnagrafica::class, 'militare_id');
+    }
+
+    /**
+     * Helper per ottenere il valore di un campo custom o di sistema
+     */
+    public function getValoreCampoCustom($nome_campo)
+    {
+        $configurazione = ConfigurazioneCampoAnagrafica::where('nome_campo', $nome_campo)
+            ->where('attivo', true)
+            ->first();
+        if (!$configurazione) {
+            return null;
+        }
+        
+        // Per i campi di sistema, restituisci il valore direttamente dal modello
+        $campiSistema = [
+            'compagnia' => 'compagnia_id',
+            'grado' => 'grado_id',
+            'cognome' => 'cognome',
+            'nome' => 'nome',
+            'plotone' => 'plotone_id',
+            'ufficio' => 'polo_id',
+            'incarico' => 'mansione_id',
+            'nos' => 'nos_status',
+            'anzianita' => 'anzianita',
+            'data_nascita' => 'data_nascita',
+            'email_istituzionale' => 'email_istituzionale',
+            'telefono' => 'telefono',
+            'codice_fiscale' => 'codice_fiscale',
+        ];
+        
+        if (isset($campiSistema[$nome_campo])) {
+            $campoDB = $campiSistema[$nome_campo];
+            $valore = $this->$campoDB;
+            
+            // Formatta le date
+            if ($nome_campo == 'anzianita' || $nome_campo == 'data_nascita') {
+                return $valore ? $valore->format('Y-m-d') : '';
+            }
+            
+            return $valore;
+        }
+        
+        // Per i campi custom, usa la relazione
+        return $this->campiCustom()->where('configurazione_campo_id', $configurazione->id)->first()?->valore;
+    }
+
+    /**
+     * Helper per settare il valore di un campo custom o di sistema
+     */
+    public function setValoreCampoCustom($nome_campo, $valore)
+    {
+        $configurazione = ConfigurazioneCampoAnagrafica::where('nome_campo', $nome_campo)
+            ->where('attivo', true)
+            ->first();
+        if (!$configurazione) {
+            return false;
+        }
+        
+        // Per i campi di sistema, aggiorna direttamente il modello
+        $campiSistema = [
+            'compagnia' => 'compagnia_id',
+            'grado' => 'grado_id',
+            'cognome' => 'cognome',
+            'nome' => 'nome',
+            'plotone' => 'plotone_id',
+            'ufficio' => 'polo_id',
+            'incarico' => 'mansione_id',
+            'nos' => 'nos_status',
+            'anzianita' => 'anzianita',
+            'data_nascita' => 'data_nascita',
+            'email_istituzionale' => 'email_istituzionale',
+            'telefono' => 'telefono',
+            'codice_fiscale' => 'codice_fiscale',
+        ];
+        
+        if (isset($campiSistema[$nome_campo])) {
+            $campoDB = $campiSistema[$nome_campo];
+            $this->$campoDB = $valore;
+            $this->save();
+            return true;
+        }
+        
+        // Per i campi custom, usa la relazione
+        ValoreCampoAnagrafica::updateOrCreate(
+            [
+                'militare_id' => $this->id,
+                'configurazione_campo_id' => $configurazione->id
+            ],
+            ['valore' => $valore]
+        );
+        
+        return true;
+    }
+
     // Relazione assegnazioniTurno rimossa - tabella non esistente
 
     /**
@@ -411,13 +459,14 @@ class Militare extends Model
      * Controlla sia il CPT che i turni già assegnati
      * 
      * @param string $data Data nel formato Y-m-d
+     * @param int|null $excludeActivityId ID dell'attività da escludere dal controllo (utile per modifiche)
      * @return array ['disponibile' => bool, 'motivo' => string|null, 'conflitto' => object|null]
      */
-    public function isDisponibile($data)
+    public function isDisponibile($data, $excludeActivityId = null)
     {
         // Controlla se ha un impegno nel CPT
         $dataObj = \Carbon\Carbon::parse($data);
-        $impegnoCpt = $this->pianificazioniGiornaliere()
+        $query = $this->pianificazioniGiornaliere()
             ->whereYear('created_at', $dataObj->year)
             ->whereMonth('created_at', $dataObj->month)
             ->whereHas('pianificazioneMensile', function($q) use ($dataObj) {
@@ -425,8 +474,18 @@ class Militare extends Model
                   ->where('anno', $dataObj->year);
             })
             ->where('giorno', $dataObj->day)
-            ->with('tipoServizio')
-            ->first();
+            ->with('tipoServizio');
+        
+        // Se dobbiamo escludere un'attività, escludiamo le sue pianificazioni
+        if ($excludeActivityId) {
+            $activity = \App\Models\BoardActivity::with('column')->find($excludeActivityId);
+            if ($activity && $activity->column) {
+                $notaToExclude = "{$activity->column->name}: {$activity->title}";
+                $query->where('note', '!=', $notaToExclude);
+            }
+        }
+        
+        $impegnoCpt = $query->first();
 
         if ($impegnoCpt && $impegnoCpt->tipoServizio) {
             return [
@@ -455,65 +514,52 @@ class Militare extends Model
         return $this->hasMany(PianificazioneGiornaliera::class);
     }
 
-    /**
-     * Relazione con i poligoni effettuati
-     */
-    public function poligoni()
-    {
-        return $this->hasMany(Poligono::class, 'militare_id');
-    }
-
-    /**
-     * Relazione con l'ultimo poligono effettuato
-     */
-    public function ultimoPoligono()
-    {
-        return $this->belongsTo(Poligono::class, 'ultimo_poligono_id');
-    }
-
-    // ============================================
-    // ATTRIBUTI CALCOLATI
-    // ============================================
-
-    /**
-     * Calcola la media delle valutazioni del militare
-     * 
-     * @return float Media delle valutazioni (0 se non ci sono valutazioni)
-     */
-    public function getMediaValutazioniAttribute()
-    {
-        $valutazione = MilitareValutazione::where('militare_id', $this->id)->first();
-        if (!$valutazione) {
-            return 0;
-        }
-
-        $campi = ['precisione_lavoro', 'affidabilita', 'capacita_tecnica', 'collaborazione', 'iniziativa'];
-        $totale = 0;
-        $count = 0;
-
-        foreach ($campi as $campo) {
-            if ($valutazione->$campo > 0) {
-                $totale += $valutazione->$campo;
-                $count++;
-            }
-        }
-
-        return $count > 0 ? round($totale / $count, 2) : 0;
-    }
-
     // ============================================
     // METODI DI UTILITÀ
     // ============================================
 
     /**
-     * Verifica se il militare è presente oggi
+     * Verifica se il militare è presente oggi (basato sul CPT)
+     * 
+     * Logica:
+     * - Weekend (sab/dom): assente di default, presente solo se ha servizio nel CPT
+     * - Giorni feriali (lun-ven): presente di default, assente solo se ha codici di assenza
      * 
      * @return bool
      */
     public function isPresente()
     {
-        $presenzaOggi = $this->presenzaOggi;
-        return $presenzaOggi && $presenzaOggi->stato === 'Presente';
+        $oggi = Carbon::today();
+        $isWeekend = $oggi->isWeekend(); // Sabato o Domenica
+        
+        // Cerca pianificazione nel CPT
+        $pianificazione = PianificazioneGiornaliera::where('militare_id', $this->id)
+            ->whereHas('pianificazioneMensile', function($q) use ($oggi) {
+                $q->where('mese', $oggi->month)->where('anno', $oggi->year);
+            })
+            ->where('giorno', $oggi->day)
+            ->with('tipoServizio')
+            ->first();
+        
+        // Codici che indicano assenza
+        $codiciAssenza = ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM', 'LICENZA', 'MALATTIA', 'RIPOSO'];
+        
+        if ($isWeekend) {
+            // Weekend: assente di default
+            // Presente solo se ha un servizio programmato (che non sia assenza)
+            if (!$pianificazione || !$pianificazione->tipoServizio) {
+                return false; // Nessun servizio nel weekend = assente
+            }
+            // Ha un servizio, controlla che non sia un codice di assenza
+            return !in_array(strtoupper($pianificazione->tipoServizio->codice), $codiciAssenza);
+        } else {
+            // Giorni feriali: presente di default
+            if (!$pianificazione || !$pianificazione->tipoServizio) {
+                return true; // Nessuna pianificazione in settimana = presente
+            }
+            // Controlla se ha codici di assenza
+            return !in_array(strtoupper($pianificazione->tipoServizio->codice), $codiciAssenza);
+        }
     }
 
 
@@ -533,28 +579,6 @@ class Militare extends Model
         
         return $nome;
     }
-
-    /**
-     * Verifica se il militare ha eventi in un periodo specifico
-     * 
-     * @param string $dataInizio Data di inizio periodo
-     * @param string $dataFine Data di fine periodo
-     * @return bool
-     */
-    public function hasEventoInDate($dataInizio, $dataFine)
-    {
-        return $this->eventi()
-            ->where(function($query) use ($dataInizio, $dataFine) {
-                $query->whereBetween('data_inizio', [$dataInizio, $dataFine])
-                      ->orWhereBetween('data_fine', [$dataInizio, $dataFine])
-                      ->orWhere(function($q) use ($dataInizio, $dataFine) {
-                          $q->where('data_inizio', '<=', $dataInizio)
-                            ->where('data_fine', '>=', $dataFine);
-                      });
-            })
-            ->exists();
-    }
-
 
     // ============================================
     // GESTIONE CARTELLE MILITARE

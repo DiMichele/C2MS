@@ -4,11 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Militare;
-use App\Models\Presenza;
 use App\Models\ScadenzaMilitare;
 use App\Models\Plotone;
 use App\Models\Polo;
-use App\Models\Evento;
+use App\Models\BoardActivity;
 use App\Models\PianificazioneMensile;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -36,28 +35,20 @@ class DashboardController extends Controller
         // === KPI PRINCIPALI ===
         $kpis = $this->getKPIs();
         
-        // === CRITICITÀ E SCADENZE URGENTI ===
-        $criticita = $this->getCriticita();
+        // === SCADENZE REALI DAL DATABASE ===
+        $scadenzeRspp = $this->getScadenzeRspp();
+        $scadenzeIdoneita = $this->getScadenzeIdoneita();
+        $scadenzePoligoni = $this->getScadenzePoligoni();
         
-        // === PRESENZE ULTIMA SETTIMANA ===
-        $presenzeSettimana = $this->getPresenzeSettimana();
-        
-        // === QUICK ACTIONS (scorciatoie con filtri) ===
-        $quickActions = $this->getQuickActions();
-        
-        // === SITUAZIONE COMPAGNIA ===
-        $situazioneCompagnia = $this->getSituazioneCompagnia();
-        
-        // === PROSSIMI EVENTI ===
-        $prossimiEventi = $this->getProssimiEventi();
+        // === ATTIVITÀ BOARD IN CORSO ===
+        $attivitaOggi = $this->getAttivitaBoardOggi();
         
         return view('dashboard', compact(
             'kpis',
-            'criticita',
-            'presenzeSettimana',
-            'quickActions',
-            'situazioneCompagnia',
-            'prossimiEventi'
+            'scadenzeRspp',
+            'scadenzeIdoneita',
+            'scadenzePoligoni',
+            'attivitaOggi'
         ));
     }
     
@@ -66,33 +57,34 @@ class DashboardController extends Controller
      */
     private function getKPIs()
     {
-        return Cache::remember('dashboard.kpis', self::CACHE_DURATION, function () {
+        return Cache::remember('dashboard.kpis', self::CACHE_DURATION_DYNAMIC, function () {
             $oggi = Carbon::today();
+            $totaleMilitari = Militare::count();
+            
+            // Calcola presenti/assenti dal CPT
+            $presenzaDaCPT = $this->calcolaPresenzeAssenzeDaCPT($oggi);
             
             return [
                 // Forza effettiva
-                'totale_militari' => Militare::count(),
+                'totale_militari' => $totaleMilitari,
                 
-                // Presenze oggi
-                'presenti_oggi' => Militare::whereHas('presenzaOggi', function($q) {
-                    $q->where('stato', 'Presente');
-                })->count(),
+                // Presenze oggi dal CPT
+                'presenti_oggi' => $presenzaDaCPT['presenti'],
                 
-                // Assenti oggi
-                'assenti_oggi' => Militare::whereHas('presenzaOggi', function($q) {
-                    $q->where('stato', 'Assente');
-                })->count(),
+                // Assenti oggi dal CPT
+                'assenti_oggi' => $presenzaDaCPT['assenti'],
                 
                 // Percentuale presenti
-                'percentuale_presenti' => $this->calcolaPercentualePresenti(),
+                'percentuale_presenti' => $totaleMilitari > 0 
+                    ? round(($presenzaDaCPT['presenti'] / $totaleMilitari) * 100) 
+                    : 0,
                 
                 // Scadenze critiche (scadute + in scadenza < 7gg)
                 'scadenze_critiche' => $this->contaScadenzeCritiche(),
                 
-                // Militari in evento oggi
-                // Ogni evento ha un militare (militare_id), quindi contiamo gli eventi attivi
-                'in_evento_oggi' => Evento::whereDate('data_inizio', '<=', $oggi)
-                    ->whereDate('data_fine', '>=', $oggi)
+                // Attività in corso oggi (Board)
+                'in_evento_oggi' => BoardActivity::whereDate('start_date', '<=', $oggi)
+                    ->whereDate('end_date', '>=', $oggi)
                     ->count(),
                 
                 // Pianificazioni mese corrente
@@ -101,6 +93,49 @@ class DashboardController extends Controller
                     ->exists(),
             ];
         });
+    }
+    
+    /**
+     * Calcola presenti e assenti dal CPT (pianificazioni giornaliere)
+     * Logica: 
+     * - ASSENTI = militari con tipo_servizio_id nel CPT oggi
+     * - PRESENTI = tutti gli altri (senza servizio o non nel CPT)
+     */
+    private function calcolaPresenzeAssenzeDaCPT(Carbon $data)
+    {
+        $mese = $data->month;
+        $anno = $data->year;
+        $giorno = $data->day;
+        
+        // Trova le pianificazioni mensili per questo mese/anno
+        $pianificazioniMensili = PianificazioneMensile::where('mese', $mese)
+            ->where('anno', $anno)
+            ->pluck('id');
+        
+        if ($pianificazioniMensili->isEmpty()) {
+            // Se non ci sono pianificazioni, tutti sono considerati presenti
+            return [
+                'presenti' => Militare::count(),
+                'assenti' => 0,
+            ];
+        }
+        
+        // Conta i militari con impegno (tipo_servizio_id != null)
+        $assenti = DB::table('pianificazioni_giornaliere')
+            ->whereIn('pianificazione_mensile_id', $pianificazioniMensili)
+            ->where('giorno', $giorno)
+            ->whereNotNull('tipo_servizio_id')
+            ->distinct('militare_id')
+            ->count('militare_id');
+        
+        // Tutti gli altri sono presenti
+        $totaleMilitari = Militare::count();
+        $presenti = $totaleMilitari - $assenti;
+        
+        return [
+            'presenti' => $presenti,
+            'assenti' => $assenti,
+        ];
     }
     
     /**
@@ -246,103 +281,246 @@ class DashboardController extends Controller
                 'count' => null,
             ],
             [
-                'title' => 'Eventi Attivi',
-                'icon' => 'fas fa-calendar-check',
+                'title' => 'Attività Board',
+                'icon' => 'fas fa-clipboard-list',
                 'color' => 'purple',
-                'url' => route('eventi.index'),
-                'count' => Evento::where('data_fine', '>=', $oggi)->count(),
+                'url' => route('board.index'),
+                'count' => BoardActivity::where('end_date', '>=', $oggi)->count(),
             ],
         ];
     }
     
     /**
      * Situazione compagnia per plotone/polo
+     * Le presenze sono calcolate usando il metodo isPresente() basato sul CPT
      */
     private function getSituazioneCompagnia()
     {
         return [
-            'plotoni' => Plotone::withCount([
-                'militari',
-                'militari as presenti_count' => function($q) {
-                    $q->whereHas('presenzaOggi', function($q2) {
-                        $q2->where('stato', 'Presente');
-                    });
-                }
-            ])
-            ->orderBy('nome')
-            ->get()
-            ->map(function($plotone) {
-                $percentuale = $plotone->militari_count > 0 
-                    ? round(($plotone->presenti_count / $plotone->militari_count) * 100) 
-                    : 0;
-                return [
-                    'nome' => $plotone->nome,
-                    'totale' => $plotone->militari_count,
-                    'presenti' => $plotone->presenti_count,
-                    'percentuale' => $percentuale,
-                ];
-            }),
+            'plotoni' => Plotone::with('militari')
+                ->orderBy('nome')
+                ->get()
+                ->map(function($plotone) {
+                    $totale = $plotone->militari->count();
+                    $presenti = $plotone->militari->filter(fn($m) => $m->isPresente())->count();
+                    $percentuale = $totale > 0 ? round(($presenti / $totale) * 100) : 0;
+                    return [
+                        'nome' => $plotone->nome,
+                        'totale' => $totale,
+                        'presenti' => $presenti,
+                        'percentuale' => $percentuale,
+                    ];
+                }),
             
-            'poli' => Polo::withCount([
-                'militari',
-                'militari as presenti_count' => function($q) {
-                    $q->whereHas('presenzaOggi', function($q2) {
-                        $q2->where('stato', 'Presente');
-                    });
-                }
-            ])
-            ->orderBy('nome')
-            ->get()
-            ->map(function($polo) {
-                $percentuale = $polo->militari_count > 0 
-                    ? round(($polo->presenti_count / $polo->militari_count) * 100) 
-                    : 0;
-                return [
-                    'nome' => $polo->nome,
-                    'totale' => $polo->militari_count,
-                    'presenti' => $polo->presenti_count,
-                    'percentuale' => $percentuale,
-                ];
-            }),
+            'poli' => Polo::with('militari')
+                ->orderBy('nome')
+                ->get()
+                ->map(function($polo) {
+                    $totale = $polo->militari->count();
+                    $presenti = $polo->militari->filter(fn($m) => $m->isPresente())->count();
+                    $percentuale = $totale > 0 ? round(($presenti / $totale) * 100) : 0;
+                    return [
+                        'nome' => $polo->nome,
+                        'totale' => $totale,
+                        'presenti' => $presenti,
+                        'percentuale' => $percentuale,
+                    ];
+                }),
         ];
     }
     
     /**
-     * Prossimi eventi
+     * Attività dal Board in corso oggi
      */
-    private function getProssimiEventi()
+    private function getAttivitaBoardOggi()
     {
         $oggi = Carbon::today();
         
-        return Evento::where('data_fine', '>=', $oggi)
-            ->with('militare')
-            ->orderBy('data_inizio')
-            ->limit(5)
+        return \App\Models\BoardActivity::whereDate('start_date', '<=', $oggi)
+            ->whereDate('end_date', '>=', $oggi)
+            ->with(['militari.grado', 'column'])
+            ->orderBy('start_date')
             ->get()
-            ->map(function($evento) use ($oggi) {
-                $inCorso = $evento->data_inizio <= $oggi && $evento->data_fine >= $oggi;
+            ->map(function($activity) use ($oggi) {
+                $militari = $activity->militari->map(function($m) {
+                    return ($m->grado->sigla ?? '') . ' ' . $m->cognome . ' ' . $m->nome;
+                })->join(', ');
+                
+                // La categoria è il nome della colonna della board
+                // (Servizi Isolati, Esercitazioni, Stand-by, Operazioni, Corsi, Cattedre)
+                $categoria = $activity->column->name ?? 'Attività';
+                
                 return [
-                    'id' => $evento->id,
-                    'titolo' => $evento->nome,
-                    'tipo' => $evento->tipologia,
-                    'data_inizio' => $evento->data_inizio,
-                    'data_fine' => $evento->data_fine,
-                    'militare' => $evento->militare ? $evento->militare->cognome . ' ' . $evento->militare->nome : 'N/A',
-                    'in_corso' => $inCorso,
-                    'giorni_inizio' => $inCorso ? 0 : $oggi->diffInDays($evento->data_inizio, false),
+                    'id' => $activity->id,
+                    'titolo' => $activity->title,
+                    'descrizione' => $activity->description,
+                    'priorita' => $activity->priority,
+                    'categoria' => $categoria,
+                    'stato' => $activity->column->name ?? 'N/A',
+                    'data_inizio' => $activity->start_date,
+                    'data_scadenza' => $activity->end_date,
+                    'militari' => $militari ?: 'Nessuno assegnato',
+                    'in_corso' => true,
                 ];
             });
+    }
+    
+    /**
+     * Calcola scadenze RSPP reali dal database
+     */
+    private function getScadenzeRspp()
+    {
+        $oggi = Carbon::today();
+        $tra30giorni = $oggi->copy()->addDays(30);
+        
+        $scadenze = ScadenzaMilitare::with('militare')->get();
+        
+        $validi = 0;
+        $inScadenza = 0;
+        $scaduti = 0;
+        
+        foreach ($scadenze as $scadenza) {
+            // Lavoratore 4h
+            if ($scadenza->lavoratore_4h_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->lavoratore_4h_data_conseguimento)->addYears(4);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // Lavoratore 8h
+            if ($scadenza->lavoratore_8h_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->lavoratore_8h_data_conseguimento)->addYears(4);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // Preposto
+            if ($scadenza->preposto_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->preposto_data_conseguimento)->addYears(2);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // BLSD
+            if ($scadenza->blsd_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->blsd_data_conseguimento)->addYears(2);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+        }
+        
+        return [
+            'validi' => $validi,
+            'in_scadenza' => $inScadenza,
+            'scaduti' => $scaduti,
+        ];
+    }
+    
+    /**
+     * Calcola scadenze Idoneità reali dal database
+     */
+    private function getScadenzeIdoneita()
+    {
+        $oggi = Carbon::today();
+        $tra30giorni = $oggi->copy()->addDays(30);
+        
+        $scadenze = ScadenzaMilitare::with('militare')->get();
+        
+        $validi = 0;
+        $inScadenza = 0;
+        $scaduti = 0;
+        
+        foreach ($scadenze as $scadenza) {
+            // Idoneità Mansione
+            if ($scadenza->idoneita_mans_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->idoneita_mans_data_conseguimento)->addYear();
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // Idoneità SMI
+            if ($scadenza->idoneita_smi_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->idoneita_smi_data_conseguimento)->addYear();
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // ECG
+            if ($scadenza->ecg_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->ecg_data_conseguimento)->addYear();
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+        }
+        
+        return [
+            'validi' => $validi,
+            'in_scadenza' => $inScadenza,
+            'scaduti' => $scaduti,
+        ];
+    }
+    
+    /**
+     * Calcola scadenze Poligoni reali dal database
+     */
+    private function getScadenzePoligoni()
+    {
+        $oggi = Carbon::today();
+        $tra30giorni = $oggi->copy()->addDays(30);
+        
+        $scadenze = ScadenzaMilitare::with('militare')->get();
+        
+        $validi = 0;
+        $inScadenza = 0;
+        $scaduti = 0;
+        
+        foreach ($scadenze as $scadenza) {
+            // Tiri Approntamento
+            if ($scadenza->tiri_approntamento_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->tiri_approntamento_data_conseguimento)->addMonths(6);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // Mantenimento Arma Lunga
+            if ($scadenza->mantenimento_arma_lunga_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->mantenimento_arma_lunga_data_conseguimento)->addMonths(6);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+            
+            // Mantenimento Arma Corta
+            if ($scadenza->mantenimento_arma_corta_data_conseguimento) {
+                $dataScadenza = Carbon::parse($scadenza->mantenimento_arma_corta_data_conseguimento)->addMonths(6);
+                if ($dataScadenza < $oggi) $scaduti++;
+                elseif ($dataScadenza <= $tra30giorni) $inScadenza++;
+                else $validi++;
+            }
+        }
+        
+        return [
+            'validi' => $validi,
+            'in_scadenza' => $inScadenza,
+            'scaduti' => $scaduti,
+        ];
     }
     
     // === METODI HELPER ===
     
     private function calcolaPercentualePresenti()
     {
-        $presenti = Militare::whereHas('presenzaOggi', function($q) {
-            $q->where('stato', 'Presente');
-        })->count();
-        
-        $totale = Militare::count();
+        $militari = Militare::all();
+        $presenti = $militari->filter(fn($m) => $m->isPresente())->count();
+        $totale = $militari->count();
         
         return $totale > 0 ? round(($presenti / $totale) * 100) : 0;
     }

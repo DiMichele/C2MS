@@ -15,7 +15,7 @@ window.pageData = {
     }
 };
 </script>
-<script src="{{ asset('js/pianificazione-test.js') }}?v={{ time() }}"></script>
+<script src="{{ asset('js/pianificazione.js') }}?v={{ time() }}"></script>
 <script src="{{ asset('js/filtro-plotoni-compagnia.js') }}?v={{ time() }}"></script>
 
 <div class="container-fluid" style="position: relative; z-index: 1;">
@@ -68,7 +68,7 @@ window.pageData = {
         @php
             // Check if any filters are active
             $activeFilters = [];
-            foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'compleanno', 'giorno'] as $filter) {
+            foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'stato_impegno', 'compleanno', 'giorno'] as $filter) {
                 if(request()->filled($filter)) $activeFilters[] = $filter;
             }
             $hasActiveFilters = count($activeFilters) > 0;
@@ -97,9 +97,6 @@ window.pageData = {
                        data-target-container="pianificazioneTable">
             </div>
             
-            <div>
-                <span class="badge bg-primary counter-badge" style="border-radius: 6px !important;">{{ count($militariConPianificazione) }} militari</span>
-            </div>
         </div>
 
         <!-- Filtri con sezione migliorata -->
@@ -121,7 +118,7 @@ window.pageData = {
                         <th class="bg-dark text-white" style="width: 170px;">Nome</th>
                             <th class="bg-dark text-white" style="width: 120px;">Plotone</th>
                             <th class="bg-dark text-white" style="width: 112px;">Patente</th>
-                            <th class="bg-dark text-white" style="width: 120px;">Approntamento</th>
+                            <th class="bg-dark text-white" style="width: 120px;">Teatro Operativo</th>
                             
                             <!-- Colonne per ogni giorno del mese -->
                             @foreach($giorniMese as $giorno)
@@ -194,67 +191,55 @@ window.pageData = {
                                     @php
                                         $pianificazione = $item['pianificazioni'][$giorno['giorno']] ?? null;
                                         $codice = '';
-                                        $colore = 'light';
+                                        $coloreBadge = null;
                                         $tooltip = 'Nessuna pianificazione';
                                         
                                         if ($pianificazione) {
                                             if ($pianificazione->tipoServizio) {
                                                 $codice = $pianificazione->tipoServizio->codice;
                                                 $gerarchia = $pianificazione->tipoServizio->codiceGerarchia;
-                                            // Usa la mappa dei codici per nome e colore
-                                            $tooltip = $pianificazione->tipoServizio->nome ?? $codice;
-                                            
-                                            // Determina il colore basato sul codice
-                                                $colore = match($codice) {
-                                                // ASSENTE - Giallo
-                                                'LS', 'LO', 'LM', 'P', 'TIR', 'TRAS' => 'cpt-giallo',
+                                                // Usa la mappa dei codici per nome e colore
+                                                $tooltip = $pianificazione->tipoServizio->nome ?? $codice;
                                                 
-                                                // PROVVEDIMENTI MEDICO SANITARI - Rosso
-                                                'RMD', 'LC', 'IS' => 'cpt-rosso',
-                                                
-                                                // SERVIZIO - Verde (include nuovi servizi turno)
-                                                'S-G1', 'S-G2', 'S-SA', 'S-CD1', 'S-CD2', 'S-SG', 'S-CG', 'S-UI', 'S-UP', 'S-AE', 'S-ARM', 'SI-GD', 'SI', 'SI-VM', 'S-PI',
-                                                'G-BTG', 'NVA', 'CG', 'NS-DA', 'PDT', 'AA', 'VS-CETLI', 'CORR', 'NDI', 'PDT1', 'S-SI' => 'cpt-verde',
-                                                
-                                                // OPERAZIONE - Rosso
-                                                'TO' => 'cpt-rosso',
-                                                
-                                                // ADD./APP./CATTEDRE - Giallo
-                                                'APS1', 'APS2', 'APS3', 'APS4', 'AL-ELIX', 'AL-MCM', 'AL-BLS', 'AL-CIED', 'AL-SM', 'AL-RM', 'AL-RSPP', 'AL-LEG', 'AL-SEA', 'AL-MI', 'AL-PO', 'AL-PI', 'AP-M', 'AP-A', 'AC-SW', 'AC', 'PEFO' => 'cpt-giallo',
-                                                
-                                                // SUPP.CIS/EXE - Verde
-                                                'EXE' => 'cpt-verde',
-                                                
-                                                default => 'light'
-                                            };
+                                                // USA IL COLORE DAL DATABASE invece del match hardcoded
+                                                $coloreBadge = $gerarchia->colore_badge ?? null;
                                             } else {
                                                 // Pianificazione esiste ma senza tipo servizio (Nessun impegno)
                                                 $codice = '';
-                                                $colore = 'light';
+                                                $coloreBadge = null;
                                                 $tooltip = 'Nessun impegno';
                                             }
                                         } else {
                                             // Militari senza pianificazione: cella vuota
                                             $codice = '';
-                                            $colore = 'light';
+                                            $coloreBadge = null;
                                             $tooltip = 'Nessuna pianificazione';
                                         }
+                                        
+                                        // Funzione per determinare se il colore è chiaro (per il testo)
+                                        $isLightColor = function($hexColor) {
+                                            if (!$hexColor) return true;
+                                            $hex = ltrim($hexColor, '#');
+                                            $r = hexdec(substr($hex, 0, 2));
+                                            $g = hexdec(substr($hex, 2, 2));
+                                            $b = hexdec(substr($hex, 4, 2));
+                                            $brightness = (($r * 299) + ($g * 587) + ($b * 114)) / 1000;
+                                            return $brightness > 128;
+                                        };
                                     @endphp
                                     
                                     @php
                                         // Stili base cella
                                         $cellStyle = "width: 60px; height: 32px; cursor: pointer; font-size: 10px; font-weight: 600; padding: 0;";
                                         
-                                        // COLORA LA CELLA direttamente in base al codice impegno
-                                        if ($codice) {
-                                            // Determina colore in base al tipo di impegno
-                                            if (in_array($codice, ['LS', 'LO', 'LM', 'P', 'TIR', 'TRAS', 'APS1', 'APS2', 'APS3', 'APS4', 'AL-ELIX', 'AL-MCM', 'AL-BLS', 'AL-CIED', 'AL-SM', 'AL-RM', 'AL-RSPP', 'AL-LEG', 'AL-SEA', 'AL-MI', 'AL-PO', 'AL-PI', 'AP-M', 'AP-A', 'AC-SW', 'AC', 'PEFO'])) {
-                                                $cellStyle .= " background-color: #ffff00 !important; color: #000000 !important;";
-                                            } elseif (in_array($codice, ['RMD', 'LC', 'IS', 'TO'])) {
-                                                $cellStyle .= " background-color: #ff0000 !important; color: #ffffff !important;";
-                                            } else {
-                                                $cellStyle .= " background-color: #00b050 !important; color: #ffffff !important;";
-                                            }
+                                        // COLORA LA CELLA usando il colore dal database
+                                        if ($codice && $coloreBadge) {
+                                            // Usa il colore dal database
+                                            $textColor = $isLightColor($coloreBadge) ? '#000000' : '#ffffff';
+                                            $cellStyle .= " background-color: {$coloreBadge} !important; color: {$textColor} !important;";
+                                        } elseif ($codice) {
+                                            // Fallback: se non c'è colore nel database, usa verde di default
+                                            $cellStyle .= " background-color: #00b050 !important; color: #ffffff !important;";
                                         } else {
                                             // Celle vuote - sfondo weekend/festivi/oggi
                                             if ($giorno['is_weekend'] || $giorno['is_holiday']) {
@@ -275,8 +260,45 @@ window.pageData = {
                                     aria-label="Modifica impegno per {{ $item['militare']->cognome }} {{ $item['militare']->nome }} - {{ $giorno['giorno'] }} {{ $mese }}/{{ $anno }}"
                                     onclick="openEditModal(this)"
                                     onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openEditModal(this); }"
+                                    @php
+                                        $tooltipText = '';
+                                        if ($pianificazione) {
+                                            if ($pianificazione->note) {
+                                                // Se ci sono note (da board), mostra le note
+                                                $tooltipText = $pianificazione->note;
+                                            } elseif ($pianificazione->tipoServizio) {
+                                                // Impegno standard: mostra codice + nome completo
+                                                $tooltipText = $pianificazione->tipoServizio->codice . ' - ' . $pianificazione->tipoServizio->nome;
+                                            } else {
+                                                // Pianificazione esiste ma senza tipo servizio
+                                                $tooltipText = 'Nessun impegno - Clicca per modificare';
+                                            }
+                                        } else {
+                                            // Nessuna pianificazione
+                                            $tooltipText = 'Nessuna pianificazione - Clicca per aggiungere';
+                                        }
+                                    @endphp
+                                    title="{{ $tooltipText }}"
                                     @else
-                                    title="Non hai i permessi per modificare"
+                                    @php
+                                        $tooltipTextView = '';
+                                        if ($pianificazione) {
+                                            if ($pianificazione->note) {
+                                                // Se ci sono note (da board), mostra le note
+                                                $tooltipTextView = $pianificazione->note;
+                                            } elseif ($pianificazione->tipoServizio) {
+                                                // Impegno standard: mostra codice + nome completo
+                                                $tooltipTextView = $pianificazione->tipoServizio->codice . ' - ' . $pianificazione->tipoServizio->nome;
+                                            } else {
+                                                // Pianificazione esiste ma senza tipo servizio
+                                                $tooltipTextView = 'Nessun impegno';
+                                            }
+                                        } else {
+                                            // Nessuna pianificazione
+                                            $tooltipTextView = 'Nessuna pianificazione';
+                                        }
+                                    @endphp
+                                    title="{{ $tooltipTextView }}"
                                     @endcan>
                                         
 {{ $codice ?: '-' }}
@@ -468,7 +490,7 @@ window.pageData = {
 .table-header-fixed table th:nth-child(4), .table-body-scroll table td:nth-child(4) { width: 170px; min-width: 170px; max-width: 170px; } /* Nome */
 .table-header-fixed table th:nth-child(5), .table-body-scroll table td:nth-child(5) { width: 120px; min-width: 120px; max-width: 120px; } /* Plotone */
 .table-header-fixed table th:nth-child(6), .table-body-scroll table td:nth-child(6) { width: 112px; min-width: 112px; max-width: 112px; } /* Patente */
-.table-header-fixed table th:nth-child(7), .table-body-scroll table td:nth-child(7) { width: 120px; min-width: 120px; max-width: 120px; } /* Approntamento */
+.table-header-fixed table th:nth-child(7), .table-body-scroll table td:nth-child(7) { width: 120px; min-width: 120px; max-width: 120px; } /* Teatro Operativo */
 
 /* Colonne giorni - larghezza fissa */
 .table-header-fixed table th:nth-child(n+8), .table-body-scroll table td:nth-child(n+8) { 
@@ -900,8 +922,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    console.log('✓ Tooltip Bootstrap inizializzati:', tooltipList.length);
-    
     // ===== GESTIONE HOVER RIGHE =====
     const table = document.getElementById('pianificazioneTable');
     if (!table) return;
@@ -977,3 +997,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 @endpush
+

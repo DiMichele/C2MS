@@ -35,11 +35,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Registra Observers
+        \App\Models\TipoServizio::observe(\App\Observers\TipoServizioObserver::class);
+        
         // Registra Gate per i permessi personalizzati
         // Questo permette a @can di usare il nostro sistema di permessi
         Gate::before(function ($user, $ability) {
-            // L'amministratore ha SEMPRE tutti i permessi
-            if ($user->hasRole('amministratore')) {
+            // L'admin e l'amministratore hanno SEMPRE tutti i permessi
+            if ($user->hasRole('admin') || $user->hasRole('amministratore')) {
                 return true;
             }
             
@@ -60,15 +63,6 @@ class AppServiceProvider extends ServiceProvider
             $host = request()->header('CF-Connecting-IP') ? request()->header('Host') : 
                    (request()->header('X-Forwarded-Host') ?? request()->header('Host') ?? request()->getHost());
             
-            // Log per debug
-            \Log::debug('AppServiceProvider boot', [
-                'host' => $host,
-                'x_forwarded_host' => request()->header('X-Forwarded-Host'),
-                'cf_connecting_ip' => request()->header('CF-Connecting-IP'),
-                'request_host' => request()->getHost(),
-                'asset_url_before' => config('app.asset_url'),
-            ]);
-            
             // Se stiamo usando ngrok o cloudflare tunnel
             // Il tunnel punta a XAMPP che serve da /SUGECO/public/
             if (str_contains($host ?? '', 'ngrok') || str_contains($host ?? '', 'trycloudflare')) {
@@ -76,14 +70,15 @@ class AppServiceProvider extends ServiceProvider
                 URL::forceRootUrl($tunnelUrl);
                 // IMPORTANTE: Forza anche l'asset URL
                 config(['app.asset_url' => $tunnelUrl]);
-                \Log::debug('Using tunnel URL: ' . $tunnelUrl . ' | Asset URL: ' . config('app.asset_url'));
             }
-            // Altrimenti usa localhost per sviluppo locale
+            // Per accesso locale/intranet - usa l'host dalla richiesta
             elseif (request()->server('REQUEST_URI') && strpos(request()->server('REQUEST_URI'), '/SUGECO/public/') !== false) {
-                $localUrl = 'http://localhost/SUGECO/public';
+                // Usa l'host effettivo della richiesta (IP o hostname)
+                $currentHost = request()->getHost();
+                $scheme = request()->getScheme(); // http o https
+                $localUrl = $scheme . '://' . $currentHost . '/SUGECO/public';
                 URL::forceRootUrl($localUrl);
                 config(['app.asset_url' => $localUrl]);
-                \Log::debug('Using localhost URL: ' . $localUrl);
             }
         }
     }

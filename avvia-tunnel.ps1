@@ -21,26 +21,91 @@ if ($apache) {
 }
 Write-Host ""
 
-$cfPath = "$env:TEMP\cloudflared.exe"
+# Cerca cloudflared in vari percorsi
+$cfPath = $null
 
-# Verifica se cloudflared esiste
-if (-not (Test-Path $cfPath)) {
-    Write-Host "Scarico Cloudflare Tunnel..." -ForegroundColor Yellow
-    Write-Host ""
-    $downloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $cfPath -UseBasicParsing
-    Write-Host "Download completato!" -ForegroundColor Green
-    Write-Host ""
+# 1. Verifica se è nel PATH
+$cfInPath = Get-Command cloudflared -ErrorAction SilentlyContinue
+if ($cfInPath) {
+    $cfPath = $cfInPath.Source
+    Write-Host "   ✅ Cloudflared trovato nel PATH: $cfPath" -ForegroundColor Green
+} else {
+    # 2. Verifica in TEMP
+    $cfPath = "$env:TEMP\cloudflared.exe"
+    if (Test-Path $cfPath) {
+        Write-Host "   ✅ Cloudflared trovato in TEMP" -ForegroundColor Green
+    } else {
+        # 3. Scarica cloudflared
+        Write-Host "2. Download Cloudflare Tunnel..." -ForegroundColor Yellow
+        Write-Host ""
+        
+        # Rimuovi file vecchio se esiste
+        if (Test-Path $cfPath) {
+            Remove-Item $cfPath -Force -ErrorAction SilentlyContinue
+        }
+        
+        try {
+            $downloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+            Write-Host "   Download da: $downloadUrl" -ForegroundColor Gray
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $cfPath -UseBasicParsing -TimeoutSec 60
+            Write-Host "   ✅ Download completato!" -ForegroundColor Green
+            
+            # Verifica che il file sia valido
+            if (-not (Test-Path $cfPath)) {
+                throw "File non scaricato correttamente"
+            }
+            
+            # Verifica dimensione file (dovrebbe essere > 10MB)
+            $fileSize = (Get-Item $cfPath).Length
+            if ($fileSize -lt 10MB) {
+                throw "File scaricato troppo piccolo, potrebbe essere corrotto"
+            }
+            
+            Write-Host "   Dimensione file: $([math]::Round($fileSize/1MB, 2)) MB" -ForegroundColor Gray
+        } catch {
+            Write-Host "   ❌ Errore durante il download: $_" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "   Soluzione alternativa:" -ForegroundColor Yellow
+            Write-Host "   1. Scarica manualmente cloudflared da:" -ForegroundColor White
+            Write-Host "      https://github.com/cloudflare/cloudflared/releases" -ForegroundColor Cyan
+            Write-Host "   2. Salva come: $cfPath" -ForegroundColor White
+            Write-Host "   3. Rilancia questo script" -ForegroundColor White
+            Write-Host ""
+            exit 1
+        }
+        Write-Host ""
+    }
 }
 
+Write-Host "3. Avvio tunnel Cloudflare..." -ForegroundColor Yellow
 Write-Host "   Attendi 5-10 secondi per ottenere URL..." -ForegroundColor Cyan
 Write-Host ""
 
+# Verifica che cloudflared sia eseguibile
+try {
+    $testRun = & $cfPath --version 2>&1
+    if ($LASTEXITCODE -ne 0 -and $testRun -notmatch "cloudflared") {
+        throw "Cloudflared non eseguibile"
+    }
+} catch {
+    Write-Host "   ❌ Errore: cloudflared non è eseguibile su questo sistema" -ForegroundColor Red
+    Write-Host "   File: $cfPath" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "   Soluzione:" -ForegroundColor Yellow
+    Write-Host "   1. Rimuovi il file: $cfPath" -ForegroundColor White
+    Write-Host "   2. Rilancia questo script per scaricare una nuova versione" -ForegroundColor White
+    Write-Host ""
+    exit 1
+}
+
 # Avvia il tunnel verso XAMPP
-Write-Host "2. Avvio tunnel Cloudflare..." -ForegroundColor Yellow
 $job = Start-Job -ScriptBlock { 
     param($path) 
-    & $path tunnel --url http://localhost:80 2>&1 
+    try {
+        & $path tunnel --url http://localhost:80 2>&1
+    } catch {
+        Write-Error "Errore esecuzione cloudflared: $_"
+    }
 } -ArgumentList $cfPath
 
 # Aspetta l'URL

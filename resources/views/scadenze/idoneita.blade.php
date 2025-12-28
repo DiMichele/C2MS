@@ -4,6 +4,31 @@
 
 @section('content')
 <style>
+/* Container tabella con scroll */
+.table-container {
+    position: relative;
+    background: white;
+}
+
+.table-container::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
 /* Stili uniformi come le altre pagine */
 .table tbody tr:hover {
     background-color: rgba(10, 35, 66, 0.12) !important;
@@ -31,57 +56,29 @@ table.table td,
     border-color: rgba(10, 35, 66, 0.20) !important;
 }
 
-/* Colonne sticky per grado, cognome, nome */
+/* Colonne con larghezza minima ma senza sticky */
 .table th:nth-child(1),
 .table td:nth-child(1) {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    font-weight: 600;
-    min-width: 60px !important;
-}
-
-.table th:nth-child(2),
-.table td:nth-child(2) {
-    position: sticky;
-    left: 60px;
-    z-index: 5;
     font-weight: 600;
     min-width: 120px !important;
 }
 
+.table th:nth-child(2),
+.table td:nth-child(2) {
+    font-weight: 600;
+    min-width: 80px !important;
+}
+
 .table th:nth-child(3),
 .table td:nth-child(3) {
-    position: sticky;
-    left: 180px;
-    z-index: 5;
     font-weight: 600;
-    min-width: 100px !important;
+    min-width: 140px !important;
 }
 
-.table thead th:nth-child(1),
-.table thead th:nth-child(2),
-.table thead th:nth-child(3) {
-    background-color: #0a2342 !important;
-    z-index: 15;
-}
-
-.table tbody tr:nth-of-type(odd) td:nth-child(1),
-.table tbody tr:nth-of-type(odd) td:nth-child(2),
-.table tbody tr:nth-of-type(odd) td:nth-child(3) {
-    background-color: #ffffff;
-}
-
-.table tbody tr:nth-of-type(even) td:nth-child(1),
-.table tbody tr:nth-of-type(even) td:nth-child(2),
-.table tbody tr:nth-of-type(even) td:nth-child(3) {
-    background-color: #fafafa;
-}
-
-.table tbody tr:hover td:nth-child(1),
-.table tbody tr:hover td:nth-child(2),
-.table tbody tr:hover td:nth-child(3) {
-    background-color: rgba(10, 35, 66, 0.12) !important;
+.table th:nth-child(4),
+.table td:nth-child(4) {
+    font-weight: 600;
+    min-width: 120px !important;
 }
 
 /* Celle scadenze - Data colorata con background */
@@ -118,6 +115,11 @@ table.table td,
 .scadenza-mancante {
     background-color: #e9ecef !important;
     color: #6c757d !important;
+}
+
+.scadenza-prenotato {
+    background-color: #cce5ff !important;
+    color: #004085 !important;
 }
 
 /* Modal hover per modifica */
@@ -312,10 +314,10 @@ table.table td,
     </button>
     
     <div class="d-flex gap-2 align-items-center">
-        <span class="badge bg-primary">{{ $data->count() }} militari</span>
         <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
         <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
         <span class="badge" style="background-color: #f8d7da; color: #721c24;"><i class="fas fa-times"></i> Scaduto</span>
+        <span class="badge" style="background-color: #cce5ff; color: #004085;"><i class="fas fa-calendar-alt"></i> Prenotato</span>
         <span class="badge" style="background-color: #e9ecef; color: #6c757d;"><i class="fas fa-minus"></i> Mancante</span>
     </div>
 </div>
@@ -325,61 +327,86 @@ table.table td,
     <div class="filter-card mb-4">
         <div class="filter-card-header">
             <i class="fas fa-filter me-2"></i> Filtri avanzati
-            </div>
+        </div>
         <div class="card-body p-3">
-            <form id="filtroForm">
+            <form id="filtroForm" method="GET" action="{{ route('idoneita.index') }}">
                 <div class="row mb-3">
+                    @if(isset($compagnie) && count($compagnie) > 0)
                     <div class="col-md-3">
-                <label class="form-label">Idoneità Mansione:</label>
-                <select name="idoneita_mansione" class="form-select filter-select">
-                    <option value="">Tutti</option>
-                    <option value="valido">Valido</option>
-                    <option value="in_scadenza">In Scadenza</option>
-                    <option value="scaduto">Scaduto</option>
-                    <option value="mancante">Mancante</option>
-                </select>
-            </div>
+                        <label class="form-label">Compagnia:</label>
+                        <select name="compagnia_id" class="form-select filter-select" onchange="this.form.submit()">
+                            <option value="">Tutte le compagnie</option>
+                            @foreach($compagnie as $compagnia)
+                            <option value="{{ $compagnia->id }}" {{ request('compagnia_id') == $compagnia->id ? 'selected' : '' }}>
+                                {{ $compagnia->nome }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
                     <div class="col-md-3">
-                <label class="form-label">Idoneità SMI:</label>
-                <select name="idoneita_smi" class="form-select filter-select">
-                    <option value="">Tutti</option>
-                    <option value="valido">Valido</option>
-                    <option value="in_scadenza">In Scadenza</option>
-                    <option value="scaduto">Scaduto</option>
-                    <option value="mancante">Mancante</option>
-                </select>
-            </div>
-                    <div class="col-md-3">
-                <label class="form-label">ECG:</label>
-                <select name="ecg" class="form-select filter-select">
-                    <option value="">Tutti</option>
-                    <option value="valido">Valido</option>
-                    <option value="in_scadenza">In Scadenza</option>
-                    <option value="scaduto">Scaduto</option>
-                    <option value="mancante">Mancante</option>
-                </select>
-            </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Prelievi:</label>
-                        <select name="prelievi" class="form-select filter-select">
+                        <label class="form-label">Idoneità Mansione:</label>
+                        <select name="idoneita_mansione" class="form-select filter-select filter-stato" data-campo="idoneita_mansione">
                             <option value="">Tutti</option>
                             <option value="valido">Valido</option>
                             <option value="in_scadenza">In Scadenza</option>
                             <option value="scaduto">Scaduto</option>
+                            <option value="prenotato">Prenotato</option>
                             <option value="mancante">Mancante</option>
                         </select>
-            </div>
-        </div>
-    </form>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Idoneità SMI:</label>
+                        <select name="idoneita_smi" class="form-select filter-select filter-stato" data-campo="idoneita_smi">
+                            <option value="">Tutti</option>
+                            <option value="valido">Valido</option>
+                            <option value="in_scadenza">In Scadenza</option>
+                            <option value="scaduto">Scaduto</option>
+                            <option value="prenotato">Prenotato</option>
+                            <option value="mancante">Mancante</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">ECG:</label>
+                        <select name="ecg" class="form-select filter-select filter-stato" data-campo="ecg">
+                            <option value="">Tutti</option>
+                            <option value="valido">Valido</option>
+                            <option value="in_scadenza">In Scadenza</option>
+                            <option value="scaduto">Scaduto</option>
+                            <option value="prenotato">Prenotato</option>
+                            <option value="mancante">Mancante</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Prelievi:</label>
+                        <select name="prelievi" class="form-select filter-select filter-stato" data-campo="prelievi">
+                            <option value="">Tutti</option>
+                            <option value="valido">Valido</option>
+                            <option value="in_scadenza">In Scadenza</option>
+                            <option value="scaduto">Scaduto</option>
+                            <option value="prenotato">Prenotato</option>
+                            <option value="mancante">Mancante</option>
+                        </select>
+                    </div>
+                    <div class="col-md-9 d-flex align-items-end">
+                        <button type="button" class="btn btn-secondary" onclick="resetFiltri()">
+                            <i class="fas fa-times me-1"></i> Reset Filtri
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<!-- Tabella con scroll orizzontale -->
-<div class="table-responsive" style="max-height: 70vh; overflow: auto;">
-    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable">
+<!-- Tabella con scroll orizzontale e verticale -->
+<div class="table-container" style="max-height: calc(100vh - 350px); overflow-x: auto; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 8px;">
+    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable" style="min-width: 1200px;">
         <thead style="position: sticky; top: 0; z-index: 10;">
             <tr style="background-color: #0a2342; color: white;">
+                <th>Compagnia</th>
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
@@ -393,6 +420,7 @@ table.table td,
             @foreach($data as $item)
             <tr data-militare-id="{{ $item['militare']->id }}" 
                 data-militare-nome="{{ $item['militare']->grado->abbreviazione ?? '' }} {{ $item['militare']->cognome }} {{ $item['militare']->nome }}">
+                <td><strong>{{ $item['militare']->compagnia->nome ?? 'N/A' }}</strong></td>
                 <td>{{ $item['militare']->grado->abbreviazione ?? '' }}</td>
                 <td>
                     <a href="{{ route('anagrafica.show', $item['militare']->id) }}" class="link-name">
@@ -404,13 +432,24 @@ table.table td,
                 @foreach(['idoneita_mansione', 'idoneita_smi', 'ecg', 'prelievi'] as $campo)
                 @php
                     $scadenza = $item[$campo];
-                    $classeColore = match($scadenza['stato']) {
-                        'valido' => 'scadenza-valido',
-                        'in_scadenza' => 'scadenza-in-scadenza',
-                        'scaduto' => 'scadenza-scaduto',
-                        'mancante' => 'scadenza-mancante',
-                        default => 'scadenza-mancante'
-                    };
+                    
+                    // Verifica se è una prenotazione (data conseguimento nel futuro)
+                    $isPrenotato = $scadenza['data_conseguimento'] && $scadenza['data_conseguimento']->isFuture();
+                    
+                    if ($isPrenotato) {
+                        $classeColore = 'scadenza-prenotato';
+                        $statoEffettivo = 'prenotato';
+                    } else {
+                        $classeColore = match($scadenza['stato']) {
+                            'valido' => 'scadenza-valido',
+                            'in_scadenza' => 'scadenza-in-scadenza',
+                            'scaduto' => 'scadenza-scaduto',
+                            'mancante' => 'scadenza-mancante',
+                            default => 'scadenza-mancante'
+                        };
+                        $statoEffettivo = $scadenza['stato'];
+                    }
+                    
                     $testoData = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('d/m/Y') : 'Non presente';
                     $campoDB = match($campo) {
                         'idoneita_mansione' => 'idoneita_mans_data_conseguimento',
@@ -429,7 +468,7 @@ table.table td,
                     data-data-conseguimento="{{ $scadenza['data_conseguimento'] ? $scadenza['data_conseguimento']->format('Y-m-d') : '' }}"
                     data-data-scadenza="{{ $dataScadenzaISO }}"
                     data-durata="1"
-                    data-stato="{{ $scadenza['stato'] }}"
+                    data-stato="{{ $statoEffettivo }}"
                     @can('scadenze.edit')
                     onclick="openScadenzaModal(this)"
                     @endcan
@@ -499,15 +538,10 @@ document.getElementById('toggleFilters').addEventListener('click', function() {
 document.getElementById('searchMilitare').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('#scadenzeTable tbody tr');
-    
-    console.log('Totale righe nella tabella:', rows.length);
-    console.log('Termine ricerca:', searchTerm);
-    
     let visibili = 0;
     rows.forEach(row => {
         const militareNome = row.getAttribute('data-militare-nome');
         if (!militareNome) {
-            console.warn('Riga senza data-militare-nome:', row);
             return;
         }
         
@@ -518,8 +552,6 @@ document.getElementById('searchMilitare').addEventListener('input', function() {
             row.style.display = 'none';
         }
     });
-    
-    console.log('Righe visibili dopo filtro:', visibili);
 });
 
 function openScadenzaModal(cell) {
@@ -571,8 +603,6 @@ function saveScadenza() {
     const campo = currentCell.getAttribute('data-campo');
     const nuovaData = document.getElementById('modalDataConseguimento').value;
     
-    console.log('Salvataggio:', { militareId, campo, nuovaData });
-    
     // Salva riferimento per ripristinare dopo errore
     const cellToUpdate = currentCell;
     
@@ -582,7 +612,7 @@ function saveScadenza() {
     // URL BASE CORRETTA
     const baseUrl = window.location.origin + '/SUGECO/public';
     
-    fetch(`${baseUrl}/scadenze/idoneita/${militareId}/update-singola`, {
+    fetch(`${baseUrl}/idoneita/${militareId}/update-singola`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -595,14 +625,12 @@ function saveScadenza() {
         })
     })
     .then(response => {
-        console.log('Response status:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Response data:', data);
         if (data.success) {
             location.reload();
         } else {
@@ -628,24 +656,67 @@ document.addEventListener('keydown', function(e) {
 
 // Export Excel
 document.getElementById('exportExcel').addEventListener('click', function() {
-    window.location.href = '/SUGECO/public/scadenze/idoneita/export-excel';
+    window.location.href = `${baseUrl}/idoneita/export-excel`;
 });
 
-// DEBUG: Verifica righe al caricamento
+// Inizializzazione filtri
 document.addEventListener('DOMContentLoaded', function() {
-    const rows = document.querySelectorAll('#scadenzeTable tbody tr');
-    console.log('=== DEBUG IDONEITÀ ===');
-    console.log('Righe renderizzate:', rows.length);
-    console.log('Badge count:', '{{ $data->count() }}');
-    
-    rows.forEach((row, index) => {
-        const militareNome = row.getAttribute('data-militare-nome');
-        const display = window.getComputedStyle(row).display;
-        if (display === 'none') {
-            console.warn(`Riga ${index + 1} nascosta:`, militareNome);
+    // Filtri per stato
+    document.querySelectorAll('.filter-stato').forEach(select => {
+        select.addEventListener('change', applicaFiltriStato);
+    });
+});
+
+// Applica filtri per stato scadenze
+function applicaFiltriStato() {
+    const filtri = {};
+    document.querySelectorAll('.filter-stato').forEach(select => {
+        const campo = select.dataset.campo;
+        const valore = select.value;
+        if (valore) {
+            filtri[campo] = valore;
         }
     });
-    console.log('======================');
-});
+    
+    const rows = document.querySelectorAll('#scadenzeTable tbody tr');
+    
+    rows.forEach(row => {
+        let visible = true;
+        
+        // Mappa indici celle per campo
+        const campiMap = {
+            'idoneita_mansione': 4,
+            'idoneita_smi': 5,
+            'ecg': 6,
+            'prelievi': 7
+        };
+        
+        for (const [campo, statoRichiesto] of Object.entries(filtri)) {
+            const cellIndex = campiMap[campo];
+            const cell = row.cells[cellIndex];
+            if (cell) {
+                const statoCell = cell.dataset.stato;
+                if (statoCell !== statoRichiesto) {
+                    visible = false;
+                    break;
+                }
+            }
+        }
+        
+        row.style.display = visible ? '' : 'none';
+    });
+}
+
+// Reset filtri
+function resetFiltri() {
+    document.querySelectorAll('.filter-stato').forEach(select => {
+        select.value = '';
+    });
+    
+    // Rimuovi filtro compagnia dall'URL e ricarica
+    const url = new URL(window.location.href);
+    url.searchParams.delete('compagnia_id');
+    window.location.href = url.toString();
+}
 </script>
 @endpush

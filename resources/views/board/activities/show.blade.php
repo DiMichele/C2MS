@@ -2,2022 +2,1095 @@
 
 @section('title', $activity->title)
 
-@push('styles')
-<style>
-    /* Badge militari minimal */
-    #militariCounter {
-        background: #007bff;
-        color: white;
-        border-radius: 4px;
-        font-weight: 600;
-        min-width: 24px;
-        height: 24px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.8rem;
-        padding: 2px 6px;
-        border: none;
-        box-shadow: none;
-        text-decoration: none;
-    }
-    
-    /* Rimuovi tutti gli effetti Bootstrap */
-    #militariCounter:hover,
-    #militariCounter:focus,
-    #militariCounter:active {
-        background: #007bff;
-        color: white;
-        transform: none;
-        box-shadow: none;
-        border: none;
-    }
-</style>
-@endpush
-
 @section('content')
-<div class="container">
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <a href="{{ route('board.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left"></i> Torna alla Board
-            </a>
+<div class="container-fluid">
+    <!-- Header con Breadcrumb e Azioni -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                @if($activity->compagniaMounting)
+                    <span class="badge" style="background-color: {{ $activity->compagniaMounting->colore ?? '#6c757d' }}; font-size: 0.9rem; vertical-align: middle;">
+                        <i class="fas fa-flag me-1"></i>{{ $activity->compagniaMounting->nome }}
+                    </span>
+                @endif
+                {{ $activity->title }}
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ route('board.index') }}">Hub Attività</a></li>
+                    <li class="breadcrumb-item active">{{ $activity->title }}</li>
+                </ol>
+            </nav>
         </div>
-        <div class="col-md-6 text-end">
             <div class="btn-group">
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editActivityModal">
-                    <i class="fas fa-edit"></i> Modifica
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editModal">
+                <i class="fas fa-edit me-1"></i>Modifica
                 </button>
-                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
-                    <i class="fas fa-trash-alt"></i>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="fas fa-trash me-1"></i>Elimina
                 </button>
-            </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-8">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center py-3 bg-light">
-                    <h4 class="mb-0 fw-bold">{{ $activity->title }}</h4>
-                    @php
-                        $statusClasses = [
-                            'urgenti' => 'bg-danger',
-                            'in-scadenza' => 'bg-warning',
-                            'pianificate' => 'bg-success',
-                            'fuori-porta' => 'bg-info',
-                        ];
-                        $statusClass = $statusClasses[$activity->column->slug] ?? 'bg-primary';
-                    @endphp
-                    <span class="badge {{ $statusClass }}">{{ $activity->column->name }}</span>
-                </div>
+        <!-- Colonna Principale -->
+        <div class="col-lg-8">
+            <!-- Info Attività -->
+            <div class="card mb-3 shadow-sm">
                 <div class="card-body">
-                    <div class="mb-4">
-                        <h5 class="border-bottom pb-2">Descrizione</h5>
-                        <p class="mt-3">{{ $activity->description ?: 'Nessuna descrizione disponibile' }}</p>
-                    </div>
-
-                    <div class="row mb-4">
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <h5 class="border-bottom pb-2">Data Inizio</h5>
-                            <p class="mt-3">
-                                <i class="fas fa-calendar text-primary me-2"></i> 
-                                {{ $activity->start_date->format('d/m/Y') }}
-                            </p>
+                            <label class="text-muted small mb-1">Data Inizio</label>
+                            <div><i class="fas fa-calendar me-2 text-primary"></i>{{ $activity->start_date->format('d/m/Y') }}</div>
                         </div>
                         <div class="col-md-6">
-                            <h5 class="border-bottom pb-2">Data Fine</h5>
-                            <p class="mt-3">
-                                <i class="fas fa-calendar-check text-primary me-2"></i> 
-                                {{ $activity->end_date ? $activity->end_date->format('d/m/Y') : 'Non specificata' }}
-                            </p>
+                            <label class="text-muted small mb-1">Data Fine</label>
+                            <div><i class="fas fa-calendar-check me-2 text-primary"></i>{{ $activity->end_date ? $activity->end_date->format('d/m/Y') : 'Non specificata' }}</div>
                         </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <h5 class="border-bottom pb-2">Stato Attuale</h5>
-                        <div class="mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted small mb-1">Descrizione</label>
+                        <p class="mb-0">{{ $activity->description ?: 'Nessuna descrizione' }}</p>
+                    </div>
+                    <div>
+                        <label class="text-muted small mb-1">Tipologia</label>
+                        <div>
                             @php
-                                $statusClass = match($activity->column->slug) {
-                                    'urgenti' => 'bg-danger text-white',
-                                    'in-scadenza' => 'bg-warning text-dark',
-                                    'pianificate' => 'bg-success text-white', 
-                                    'fuori-porta' => 'bg-info text-white',
-                                    default => 'bg-primary text-white'
-                                };
+                                $colors = [
+                                    'servizi-isolati' => 'secondary',
+                                    'esercitazioni' => 'warning',
+                                    'stand-by' => 'warning',
+                                    'operazioni' => 'danger',
+                                    'corsi' => 'primary',
+                                    'cattedre' => 'success'
+                                ];
+                                $color = $colors[$activity->column->slug] ?? 'primary';
                             @endphp
-                            <span class="badge {{ $statusClass }} fs-6 px-3 py-2" id="activity-status-badge">
-                                <i class="fas fa-tag me-2"></i>{{ $activity->column->name }}
-                            </span>
+                            <span class="badge bg-{{ $color }}">{{ $activity->column->name }}</span>
                         </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <h5 class="border-bottom pb-2">Informazioni Aggiuntive</h5>
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <p><strong>Data creazione:</strong> {{ $activity->created_at->format('d/m/Y H:i') }}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <p><strong>Ultimo aggiornamento:</strong> {{ $activity->updated_at->format('d/m/Y H:i') }}</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
             
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">Allegati e Link</h5>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAttachmentModal">
-                        <i class="fas fa-plus"></i> Aggiungi
+        <!-- Colonna Laterale - Militari -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="fas fa-users me-2"></i>Militari Coinvolti ({{ $activity->militari->count() }})</h6>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addMilitareModal">
+                        <i class="fas fa-plus"></i>
                     </button>
                 </div>
-                <div class="card-body">
-                    @if($activity->attachments->count() > 0)
-                        <div class="list-group">
-                            @foreach($activity->attachments as $attachment)
-                                <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <a href="{{ $attachment->url }}" target="_blank" class="text-decoration-none d-flex align-items-center">
-                                            @if($attachment->type == 'link')
-                                                <i class="fas fa-link text-primary me-2"></i>
-                                            @else
-                                                <i class="fas fa-file text-primary me-2"></i>
-                                            @endif
-                                            <span>{{ $attachment->title }}</span>
-                                        </a>
-                                        <small class="text-muted d-block">Aggiunto il {{ $attachment->created_at->format('d/m/Y') }}</small>
-                                    </div>
-                                    <div class="btn-group">
-                                        <a href="{{ $attachment->url }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Apri collegamento">
-                                            <i class="fas fa-external-link-alt me-1"></i>Apri
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#deleteAttachmentModal" 
-                                                data-attachment-id="{{ $attachment->id }}"
-                                                data-attachment-title="{{ $attachment->title }}"
-                                                title="Elimina allegato">
-                                            <i class="fas fa-trash-alt me-1"></i>Elimina
-                                        </button>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="fas fa-file-alt mb-3" style="font-size: 2rem;"></i>
-                            <p class="mb-0">Nessun allegato disponibile</p>
-                            <p class="small">Clicca su "Aggiungi" per inserire un nuovo allegato</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">Militari Coinvolti</h5>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addMilitareModal">
-                        <i class="fas fa-user-plus"></i> Aggiungi
-                    </button>
-                </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     @if($activity->militari->count() > 0)
-                        <div class="list-group">
-                            @foreach($activity->militari as $militare)
-                                <div class="list-group-item d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }}</strong>
-                                        <br>
-                                        <small>{{ $militare->nome }}</small>
+                        <div id="militariList">
+                            @php
+                                // Ordina e raggruppa i militari per compagnia
+                                $militariPerCompagnia = $activity->militari->sortBy(function($m) {
+                                    $compagniaOrdine = 999;
+                                    if ($m->compagnia) {
+                                        if ($m->compagnia->nome == '110') $compagniaOrdine = 1;
+                                        elseif ($m->compagnia->nome == '124') $compagniaOrdine = 2;
+                                        elseif ($m->compagnia->nome == '127') $compagniaOrdine = 3;
+                                    }
+                                    $gradoOrdine = -1 * (optional($m->grado)->ordine ?? 0);
+                                    return [$compagniaOrdine, $gradoOrdine, $m->cognome, $m->nome];
+                                })->groupBy(function($m) {
+                                    return $m->compagnia ? $m->compagnia->nome : 'Senza Compagnia';
+                                });
+                            @endphp
+                            @foreach($militariPerCompagnia as $compagniaNome => $militari)
+                                <div class="compagnia-group">
+                                    <div class="px-3 py-2 bg-light border-bottom">
+                                        <strong class="text-uppercase" style="font-size: 0.85rem; color: #0A2342; letter-spacing: 0.5px;">
+                                            {{ $compagniaNome }} ({{ $militari->count() }})
+                                        </strong>
                                     </div>
-                                    <div class="d-flex align-items-center">
-                                        @if($militare->plotone)
-                                            <span class="badge bg-light text-dark border me-1">{{ $militare->plotone->nome }}</span>
-                                        @endif
-                                        @if($militare->polo)
-                                            <span class="badge bg-light text-dark border me-2">{{ $militare->polo->nome }}</span>
-                                        @endif
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#removeMilitareModal"
-                                                data-militare-id="{{ $militare->id }}"
-                                                data-militare-nome="{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}"
-                                                title="Rimuovi {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} dall'attività"
-                                                aria-label="Rimuovi militare">
-                                            <i class="fas fa-trash-alt"></i>
+                                    <div class="list-group list-group-flush">
+                                        @foreach($militari as $militare)
+                                <div class="list-group-item d-flex justify-content-between align-items-center py-2" data-militare-id="{{ $militare->id }}">
+                                    <div class="flex-grow-1">
+                                        <strong class="d-block">{{ optional($militare->grado)->abbreviazione ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}</strong>
+                                        <small class="text-muted">
+                                                        @if($militare->plotone){{ $militare->plotone->nome }}@endif
+                                        </small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeMilitare({{ $militare->id }}, '{{ optional($militare->grado)->abbreviazione }} {{ $militare->cognome }}')">
+                                        <i class="fas fa-times"></i>
                                         </button>
+                                            </div>
+                                        @endforeach
                                     </div>
                                 </div>
                             @endforeach
                         </div>
                     @else
-                        <div class="text-center py-4 text-muted">
-                            <i class="fas fa-users mb-3" style="font-size: 2rem;"></i>
-                            <p class="mb-0">Nessun militare associato</p>
-                            <p class="small">Clicca su "Aggiungi" per associare militari</p>
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-user-slash fa-2x mb-2"></i>
+                            <p class="mb-0">Nessun militare assegnato</p>
                         </div>
                     @endif
                 </div>
             </div>
         </div>
     </div>
-    
             </div>
             
-<!-- Modal per modificare l'attività -->
-<div class="modal fade" id="editActivityModal" tabindex="-1" aria-labelledby="editActivityModalLabel" aria-hidden="true">
+<!-- Modal Modifica Attività -->
+<div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="{{ route('board.activities.update', $activity) }}" method="POST" id="editActivityForm">
+            <form action="{{ route('board.activities.update', $activity) }}" method="POST">
                 @csrf
                 @method('PUT')
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title" id="editActivityModalLabel">
-                        <i class="fas fa-edit text-primary me-2"></i>Modifica Attività
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Modifica Attività</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="edit_title" class="form-label fw-bold">Titolo *</label>
-                        <input type="text" class="form-control" id="edit_title" name="title" value="{{ $activity->title }}" placeholder="Inserisci il titolo dell'attività" required>
+                        <label class="form-label fw-bold">Compagnia Mounting *</label>
+                        <select class="form-select" name="compagnia_mounting_id" required>
+                            @foreach(\App\Models\Compagnia::orderBy('nome')->get() as $comp)
+                                <option value="{{ $comp->id }}" {{ $activity->compagnia_mounting_id == $comp->id ? 'selected' : '' }}>
+                                    {{ $comp->nome }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="edit_description" class="form-label fw-bold">Descrizione</label>
-                        <textarea class="form-control" id="edit_description" name="description" rows="3" placeholder="Descrivi l'attività (opzionale)">{{ $activity->description }}</textarea>
+                        <label class="form-label fw-bold">Titolo *</label>
+                        <input type="text" class="form-control" name="title" value="{{ $activity->title }}" required>
                     </div>
-                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descrizione</label>
+                        <textarea class="form-control" name="description" rows="3">{{ $activity->description }}</textarea>
+                    </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="edit_start_date" class="form-label fw-bold">Data Inizio *</label>
-                            <input type="date" class="form-control" id="edit_start_date" name="start_date" value="{{ $activity->start_date->format('Y-m-d') }}" required>
+                            <label class="form-label fw-bold">Data Inizio *</label>
+                            <input type="date" class="form-control" name="start_date" value="{{ $activity->start_date->format('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="edit_end_date" class="form-label fw-bold">Data Fine</label>
-                            <input type="date" class="form-control" id="edit_end_date" name="end_date" value="{{ $activity->end_date ? $activity->end_date->format('Y-m-d') : '' }}">
-                            <small class="form-text text-muted">Se non specificata, sarà considerata la stessa data di inizio</small>
+                            <label class="form-label fw-bold">Data Fine</label>
+                            <input type="date" class="form-control" name="end_date" value="{{ $activity->end_date ? $activity->end_date->format('Y-m-d') : '' }}">
                         </div>
                     </div>
-                    
                     <div class="mb-3">
-                        <label for="edit_column_id" class="form-label fw-bold">Stato *</label>
-                        <select class="form-control" id="edit_column_id" name="column_id" required>
-                            @foreach(App\Models\BoardColumn::orderBy('order')->get() as $column)
-                            <option value="{{ $column->id }}" {{ $column->id == $activity->column_id ? 'selected' : '' }}>{{ $column->name }}</option>
+                        <label class="form-label fw-bold">Tipologia *</label>
+                        <select class="form-select" name="column_id" required>
+                            @foreach(\App\Models\BoardColumn::orderBy('order')->get() as $col)
+                                <option value="{{ $col->id }}" {{ $activity->column_id == $col->id ? 'selected' : '' }}>{{ $col->name }}</option>
                             @endforeach
                         </select>
                             </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Gestione Militari Coinvolti</label>
-                        
-                        <!-- Militari attualmente assegnati con possibilità di aggiungere -->
-                        <div class="border rounded p-3 bg-light">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="mb-0 text-muted d-flex align-items-center">
-                                    <i class="fas fa-users me-2"></i>
-                                    Militari Assegnati 
-                                    <span class="ms-2" id="militariCounter">{{ $activity->militari->count() }}</span>
-                                </h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="showAddMilitareSection()">
-                                    <i class="fas fa-plus me-1"></i>Aggiungi Militare
-                                </button>
                             </div>
-                            
-                            <!-- Lista militari attuali -->
-                            <div id="militariAttuali" class="mb-3">
-                                @if($activity->militari->count() > 0)
-                                    <div class="row" id="militariGrid">
-                                        @foreach($activity->militari as $militare)
-                                        <div class="col-md-6 mb-2" data-militare-id="{{ $militare->id }}">
-                                            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                                                <div class="flex-grow-1">
-                                                    <strong class="d-block">{{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }}</strong>
-                                                    <small class="text-muted">{{ $militare->nome }}</small>
-                                                    @if($militare->plotone || $militare->polo)
-                                                        <div class="mt-1">
-                                                            @if($militare->plotone)
-                                                                <span class="badge bg-light text-dark border me-1" style="font-size: 0.7rem;">{{ $militare->plotone->nome }}</span>
-                                                            @endif
-                                                            @if($militare->polo)
-                                                                <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">{{ $militare->polo->nome }}</span>
-                                                            @endif
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-militare-btn" 
-                                                        data-militare-remove="{{ $militare->id }}"
-                                                        title="Rimuovi militare">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <div id="noMilitariMessage" class="text-center py-3 text-muted">
-                                        <i class="fas fa-user-slash mb-2" style="font-size: 1.5rem;"></i>
-                                        <p class="mb-0">Nessun militare assegnato a questa attività</p>
-                                        <small>Clicca su "Aggiungi Militare" per iniziare</small>
-                                    </div>
-                                @endif
-                            </div>
-                            
-                            <!-- Sezione per aggiungere nuovi militari (nascosta inizialmente) -->
-                            <div id="addMilitareSection" style="display: none;" class="border-top pt-3">
-                                <h6 class="text-muted mb-2">
-                                    <i class="fas fa-plus me-1"></i>Seleziona Militari da Aggiungere
-                                </h6>
-                                <div class="mb-2">
-                                    <select class="form-control select2-add" id="nuovi_militari">
-                                        <option value="">-- Seleziona un militare --</option>
-                                        @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
-                                            @if(!$activity->militari->contains($militare->id))
-                                            <option value="{{ $militare->id }}">
-                                                {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
-                                                @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
-                                            </option>
-                                            @endif
-                                        @endforeach
-                                    </select>
-                                    <small class="form-text text-muted">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        Il militare selezionato verrà aggiunto automaticamente alla lista
-                                    </small>
-                                </div>
-                                
-                                <!-- Lista militari selezionati per l'aggiunta -->
-                                <div id="militariSelezionatiContainer" class="mt-3" style="display: none;">
-                                    <h6 class="text-muted mb-2">
-                                        <i class="fas fa-users me-1"></i>Militari Selezionati per l'Aggiunta
-                                    </h6>
-                                    <div id="militariSelezionatiGrid" class="row">
-                                        <!-- I militari selezionati appariranno qui -->
-                                    </div>
-                                </div>
-                                
-                                <div class="d-flex justify-content-end">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideAddMilitareSection()">
-                                        <i class="fas fa-times me-1"></i>Chiudi
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Hidden input per il form finale -->
-                            <input type="hidden" name="militari[]" id="militari_hidden_input">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <div class="d-flex justify-content-between align-items-center w-100">
-                        <div id="autoSaveStatus" class="text-muted small">
-                            <span id="autoSaveText"></span>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Chiudi</button>
-                            <button type="submit" class="btn btn-outline-primary" style="display: none;" id="manualSaveBtn">
-                                <i class="fas fa-save me-1"></i> Salva Manualmente
-                            </button>
-                        </div>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Salva</button>
             </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal per aggiungere militare -->
-<div class="modal fade" id="addMilitareModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Modal Aggiungi Militari (Multiplo) -->
+<div class="modal fade" id="addMilitareModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="{{ route('board.activities.attach.militare', $activity) }}" method="POST" id="addMilitareForm">
-                @csrf
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title">
-                        <i class="fas fa-user-plus text-primary me-2"></i>Aggiungi Militare
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Aggiungi Militari</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="hidden" name="activity_id" value="{{ $activity->id }}">
+                <!-- Step 1: Selezione Militari -->
+                <div id="step1">
                     <div class="mb-3">
-                        <label for="militare_id" class="form-label fw-bold">Militare</label>
-                        <select class="form-control select2" id="militare_id" name="militare_id" required>
-                            <option value="">-- Seleziona militare --</option>
-                            @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
-                                @if(!$activity->militari->contains($militare->id))
-                                <option value="{{ $militare->id }}">
-                                    {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
-                                    @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
-                                </option>
-                                @endif
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i> Aggiungi
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal per rimuovere militare -->
-<div class="modal fade" id="removeMilitareModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <form action="" method="POST" id="removeMilitareForm">
-                @csrf
-                @method('DELETE')
-                <input type="hidden" name="militare_id" id="removeMilitareId">
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title">Rimuovi Militare</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Sei sicuro di voler rimuovere <strong id="removeMilitareName"></strong> da questa attività?</p>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt me-1"></i> Rimuovi
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal per aggiungere allegato -->
-<div class="modal fade" id="addAttachmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form action="{{ route('board.activities.attach.file', $activity) }}" method="POST" id="addAttachmentForm" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title">
-                        <i class="fas fa-paperclip text-primary me-2"></i>Aggiungi Allegato
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" name="activity_id" value="{{ $activity->id }}">
-                    
-                    <!-- Selezione tipo allegato -->
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Tipo Allegato *</label>
-                        <div class="btn-group w-100" role="group" aria-label="Tipo allegato">
-                            <input type="radio" class="btn-check" name="attachment_type" id="attachment_link" value="link" checked>
-                            <label class="btn btn-outline-primary" for="attachment_link">
-                                <i class="fas fa-link me-1"></i>Link Web
-                            </label>
+                        <label class="form-label fw-bold">Seleziona Militari *</label>
+                        
+                        <!-- Custom Militari Selector -->
+                        <div class="militari-selector-wrapper">
+                            <!-- Barra di ricerca in alto -->
+                            <div class="militari-search-section">
+                                <input type="text" id="militari-search-modal" class="militari-search-input" placeholder="Cerca militare per nome, cognome o grado...">
+                            </div>
                             
-                            <input type="radio" class="btn-check" name="attachment_type" id="attachment_file" value="file">
-                            <label class="btn btn-outline-primary" for="attachment_file">
-                                <i class="fas fa-upload me-1"></i>Carica File
-                            </label>
+                            <!-- Badge militari selezionati -->
+                            <div class="militari-selected-section" id="militari-selected-modal">
+                                <span class="empty-message">Nessun militare selezionato</span>
+                            </div>
+                            
+                            <!-- Lista militari disponibili -->
+                            <div class="militari-list-section" id="militari-list-modal">
+                                @php
+                                    // Query con ordinamento corretto: prima compagnia (110, 124, 127), poi grado decrescente
+                                    $militariModal = \App\Models\Militare::with(['grado', 'compagnia'])
+                                        ->leftJoin('compagnie', 'militari.compagnia_id', '=', 'compagnie.id')
+                                        ->leftJoin('gradi', 'militari.grado_id', '=', 'gradi.id')
+                                        ->orderByRaw("CASE 
+                                            WHEN compagnie.nome = '110' THEN 1
+                                            WHEN compagnie.nome = '124' THEN 2
+                                            WHEN compagnie.nome = '127' THEN 3
+                                            ELSE 999 END")
+                                        ->orderBy('gradi.ordine', 'desc')
+                                        ->orderBy('militari.cognome')
+                                        ->orderBy('militari.nome')
+                                        ->select('militari.*')
+                                        ->get()
+                                        ->groupBy('compagnia.nome');
+                                @endphp
+                                @foreach($militariModal as $compNome => $mils)
+                                  <div class="militari-group">
+                                    <div class="militari-group-header">{{ $compNome }}</div>
+                                    @foreach($mils as $mil)
+                                      <div class="militare-item" 
+                                           data-id="{{ $mil->id }}" 
+                                                    data-nome="{{ optional($mil->grado)->abbreviazione }} {{ $mil->cognome }} {{ $mil->nome }}"
+                                           data-gia-presente="{{ $activity->militari->contains($mil->id) ? '1' : '0' }}">
+                                        <i class="fas fa-user militare-item-icon"></i>
+                                        <span class="militare-item-name">{{ optional($mil->grado)->abbreviazione }} {{ $mil->cognome }} {{ $mil->nome }}</span>
+                                        <i class="fas fa-check militare-item-check" style="display: none;"></i>
+                                      </div>
+                                    @endforeach
+                                  </div>
+                            @endforeach
+                    </div>
+                            
+                            <!-- Counter -->
+                            <div class="militari-counter">
+                                <span id="militari-count-modal">0</span> militari selezionati
+                </div>
                         </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="title" class="form-label fw-bold">Titolo *</label>
-                        <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'allegato" required>
-                    </div>
-                    
-                    <!-- Sezione per link web -->
-                    <div id="linkSection" class="mb-3">
-                        <label for="url" class="form-label fw-bold">URL *</label>
-                        <input type="url" class="form-control" id="url" name="url" placeholder="https://esempio.com">
-                        <small class="form-text text-muted">Inserisci l'indirizzo web completo</small>
-                    </div>
-                    
-                    <!-- Sezione per caricamento file -->
-                    <div id="fileSection" class="mb-3" style="display: none;">
-                        <label for="file" class="form-label fw-bold">File *</label>
-                        <input type="file" class="form-control" id="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.zip,.rar">
-                        <small class="form-text text-muted">Formati supportati: PDF, Office, Immagini, Archivi (max 10MB)</small>
-                    </div>
-                    
-                    <input type="hidden" name="type" id="finalType" value="link">
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Annulla
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="button" class="btn btn-primary" id="verificaBtn">
+                            <i class="fas fa-search me-1"></i>Verifica Disponibilità
                     </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i>Aggiungi Allegato
+    </div>
+</div>
+
+                <!-- Step 2: Risultati Verifica -->
+                <div id="step2" class="d-none">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Verifica completata!</strong> Controlla i risultati e procedi con l'assegnazione.
+</div>
+
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th width="40"><input type="checkbox" id="selectAllCheck" checked></th>
+                                    <th>Militare</th>
+                                    <th>Compagnia</th>
+                                    <th>Stato</th>
+                                    <th>Dettagli Conflitti</th>
+                                </tr>
+                            </thead>
+                            <tbody id="risultatiVerifica">
+                                <!-- Popolato dinamicamente -->
+                            </tbody>
+                        </table>
+                </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-secondary" onclick="tornaStep1()">
+                            <i class="fas fa-arrow-left me-1"></i>Cambia Selezione
+                    </button>
+                        </div>
+                    </div>
+                    </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-success d-none" id="aggiungiSelezionatiBtn">
+                    <i class="fas fa-check me-1"></i>Aggiungi Selezionati (<span id="countSelezionati">0</span>)
                     </button>
                 </div>
-            </form>
         </div>
     </div>
 </div>
 
-<!-- Modal per eliminare allegato -->
-<div class="modal fade" id="deleteAttachmentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm">
+<!-- Modal Conferma Rimozione Militare -->
+<div class="modal fade" id="confirmRemoveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="" method="POST" id="deleteAttachmentForm">
-                @csrf
-                @method('DELETE')
-                <input type="hidden" name="attachment_id" id="deleteAttachmentId">
-                <div class="modal-header bg-light">
-                    <h5 class="modal-title">Elimina Allegato</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-minus text-warning me-2"></i>Rimuovi Militare</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Sei sicuro di voler eliminare l'allegato <strong id="deleteAttachmentTitle"></strong>?</p>
+                <p class="mb-3">Vuoi rimuovere <strong id="removeMilitareNome"></strong> da questa attività?</p>
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Il militare sarà rimosso anche dal CPT per le date di questa attività.
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt me-1"></i> Elimina
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-warning" onclick="confirmaRimuoviMilitare()" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-1"></i>Conferma Rimozione
                     </button>
                 </div>
-            </form>
         </div>
     </div>
 </div>
 
-<!-- Modal per conferma eliminazione attività -->
-<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Modal Elimina Attività -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{{ route('board.activities.destroy', $activity) }}" method="POST">
                 @csrf
                 @method('DELETE')
                 <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Elimina Attività
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Elimina Attività</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-warning">
+                    <p class="mb-3">Sei sicuro di voler eliminare l'attività <strong>{{ $activity->title }}</strong>?</p>
+                    <div class="alert alert-warning mb-0">
                         <i class="fas fa-exclamation-circle me-2"></i>
-                        Attenzione! Questa operazione non può essere annullata.
+                        <strong>Attenzione:</strong> Questa operazione eliminerà definitivamente l'attività e la rimuoverà dal CPT. Non può essere annullata.
                     </div>
-                    <p>Sei sicuro di voler eliminare definitivamente l'attività "<strong>{{ $activity->title }}</strong>"?</p>
-                    <p>Questa operazione eliminerà anche tutti gli allegati e le associazioni con i militari.</p>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash-alt me-1"></i> Elimina Definitivamente
-                    </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Elimina Definitivamente</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal per conferma conflitti militare -->
-<div class="modal fade" id="conflictConfirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Conflitto Rilevato
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Il militare selezionato è già impegnato in altre attività nello stesso periodo.
-                </div>
-                <p><strong>Militare:</strong> <span id="conflictMilitareName"></span></p>
-                <p><strong>Attività in conflitto:</strong></p>
-                <div id="conflictsList"></div>
-                <hr>
-                <p class="mb-0"><strong>Vuoi comunque aggiungere il militare a questa attività?</strong></p>
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
-                <button type="button" class="btn btn-warning" id="forceAddMilitare">
-                    <i class="fas fa-exclamation-triangle me-1"></i> Aggiungi Comunque
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Toast di notifica -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050">
-    <div id="notificationToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+<!-- Toast Notifiche -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080">
+    <div id="toast" class="toast" role="alert">
         <div class="toast-header">
-            <i id="toastIcon" class="fas fa-info-circle text-primary me-2"></i>
+            <i id="toastIcon" class="fas fa-info-circle me-2"></i>
             <strong class="me-auto" id="toastTitle">Notifica</strong>
-            <small>Adesso</small>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body" id="toastMessage">
-            Operazione completata con successo
-        </div>
+        <div class="toast-body" id="toastBody"></div>
     </div>
 </div>
-@endsection
-
-@section('styles')
-<style>
-
-    
-    /* Stili per le card */
-    .card {
-        border-radius: 0.5rem;
-        border: none;
-        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
-        transition: all 0.2s ease;
-    }
-    
-    .card:hover {
-        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
-    }
-    
-    .card-header {
-        border-bottom: 1px solid rgba(0,0,0,0.1);
-        border-radius: 0.5rem 0.5rem 0 0 !important;
-    }
-    
-    /* Stili per la lista di militari e allegati */
-    .list-group-item {
-        border-left: none;
-        border-right: none;
-        transition: all 0.2s ease;
-    }
-    
-    .list-group-item:first-child {
-        border-top: none;
-    }
-    
-    .list-group-item:last-child {
-        border-bottom: none;
-    }
-    
-    .list-group-item:hover {
-        background-color: rgba(0,0,0,0.01);
-    }
-    
-    /* Stili responsive */
-    @media (max-width: 767px) {
-        .row.mb-3 {
-            margin-bottom: 1rem !important;
-        }
-        
-        .row > div {
-            margin-bottom: 1rem;
-        }
-    }
-    
-    /* Stili specifici per i modal - Forza il layout a 2 colonne */
-    .modal #militariGrid {
-        display: flex !important;
-        flex-wrap: wrap !important;
-    }
-    
-    .modal #militariGrid .col-md-6 {
-        flex: 0 0 50% !important;
-        max-width: 50% !important;
-        padding-right: 0.75rem;
-        padding-left: 0.75rem;
-    }
-    
-    /* Assicura che il layout si mantenga anche quando generato dinamicamente */
-    .modal .row {
-        display: flex !important;
-        flex-wrap: wrap !important;
-        margin-right: -0.75rem;
-        margin-left: -0.75rem;
-    }
-    
-    /* Forza esplicitamente il comportamento Bootstrap per i militari */
-    .modal [data-militare-id] {
-        flex: 0 0 auto !important;
-        width: 50% !important;
-        max-width: 50% !important;
-        display: block !important;
-    }
-    
-
-</style>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="{{ asset('vendor/css/select2.min.css') }}" rel="stylesheet" />
+<link href="{{ asset('vendor/css/select2-bootstrap-5-theme.min.css') }}" rel="stylesheet" />
+<script src="{{ asset('vendor/js/select2.min.js') }}"></script>
 <script>
-// Array per tenere traccia dei militari attuali
-let militariAttuali = @json($activity->militari->pluck('id')->toArray());
+const activityId = {{ $activity->id }};
+const activityStartDate = '{{ $activity->start_date->format('Y-m-d') }}';
+const activityEndDate = '{{ $activity->end_date ? $activity->end_date->format('Y-m-d') : $activity->start_date->format('Y-m-d') }}';
+const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-// Funzione per assicurare che la griglia esista
-function ensureGridExists() {
-    let militariGrid = document.getElementById('militariGrid');
-    if (!militariGrid) {
-        const militariAttualiContainer = document.getElementById('militariAttuali');
-        const noMilitariMessage = document.getElementById('noMilitariMessage');
-        
-        if (militariAttualiContainer) {
-            
-            // Crea la griglia seguendo ESATTAMENTE la struttura del Blade template
-            const gridDiv = document.createElement('div');
-            gridDiv.className = 'row';
-            gridDiv.id = 'militariGrid';
-            
-            // Nascondi il messaggio vuoto se presente
-            if (noMilitariMessage) {
-                noMilitariMessage.style.display = 'none';
-            }
-            
-            // Inserisci la griglia PRIMA del messaggio vuoto (se esiste) o alla fine
-            if (noMilitariMessage) {
-                militariAttualiContainer.insertBefore(gridDiv, noMilitariMessage);
-            } else {
-                militariAttualiContainer.appendChild(gridDiv);
-            }
-            
-            militariGrid = gridDiv;
-        }
+let militariSelezionatiModal = new Set();
+let risultatiVerifica = new Map(); // militareId => {nome, compagnia, disponibile, conflitti[]}
+    
+// ==========================================
+// CUSTOM MILITARI SELECTOR - Modal Modifica
+// ==========================================
+
+$(document).ready(function() {
+    const searchInputModal = document.getElementById('militari-search-modal');
+    const selectedContainerModal = document.getElementById('militari-selected-modal');
+    const listContainerModal = document.getElementById('militari-list-modal');
+    const counterSpanModal = document.getElementById('militari-count-modal');
+    const verificaBtnModal = document.getElementById('verificaBtn');
+    
+    // Pre-seleziona i militari già presenti nell'attività
+    listContainerModal.querySelectorAll('.militare-item[data-gia-presente="1"]').forEach(item => {
+        const id = item.dataset.id;
+        militariSelezionatiModal.add(id);
+    });
+    
+    // Funzione per aggiornare il counter
+    function aggiornaCounterModal() {
+        counterSpanModal.textContent = militariSelezionatiModal.size;
+        verificaBtnModal.disabled = militariSelezionatiModal.size === 0;
     }
-    return militariGrid;
+    
+    // Funzione per aggiornare la sezione badge
+    function aggiornaBadgesModal() {
+        selectedContainerModal.innerHTML = '';
+        
+        if (militariSelezionatiModal.size === 0) {
+            selectedContainerModal.classList.add('empty');
+            selectedContainerModal.innerHTML = '<span class="empty-message">Nessun militare selezionato</span>';
+            return;
+        }
+        
+        selectedContainerModal.classList.remove('empty');
+        
+        militariSelezionatiModal.forEach(id => {
+            const item = listContainerModal.querySelector(`[data-id="${id}"]`);
+            if (item) {
+                const nome = item.dataset.nome;
+                const badge = document.createElement('div');
+                badge.className = 'militare-badge';
+                badge.innerHTML = `
+                    <span class="militare-badge-name">${nome}</span>
+                    <span class="militare-badge-remove" data-id="${id}">&times;</span>
+                `;
+                selectedContainerModal.appendChild(badge);
+            }
+        });
+        
+        // Aggiungi listener per rimuovere badge
+        selectedContainerModal.querySelectorAll('.militare-badge-remove').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                militariSelezionatiModal.delete(id);
+                aggiornaInterfacciaModal();
+            });
+        });
+    }
+    
+    // Funzione per aggiornare lo stato degli item nella lista
+    function aggiornaListaStatiModal() {
+        listContainerModal.querySelectorAll('.militare-item').forEach(item => {
+            const id = item.dataset.id;
+            const checkIcon = item.querySelector('.militare-item-check');
+            
+            if (militariSelezionatiModal.has(id)) {
+                item.classList.add('selected');
+                checkIcon.style.display = 'inline';
+            } else {
+                item.classList.remove('selected');
+                checkIcon.style.display = 'none';
+            }
+        });
+    }
+    
+    // Funzione per aggiornare tutta l'interfaccia
+    function aggiornaInterfacciaModal() {
+        aggiornaBadgesModal();
+        aggiornaListaStatiModal();
+        aggiornaCounterModal();
+    }
+    
+    // Click su un militare nella lista
+    if (listContainerModal) {
+        listContainerModal.addEventListener('click', function(e) {
+            const item = e.target.closest('.militare-item');
+            if (!item || item.classList.contains('disabled')) return;
+            
+            const id = item.dataset.id;
+            
+            if (militariSelezionatiModal.has(id)) {
+                militariSelezionatiModal.delete(id);
+            } else {
+                militariSelezionatiModal.add(id);
+            }
+            
+            aggiornaInterfacciaModal();
+        });
+    }
+    
+    // Ricerca militari
+    if (searchInputModal) {
+        searchInputModal.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            let hasResults = false;
+            
+            listContainerModal.querySelectorAll('.militari-group').forEach(group => {
+                const items = group.querySelectorAll('.militare-item');
+                let groupHasResults = false;
+                
+                items.forEach(item => {
+                    const nome = item.dataset.nome.toLowerCase();
+                    
+                    if (searchTerm === '' || nome.includes(searchTerm)) {
+                        item.style.display = '';
+                        groupHasResults = true;
+                        hasResults = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // Mostra/nascondi il gruppo
+                if (groupHasResults) {
+                    group.style.display = '';
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+            
+            // Mostra messaggio se nessun risultato
+            let noResultsMsg = listContainerModal.querySelector('.militari-no-results');
+            
+            if (!hasResults) {
+                if (!noResultsMsg) {
+                    noResultsMsg = document.createElement('div');
+                    noResultsMsg.className = 'militari-no-results';
+                    noResultsMsg.innerHTML = '<i class="fas fa-search"></i><br>Nessun militare trovato';
+                    listContainerModal.appendChild(noResultsMsg);
+                }
+            } else {
+                if (noResultsMsg) {
+                    noResultsMsg.remove();
+                }
+            }
+        });
+    }
+    
+    // Inizializza l'interfaccia
+    aggiornaInterfacciaModal();
+    
+    // Reset quando il modal si chiude
+    $('#addMilitareModal').on('hidden.bs.modal', function() {
+        militariSelezionatiModal.clear();
+        // Riseleziona i militari già presenti
+        listContainerModal.querySelectorAll('.militare-item[data-gia-presente="1"]').forEach(item => {
+            militariSelezionatiModal.add(item.dataset.id);
+        });
+        searchInputModal.value = '';
+        searchInputModal.dispatchEvent(new Event('input'));
+        aggiornaInterfacciaModal();
+    });
+});
+
+// Toast Helper migliorato
+function showToast(title, message, type = 'info') {
+    const toast = document.getElementById('toast');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastBody = document.getElementById('toastBody');
+    const toastIcon = document.getElementById('toastIcon');
+    
+    // Rimuovi classi vecchie
+    toast.classList.remove('toast-success', 'toast-error', 'toast-warning', 'toast-info');
+    
+    // Aggiungi nuova classe
+    toast.classList.add(`toast-${type}`);
+    
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const colors = {
+        success: 'text-success',
+        error: 'text-danger',
+        warning: 'text-warning',
+        info: 'text-info'
+    };
+    
+    toastIcon.className = `fas ${icons[type] || icons.info} ${colors[type] || colors.info} me-2`;
+    toastTitle.textContent = title;
+    toastBody.textContent = message;
+    
+    const bsToast = new bootstrap.Toast(toast, {
+        autohide: true,
+        delay: type === 'error' ? 5000 : 3000 // Errori restano più tempo
+    });
+    bsToast.show();
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+// Verifica disponibilità per tutti i militari selezionati
+document.getElementById('verificaBtn').addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifica in corso...';
+    
+    risultatiVerifica.clear();
+    const listContainerModal = document.getElementById('militari-list-modal');
+    
+    // Verifica ogni militare
+    for (const militareId of militariSelezionatiModal) {
+        const item = listContainerModal.querySelector(`[data-id="${militareId}"]`);
+        if (!item) continue;
+        
+        const nome = item.dataset.nome;
+        const compagnia = item.closest('.militari-group').querySelector('.militari-group-header').textContent.trim();
+        
+        const conflitti = await verificaDisponibilitaMilitare(militareId);
+        
+        risultatiVerifica.set(militareId, {
+            id: militareId,
+            nome: nome,
+            compagnia: compagnia,
+            disponibile: conflitti.length === 0,
+            conflitti: conflitti
+        });
+    }
+    
+    // Mostra risultati
+    mostraRisultatiVerifica();
+    
+    // Passa allo step 2
+    document.getElementById('step1').classList.add('d-none');
+    document.getElementById('step2').classList.remove('d-none');
+    document.getElementById('aggiungiSelezionatiBtn').classList.remove('d-none');
+    
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-search me-1"></i>Verifica Disponibilità';
+    
+    aggiornaSelezione();
+});
 
+// Verifica disponibilità singolo militare
+async function verificaDisponibilitaMilitare(militareId) {
+    const conflitti = [];
+    const start = new Date(activityStartDate);
+    const end = new Date(activityEndDate);
     
-    // Verifica presenza elementi chiave
-    const editModal = document.getElementById('editActivityModal');
-    const editForm = document.getElementById('editActivityForm');
-    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-    
-    
-
-    
-    // Assicuriamo che la griglia esista al caricamento della pagina
-    ensureGridExists();
-    
-    // Debug: verifica lo stato iniziale
-    const initialGrid = document.getElementById('militariGrid');
-
-    
-    // Event delegation per i pulsanti di rimozione militari (solo nel modal)
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('#militariGrid .remove-militare-btn')) {
-            const btn = e.target.closest('.remove-militare-btn');
-            const militareId = btn.getAttribute('data-militare-remove');
-            
-            if (militareId) {
-                e.preventDefault();
-                e.stopPropagation();
-                rimuoviMilitare(militareId);
-            }
-        }
-    });
-    // Utility per le notifiche
-    function showToast(message, title = 'Notifica', icon = 'fa-info-circle', iconClass = 'text-primary') {
-        const toast = document.getElementById('notificationToast');
-        if (!toast) return;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dataStr = d.toISOString().split('T')[0];
         
-        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toast);
-        
-        document.getElementById('toastMessage').textContent = message;
-        document.getElementById('toastTitle').textContent = title;
-        
-        const iconElement = document.getElementById('toastIcon');
-        iconElement.className = `fas ${icon} ${iconClass} me-2`;
-        
-        toastBootstrap.show();
-    }
-    
-    // Mostra toast in caso di operazioni effettuate (richiesta da URL)
-    const urlParams = new URLSearchParams(window.location.search);
-    const status = urlParams.get('status');
-    const message = urlParams.get('message');
-    
-    if (status && message) {
-        if (status === 'success') {
-            showToast(message, 'Successo', 'fa-check-circle', 'text-success');
-        } else if (status === 'error') {
-            showToast(message, 'Errore', 'fa-exclamation-circle', 'text-danger');
-        }
-    }
-    
-    // Inizializza Select2
-    try {
-        if (jQuery && jQuery.fn.select2) {
-            // Select2 per il modal principale
-            $('.select2, .select2-edit').select2({
-                placeholder: 'Seleziona un militare',
-                width: '100%',
-                theme: 'bootstrap-5',
-                language: 'it',
-                dropdownParent: $('#addMilitareModal'),
-                selectionCssClass: 'py-1',
-                dropdownCssClass: 'py-1'
-            });
-            
-            // Select2 per il select nel modal di modifica
-            $('#nuovi_militari').select2({
-                placeholder: '-- Seleziona un militare --',
-                width: '100%',
-                theme: 'bootstrap-5',
-                language: 'it',
-                dropdownParent: $('#editActivityModal'),
-                selectionCssClass: 'py-1',
-                dropdownCssClass: 'py-1'
-            });
-            
-        }
-    } catch (error) {
-    }
-    
-    // Gestisci reset form quando modal vengono chiusi
-    const modals = ['addMilitareModal', 'addAttachmentModal'];
-    
-    modals.forEach(modalId => {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.addEventListener('hidden.bs.modal', function() {
-                const form = document.getElementById(modalId.replace('Modal', 'Form'));
-                if (form) form.reset();
-                
-                // Reset Select2 se presente
-                if (modalId === 'addMilitareModal') {
-                    try {
-                        if (jQuery && jQuery.fn.select2) {
-                            $('#militare_id').val('').trigger('change');
-                        }
-                    } catch (error) {
-                        // Errore silenzioso
-                    }
-                }
-            });
-        }
-    });
-    
-    // Gestisci il modal per rimuovere militare
-    const removeMilitareModal = document.getElementById('removeMilitareModal');
-    if (removeMilitareModal) {
-        removeMilitareModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const militareId = button.getAttribute('data-militare-id');
-            const militareName = button.getAttribute('data-militare-nome');
-            
-            // Imposta l'action del form con entrambi i parametri
-            const form = document.getElementById('removeMilitareForm');
-            form.action = `{{ route('board.activities.detach.militare', ['activity' => $activity->id, 'militare' => '__MILITARE_ID__']) }}`.replace('__MILITARE_ID__', militareId);
-            
-            document.getElementById('removeMilitareId').value = militareId;
-            document.getElementById('removeMilitareName').textContent = militareName;
-        });
-    }
-    
-    // Gestisci il modal per eliminare allegato
-    const deleteAttachmentModal = document.getElementById('deleteAttachmentModal');
-    if (deleteAttachmentModal) {
-        deleteAttachmentModal.addEventListener('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const attachmentId = button.getAttribute('data-attachment-id');
-            const attachmentTitle = button.getAttribute('data-attachment-title');
-            
-            // Imposta l'action del form con entrambi i parametri
-            const form = document.getElementById('deleteAttachmentForm');
-            form.action = `{{ route('board.activities.detach.file', ['activity' => $activity->id, 'attachment' => '__ATTACHMENT_ID__']) }}`.replace('__ATTACHMENT_ID__', attachmentId);
-            
-            document.getElementById('deleteAttachmentId').value = attachmentId;
-            document.getElementById('deleteAttachmentTitle').textContent = attachmentTitle;
-        });
-    }
-    
-    // Gestisci il form per aggiungere militare con controllo conflitti
-    const addMilitareForm = document.getElementById('addMilitareForm');
-    if (addMilitareForm) {
-        addMilitareForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const militareId = formData.get('militare_id');
-            
-            if (!militareId) {
-                showToast('Seleziona un militare', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                return;
-            }
-            
-            // Ottieni il token CSRF
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            
-            // Aggiungi i dati al FormData
-            formData.append('_token', csrfToken);
-            
-            // Invia la richiesta per controllare i conflitti
-            fetch(this.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.has_conflicts) {
-                    // Mostra modal di conferma conflitti
-                    showConflictModal(militareId, data.conflicts);
-                } else if (data.success) {
-                    // Successo - aggiorna dinamicamente senza ricaricare
-                    showToast(data.message, 'Successo', 'fa-check-circle', 'text-success');
-                    
-                    // Chiudi il modal
-                    const addModal = bootstrap.Modal.getInstance(document.getElementById('addMilitareModal'));
-                    if (addModal) {
-                        addModal.hide();
-                    }
-                    
-                    // Reset del form
-                    addMilitareForm.reset();
-                    if (jQuery && jQuery.fn.select2) {
-                        $('#militare_id').val(null).trigger('change');
-                    }
-                    
-                    // Aggiorna la lista militari se i dati sono forniti
-                    if (data.militare) {
-                        addMilitareToView(data.militare);
-                    } else {
-                        // Fallback: ricarica solo se non abbiamo i dati
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                    }
-                } else {
-                    showToast(data.message || 'Errore durante l\'aggiunta', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                }
-            })
-            .catch(error => {
-                showToast('Errore di connessione', 'Errore', 'fa-exclamation-circle', 'text-danger');
-            });
-        });
-    }
-    
-    // Gestisce il cambio tra link e file nel modal allegati
-    document.querySelectorAll('input[name="attachment_type"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const linkSection = document.getElementById('linkSection');
-            const fileSection = document.getElementById('fileSection');
-            const finalType = document.getElementById('finalType');
-            const urlInput = document.getElementById('url');
-            const fileInput = document.getElementById('file');
-            
-            if (this.value === 'link') {
-                linkSection.style.display = 'block';
-                fileSection.style.display = 'none';
-                finalType.value = 'link';
-                urlInput.required = true;
-                fileInput.required = false;
-            } else {
-                linkSection.style.display = 'none';
-                fileSection.style.display = 'block';
-                finalType.value = 'file';
-                urlInput.required = false;
-                fileInput.required = true;
-            }
-        });
-    });
-    
-    // Gestisci il form per rimuovere militare via AJAX
-    const removeMilitareForm = document.getElementById('removeMilitareForm');
-    if (removeMilitareForm) {
-        removeMilitareForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            const militareId = formData.get('militare_id');
-            
-            if (!militareId) {
-                showToast('Errore: ID militare non trovato', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                return;
-            }
-            
-            
-            fetch(this.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    
-                    // Chiudi il modal
-                    const removeModal = bootstrap.Modal.getInstance(document.getElementById('removeMilitareModal'));
-                    if (removeModal) {
-                        removeModal.hide();
-                    }
-                    
-                    // Rimuovi il militare dalla vista principale
-                    removeMilitareFromView(militareId);
-                    
-                    // Mostra toast di successo
-                    showToast(data.message, 'Successo', 'fa-check-circle', 'text-success');
-                    
-                } else {
-                    showToast(data.message || 'Errore durante la rimozione', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                }
-            })
-            .catch(error => {
-                showToast('Errore di connessione', 'Errore', 'fa-exclamation-circle', 'text-danger');
-            });
-        });
-    }
-
-    // Gestisci il select per aggiungere militari dal modal di modifica
-    const nuoviMilitariSelect = document.getElementById('nuovi_militari');
-    if (nuoviMilitariSelect) {
-        // Event listener nativo
-        nuoviMilitariSelect.addEventListener('change', function() {
-            const militareId = this.value;
-            
-            if (militareId) {
-                
-                // Chiama la funzione per aggiungere automaticamente il militare
-                aggiungiMilitareAutomatico(militareId);
-            }
-        });
-        
-        // Event listener per Select2 se presente
         try {
-            if (jQuery && jQuery.fn.select2) {
-                $('#nuovi_militari').on('select2:select', function(e) {
-                    const militareId = e.params.data.id;
-                    
-                    if (militareId) {
-                
-                        
-                        // Chiama la funzione per aggiungere automaticamente il militare
-                        aggiungiMilitareAutomatico(militareId);
-                    }
+            const response = await fetch('{{ route('servizi.turni.check-disponibilita') }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
+                body: JSON.stringify({
+                    militare_id: militareId, 
+                    data: dataStr,
+                    exclude_activity_id: activityId // Escludi l'attività corrente dal check
+                })
+            });
+            
+            const result = await response.json();
+            if (!result.disponibile) {
+                conflitti.push({
+                    data: new Date(dataStr).toLocaleDateString('it-IT'),
+                    motivo: result.motivo
                 });
             }
         } catch (error) {
+            console.error('Errore verifica:', error);
         }
-        
     }
+    
+    return conflitti;
+}
 
-    // ============================================
-    // FUNZIONI DI SUPPORTO PER MILITARI - DENTRO DOMContentLoaded  
-    // ============================================
+// Mostra risultati verifica in tabella
+function mostraRisultatiVerifica() {
+    const tbody = document.getElementById('risultatiVerifica');
+    tbody.innerHTML = '';
     
-    // Funzione per aggiungere automaticamente un militare quando selezionato
-    function aggiungiMilitareAutomatico(militareId) {
-        const select = document.getElementById('nuovi_militari');
-        const option = select.querySelector(`option[value="${militareId}"]`);
+    risultatiVerifica.forEach((dati, militareId) => {
+        const row = document.createElement('tr');
+        row.className = dati.disponibile ? 'table-success' : 'table-warning';
         
-        if (!option) return;
+        const statusBadge = dati.disponibile 
+            ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Disponibile</span>'
+            : '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Conflitti</span>';
         
-        const militareText = option.text;
+        const dettagli = dati.disponibile 
+            ? '<span class="text-muted">-</span>'
+            : `<ul class="mb-0 small">${dati.conflitti.map(c => `<li>${c.data}: ${c.motivo}</li>`).join('')}</ul>`;
         
-        // Aggiungi all'array se non già presente
-        if (!window.militariAttuali.includes(parseInt(militareId))) {
-            
-            // Salva il militare nel database tramite AJAX
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            const activityId = '{{ $activity->id }}';
-            
-            const formData = new FormData();
-            formData.append('_token', csrfToken);
-            formData.append('militare_id', militareId);
-            formData.append('activity_id', activityId);
-            
-            fetch(`{{ route('board.activities.attach.militare', $activity) }}`, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    
-                    window.militariAttuali.push(parseInt(militareId));
-                    
-                    // Aggiungi alla UI del modal con i dati completi
-                    aggiungiMilitareAllaUI(militareId, data.militare);
-                    
-                    // Aggiungi anche alla vista principale
-                    addMilitareToMainView(data.militare);
-                
-                // Aggiorna counter
-                updateMilitariCounter();
-                
-                // Controlla stato vuoto
-                checkEmptyState();
-                
-                // Aggiorna input hidden
-                updateHiddenInput();
-                
-                // Rimuovi l'opzione dal select e aggiorna
-                option.remove();
-                
-                // Reset della selezione
-                if (jQuery && jQuery.fn.select2) {
-                    $('#nuovi_militari').val(null).trigger('change');
-                }
-                
-                    // Mostra toast di successo standard
-                    if (typeof showToast === 'function') {
-                        showToast(`Militare ${militareText.split(' - ')[0]} aggiunto con successo`, 'Successo', 'fa-check-circle', 'text-success');
-                    }
-                    
-                } else {
-                    if (typeof showToast === 'function') {
-                        showToast(data.message || 'Errore durante l\'aggiunta', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                    }
-                }
-            })
-            .catch(error => {
-                if (typeof showToast === 'function') {
-                    showToast('Errore di connessione', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                }
-            });
-        }
-    }
-    
-    // Funzione per aggiornare il counter
-    function updateMilitariCounter() {
-        const counter = document.getElementById('militariCounter');
-        if (counter) {
-            counter.textContent = militariAttuali.length;
-        }
-    }
-
-    // Variabile globale per tenere traccia dei militari attuali
-    window.militariAttuali = [];
-    
-    // Inizializza l'array con i militari già presenti
-    document.querySelectorAll('#militariGrid [data-militare-id]').forEach(element => {
-        const militareId = parseInt(element.getAttribute('data-militare-id'));
-        if (militareId && !window.militariAttuali.includes(militareId)) {
-            window.militariAttuali.push(militareId);
-        }
+        row.innerHTML = `
+            <td><input type="checkbox" class="form-check-input militare-check" data-militare-id="${militareId}" ${dati.disponibile ? 'checked' : ''}></td>
+            <td><strong>${dati.nome}</strong></td>
+            <td><span class="badge bg-light text-dark">${dati.compagnia}</span></td>
+            <td>${statusBadge}</td>
+            <td>${dettagli}</td>
+        `;
+        
+        tbody.appendChild(row);
     });
     
-
-
-    // Event listener per rimozione militari dalla sezione selezionati
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('.remove-militare-btn')) {
-            const button = e.target.closest('.remove-militare-btn');
-            const militareId = button.getAttribute('data-militare-remove');
-            
-
-            
-            if (militareId) {
-                removeMilitareViaAjax(militareId);
-            }
-        }
+    // Event listener per checkbox
+    document.querySelectorAll('.militare-check').forEach(cb => {
+        cb.addEventListener('change', aggiornaSelezione);
     });
+    
+    // Select all checkbox
+    document.getElementById('selectAllCheck').addEventListener('change', function() {
+        document.querySelectorAll('.militare-check').forEach(cb => {
+            cb.checked = this.checked;
+        });
+        aggiornaSelezione();
+    });
+}
 
-    // Funzione per rimuovere militare tramite AJAX
-    function removeMilitareViaAjax(militareId) {
+// Aggiorna contatore selezionati
+function aggiornaSelezione() {
+    const count = document.querySelectorAll('.militare-check:checked').length;
+    document.getElementById('countSelezionati').textContent = count;
+    document.getElementById('aggiungiSelezionatiBtn').disabled = count === 0;
+}
 
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        const activityId = '{{ $activity->id }}';
-        
-        const formData = new FormData();
-        formData.append('_token', csrfToken);
-        formData.append('_method', 'DELETE');
-        
-        const deleteUrl = `{{ route('board.activities.detach.militare', ['activity' => $activity->id, 'militare' => '__MILITARE_ID__']) }}`.replace('__MILITARE_ID__', militareId);
+// Torna allo step 1
+function tornaStep1() {
+    document.getElementById('step1').classList.remove('d-none');
+    document.getElementById('step2').classList.add('d-none');
+    document.getElementById('aggiungiSelezionatiBtn').classList.add('d-none');
+}
 
+// Aggiungi militari selezionati
+document.getElementById('aggiungiSelezionatiBtn').addEventListener('click', async function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Assegnazione in corso...';
+    
+    const checkboxes = document.querySelectorAll('.militare-check:checked');
+    const militariDaAggiungere = Array.from(checkboxes).map(cb => cb.getAttribute('data-militare-id'));
+    
+    let aggiunti = 0;
+    let errori = 0;
+    
+    for (const militareId of militariDaAggiungere) {
+        const dati = risultatiVerifica.get(militareId);
+        const force = !dati.disponibile; // Forza se ha conflitti
         
-        fetch(deleteUrl, {
+        try {
+            const response = await fetch('{{ route('board.activities.attach.militare', $activity) }}', {
             method: 'POST',
-            body: formData,
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                
-                // Rimuovi dalla lista locale
-                window.militariAttuali = window.militariAttuali.filter(id => id != militareId);
-                
-                // Rimuovi dalla UI della sezione selezionati
-                removeMilitareFromView(militareId);
-                
-                // Rimuovi dalla vista principale
-                removeMilitareFromMainView(militareId);
-                
-                // Aggiorna counter
-                updateMilitariCounter();
-                
-                // Controlla stato vuoto
-                checkEmptyState();
-                
-                // Mostra toast di successo
-                if (typeof showToast === 'function') {
-                    showToast('Militare rimosso con successo', 'Successo', 'fa-check-circle', 'text-success');
-                }
-                
-                } else {
-                if (typeof showToast === 'function') {
-                    showToast(data.message || 'Errore durante la rimozione', 'Errore', 'fa-exclamation-circle', 'text-danger');
-                }
-                }
-            })
-            .catch(error => {
-            if (typeof showToast === 'function') {
-                showToast('Errore di connessione', 'Errore', 'fa-exclamation-circle', 'text-danger');
-            }
-        });
-    }
-
-    // Funzione per rimuovere militare dalla vista della sezione selezionati
-    function removeMilitareFromView(militareId) {
-        const militareElement = document.querySelector(`#militariSelezionatiGrid [data-militare-id="${militareId}"]`);
-        if (militareElement) {
-            militareElement.remove();
-            
-            // Nascondi il container se non ci sono più militari selezionati
-            const grid = document.getElementById('militariSelezionatiGrid');
-            const container = document.getElementById('militariSelezionatiContainer');
-            if (grid && grid.children.length === 0 && container) {
-                container.style.display = 'none';
-            }
-        }
-        
-        // Rimuovi anche dalla griglia principale del modal se presente
-        const mainGridElement = document.querySelector(`#militariGrid [data-militare-id="${militareId}"]`);
-        if (mainGridElement) {
-            mainGridElement.remove();
-        }
-    }
-
-    // Funzione per rimuovere militare dalla vista principale
-    function removeMilitareFromMainView(militareId) {
-        const mainListElements = document.querySelectorAll('.list-group-item');
-        mainListElements.forEach(element => {
-            const button = element.querySelector(`[data-militare-id="${militareId}"]`);
-            if (button) {
-                element.remove();
-                
-                // Aggiorna il counter nella vista principale
-                const mainCounter = document.querySelector('.badge.bg-primary');
-                if (mainCounter) {
-                    const currentCount = parseInt(mainCounter.textContent) || 0;
-                    mainCounter.textContent = Math.max(0, currentCount - 1);
-                }
-            }
-        });
-    }
-
-    // Funzione per aggiungere militare alla UI nella sezione "Selezionati per l'Aggiunta"
-    function aggiungiMilitareAllaUI(militareId, militareData) {
-        
-        // Controlla se il militare esiste già nella sezione selezionati
-        const existingElement = document.querySelector(`#militariSelezionatiGrid [data-militare-id="${militareId}"]`);
-        if (existingElement) {
-            return;
-        }
-        
-        // Ottieni la griglia dei militari selezionati
-        const grid = document.getElementById('militariSelezionatiGrid');
-        const container = document.getElementById('militariSelezionatiContainer');
-        
-        if (!grid || !container) {
-            return;
-        }
-
-        // Mostra il container se nascosto
-        container.style.display = 'block';
-        
-        const militareDiv = document.createElement('div');
-        militareDiv.className = 'col-md-6 mb-2';
-        militareDiv.setAttribute('data-militare-id', militareId);
-        
-        // Costruisci i badge per plotone e polo
-        let badgesHtml = '';
-        if (militareData.plotone || militareData.polo) {
-            badgesHtml = '<div class="mt-1">';
-            if (militareData.plotone) {
-                badgesHtml += `<span class="badge bg-light text-dark border me-1" style="font-size: 0.7rem;">${militareData.plotone.nome}</span>`;
-            }
-            if (militareData.polo) {
-                badgesHtml += `<span class="badge bg-light text-dark border" style="font-size: 0.7rem;">${militareData.polo.nome}</span>`;
-            }
-            badgesHtml += '</div>';
-        }
-        
-        militareDiv.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between p-2 bg-white rounded border">
-                <div class="flex-grow-1">
-                    <strong class="d-block">${militareData.grado.abbreviazione} ${militareData.cognome}</strong>
-                    <small class="text-muted">${militareData.nome}</small>
-                    ${badgesHtml}
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-danger remove-militare-btn" 
-                        data-militare-remove="${militareId}"
-                        title="Rimuovi militare">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-        
-        grid.appendChild(militareDiv);
-    }
-
-    // Funzione per aggiungere militare alla vista principale (fuori dal modal)
-    function addMilitareToMainView(militare) {
-        
-        // Trova la lista dei militari nella vista principale
-        const mainListGroup = document.querySelector('.list-group');
-        if (!mainListGroup) {
-            return;
-        }
-        
-        // Costruisci i badge per plotone e polo
-        let badgesHtml = '';
-        if (militare.plotone || militare.polo) {
-            badgesHtml = '<div class="mt-1">';
-            if (militare.plotone) {
-                badgesHtml += `<span class="badge bg-light text-dark border me-1" style="font-size: 0.7rem;">${militare.plotone.nome}</span>`;
-            }
-            if (militare.polo) {
-                badgesHtml += `<span class="badge bg-light text-dark border" style="font-size: 0.7rem;">${militare.polo.nome}</span>`;
-            }
-            badgesHtml += '</div>';
-        }
-        
-        // Crea l'elemento del militare per la vista principale
-        const militareElement = document.createElement('div');
-        militareElement.className = 'list-group-item d-flex justify-content-between align-items-center';
-        militareElement.innerHTML = `
-            <div>
-                <strong>${militare.grado.abbreviazione} ${militare.cognome}</strong>
-                <br>
-                <small>${militare.nome}</small>
-                ${badgesHtml}
-                </div>
-            <div class="d-flex align-items-center">
-                <button type="button" class="btn btn-sm btn-outline-danger" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#removeMilitareModal"
-                        data-militare-id="${militare.id}"
-                        data-militare-name="${militare.grado.abbreviazione} ${militare.cognome}"
-                        title="Rimuovi militare">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </div>
-        `;
-        
-        // Aggiungi alla lista principale
-        mainListGroup.appendChild(militareElement);
-        
-        // Aggiorna il counter nella vista principale se presente
-        const mainCounter = document.querySelector('.badge.bg-primary');
-        if (mainCounter) {
-            const currentCount = parseInt(mainCounter.textContent) || 0;
-            mainCounter.textContent = currentCount + 1;
-        }
-    }
-    
-    // Funzione per controllare se non ci sono militari
-    function checkEmptyState() {
-        const noMilitariMessage = document.getElementById('noMilitariMessage');
-        const militariGrid = document.getElementById('militariGrid');
-        
-        
-        if (window.militariAttuali.length === 0) {
-            // Nessun militare - mostra messaggio vuoto
-            if (militariGrid) {
-                militariGrid.style.display = 'none';
-            }
-            if (noMilitariMessage) {
-                noMilitariMessage.style.display = 'block';
-            }
-        } else {
-            // Ci sono militari - mostra griglia
-            if (militariGrid) {
-                militariGrid.style.display = 'block';
-            }
-            if (noMilitariMessage) {
-                noMilitariMessage.style.display = 'none';
-            }
-        }
-    }
-    
-    // Funzione per aggiornare l'input hidden
-    function updateHiddenInput() {
-        // Aggiorna eventuali input hidden se necessario
-        const hiddenInputs = document.querySelectorAll('input[name="militari[]"]');
-        hiddenInputs.forEach(input => input.remove());
-        
-        const form = document.getElementById('editActivityForm');
-        if (form) {
-            window.militariAttuali.forEach(militareId => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'militari[]';
-            input.value = militareId;
-            form.appendChild(input);
-        });
-    }
-    }
-
-    // Funzione per assicurare che la griglia esista
-    function ensureGridExists() {
-        let grid = document.getElementById('militariGrid');
-        if (!grid) {
-            // Crea una nuova griglia se non esiste
-            grid = document.createElement('div');
-            grid.id = 'militariGrid';
-            grid.className = 'row';
-            
-            const container = document.getElementById('militariAttuali');
-            if (container) {
-                // Nascondi il messaggio "nessun militare" se presente
-                const noMilitariMessage = document.getElementById('noMilitariMessage');
-                if (noMilitariMessage) {
-                    noMilitariMessage.style.display = 'none';
-                }
-                
-                container.appendChild(grid);
-            }
-            } else {
-            // La griglia esiste già, assicurati che sia visibile
-            grid.style.display = 'block';
-        }
-        return grid;
-    }
-    
-    // Funzione per mostrare feedback quando un militare viene aggiunto
-    function showMilitareAddedFeedback(militareText) {
-        // Crea un toast temporaneo
-        const toast = document.createElement('div');
-        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
-        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        toast.innerHTML = `
-            <i class="fas fa-check-circle me-2"></i>
-            <strong>Militare aggiunto:</strong> ${militareText.split(' - ')[0]}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Rimuovi automaticamente dopo 3 secondi
-        setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 3000);
-    }
-    
-    // ============================================
-// SISTEMA DI AUTOSALVATAGGIO - DENTRO DOMContentLoaded
-    // ============================================
-    
-    // Variabili per l'autosalvataggio
-    let autoSaveTimeout = null;
-    let autoSaveInProgress = false;
-    let lastSavedValues = {};
-    
-    // Selettori dei campi da monitorare
-    const fieldsToWatch = {
-        'edit_title': 'title',
-        'edit_description': 'description', 
-        'edit_start_date': 'start_date',
-        'edit_end_date': 'end_date',
-        'edit_column_id': 'column_id'
-    };
-    
-    // Funzione per mostrare lo stato dell'autosalvataggio
-    function updateAutoSaveStatus(status, message) {
-        const statusElement = document.getElementById('autoSaveStatus');
-        const textElement = document.getElementById('autoSaveText');
-        
-    if (textElement) {
-        textElement.textContent = message;
-    }
-        
-    if (statusElement) {
-        statusElement.classList.remove('text-muted', 'text-success', 'text-warning', 'text-danger');
-        statusElement.classList.add(`text-${status}`);
-    }
-    }
-    
-    // Funzione per l'autosalvataggio
-    function performAutoSave(changedField, value) {
-    
-    if (autoSaveInProgress) {
-        return;
-    }
-        
-        autoSaveInProgress = true;
-        updateAutoSaveStatus('warning', 'Salvataggio in corso...');
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        const activityId = '{{ $activity->id }}';
-    
-        
-        // Prepara i dati da inviare
-        const formData = new FormData();
-        formData.append('_token', csrfToken);
-        formData.append('_method', 'PATCH');
-    formData.append('field', changedField);
-    formData.append('value', value);
-
-        
-        fetch(`{{ route('board.activities.autosave', $activity) }}`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            return response.json();
-        })
-        .then(data => {
-            
-            if (data.success) {
-                updateAutoSaveStatus('success', `Salvato automaticamente alle ${data.updated_at}`);
-                
-                // Memorizza il valore salvato
-                lastSavedValues[changedField] = value;
-                
-                // Aggiorna la data di ultimo aggiornamento nella vista
-                const paragraphs = document.querySelectorAll('.col-md-6 p');
-                paragraphs.forEach(p => {
-                    if (p.textContent.includes('Ultimo aggiornamento:')) {
-                        p.innerHTML = `<strong>Ultimo aggiornamento:</strong> ${data.updated_at}`;
-                    }
-                });
-                
-                // Aggiorna i dati nella vista principale se disponibili
-                if (data.activity) {
-                    updateMainView(data.activity);
-                }
-
-            } else {
-                updateAutoSaveStatus('danger', 'Errore durante il salvataggio');
-                
-                // Mostra il pulsante di salvataggio manuale
-            const manualBtn = document.getElementById('manualSaveBtn');
-            if (manualBtn) {
-                manualBtn.style.display = 'inline-block';
-            }
-            }
-        })
-        .catch(error => {
-            updateAutoSaveStatus('danger', 'Errore di connessione');
-            
-            // Mostra il pulsante di salvataggio manuale
-        const manualBtn2 = document.getElementById('manualSaveBtn');
-        if (manualBtn2) {
-            manualBtn2.style.display = 'inline-block';
-        }
-        })
-        .finally(() => {
-            autoSaveInProgress = false;
-        });
-    }
-    
-    // Funzione per gestire i cambiamenti dei campi
-    function handleFieldChange(fieldId, apiFieldName, value) {
-        // Controlla se il valore è effettivamente cambiato
-        if (lastSavedValues[apiFieldName] === value) {
-            return; // Nessun cambiamento
-        }
-        
-        // Cancella il timeout precedente
-        if (autoSaveTimeout) {
-            clearTimeout(autoSaveTimeout);
-        }
-        
-        // Imposta nuovo timeout (debounce di 1.5 secondi)
-        autoSaveTimeout = setTimeout(() => {
-            performAutoSave(apiFieldName, value);
-        }, 1500);
-        
-        // Mostra stato "in attesa di salvataggio"
-        updateAutoSaveStatus('muted', 'Modifiche in attesa di salvataggio...');
-    }
-    
-    // Inizializzazione dell'autosalvataggio quando il modal si apre
-    if (editModal) {
-    
-        editModal.addEventListener('shown.bs.modal', function() {
-            
-            // Memorizza i valori iniziali
-            Object.entries(fieldsToWatch).forEach(([fieldId, apiFieldName]) => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    lastSavedValues[apiFieldName] = field.value;
-            } else {
-                }
+                headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
+                body: JSON.stringify({militare_id: militareId, force: force})
             });
             
-            // Aggiungi event listeners per ogni campo
-            Object.entries(fieldsToWatch).forEach(([fieldId, apiFieldName]) => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                
-                    // Per i campi di testo, usa input event con debounce
-                    if (field.type === 'text' || field.tagName === 'TEXTAREA') {
-                        field.addEventListener('input', function() {
-                            handleFieldChange(fieldId, apiFieldName, this.value);
-                        });
-                    }
-                    
-                    // Per le date e select, usa change event
-                    if (field.type === 'date' || field.tagName === 'SELECT') {
-                        field.addEventListener('change', function() {
-                            handleFieldChange(fieldId, apiFieldName, this.value);
-                        });
-                    }
-                    
+            const result = await response.json();
+            if (result.success) {
+                aggiunti++;
             } else {
-                }
-            });
-            
-                                     // Stato iniziale - non mostrare alcun messaggio
-            updateAutoSaveStatus('muted', '');
-        });
-        
-        // Pulizia quando il modal si chiude
-        editModal.addEventListener('hidden.bs.modal', function() {
-            if (autoSaveTimeout) {
-                clearTimeout(autoSaveTimeout);
-                autoSaveTimeout = null;
+                errori++;
             }
-            autoSaveInProgress = false;
-            lastSavedValues = {};
-        });
-} else {
+        } catch (error) {
+            errori++;
+        }
     }
     
-    // Gestisci il pulsante di salvataggio manuale (fallback)
-    const manualSaveBtn = document.getElementById('manualSaveBtn');
-    if (manualSaveBtn) {
-        manualSaveBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Ottieni i valori correnti di tutti i campi
-            const allData = new FormData();
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            allData.append('_token', csrfToken);
-            allData.append('_method', 'PATCH');
-            
-            Object.entries(fieldsToWatch).forEach(([fieldId, apiFieldName]) => {
-                const field = document.getElementById(fieldId);
-                if (field && field.value) {
-                    allData.append(apiFieldName, field.value);
-                }
-            });
-            
-            updateAutoSaveStatus('warning', 'Salvataggio manuale in corso...');
-            
-            fetch(`{{ route('board.activities.autosave', $activity) }}`, {
-                method: 'POST',
-                body: allData,
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    updateAutoSaveStatus('success', `Salvato manualmente alle ${data.updated_at}`);
-                    manualSaveBtn.style.display = 'none';
-                    
-                    // Aggiorna i valori salvati
-                    Object.entries(fieldsToWatch).forEach(([fieldId, apiFieldName]) => {
-                        const field = document.getElementById(fieldId);
-                        if (field) {
-                            lastSavedValues[apiFieldName] = field.value;
-                        }
-                    });
-                } else {
-                    updateAutoSaveStatus('danger', 'Errore nel salvataggio manuale');
-                }
-            })
-            .catch(error => {
-            updateAutoSaveStatus('danger', 'Errore di connessione durante salvataggio manuale');
-            });
-        });
+    // Mostra risultato solo in caso di errore
+    if (errori > 0 && aggiunti === 0) {
+        showToast('Errore', 'Nessun militare è stato aggiunto. Riprova.', 'error');
+    } else if (aggiunti > 0 && errori > 0) {
+        showToast('Attenzione', `${aggiunti} militare/i aggiunti, ${errori} non aggiunti`, 'warning');
     }
     
+    // Chiudi modal e ricarica (senza delay se tutto ok)
+    bootstrap.Modal.getInstance(document.getElementById('addMilitareModal')).hide();
+    if (aggiunti > 0 && errori === 0) {
+        location.reload();
+    } else {
+    setTimeout(() => location.reload(), 1000);
+    }
 });
 
-// Funzione per rimuovere un militare dalla vista dinamicamente
-function removeMilitareFromView(militareId) {
+// Variabili globali per il modal di conferma rimozione
+let militareIdToRemove = null;
+let militareNomeToRemove = '';
+
+// Rimuovi militare - mostra modal di conferma
+function removeMilitare(militareId, nome) {
+    militareIdToRemove = militareId;
+    militareNomeToRemove = nome;
     
-    // Rimuovi dalla lista principale
-    const militareElement = document.querySelector(`.list-group-item [data-militare-id="${militareId}"]`);
-    if (militareElement) {
-        militareElement.closest('.list-group-item').remove();
-    }
+    // Aggiorna il testo del modal
+    document.getElementById('removeMilitareNome').textContent = nome;
     
-    // Rimuovi anche dal modal di modifica se presente
-    const modalMilitareElement = document.querySelector(`#militariGrid [data-militare-id="${militareId}"]`);
-    if (modalMilitareElement) {
-        modalMilitareElement.remove();
-        
-        // Aggiorna il counter nel modal
-        if (typeof updateMilitariCounter === 'function') {
-            updateMilitariCounter();
-        }
-    }
-    
-    // Per ora non riaggiungere automaticamente l'opzione ai select
-    // L'utente può ricaricare la pagina se necessario, oppure
-    // implementeremo un refresh dei select in futuro
-    
-    // Controlla se la lista è vuota e mostra il messaggio appropriato
-    const listGroup = document.querySelector('.col-md-4 .list-group');
-    if (listGroup && listGroup.children.length === 0) {
-        const militariCard = document.querySelector('.col-md-4 .card-body');
-        if (militariCard) {
-            militariCard.innerHTML = `
-                <div class="text-center py-4 text-muted">
-                    <i class="fas fa-users mb-3" style="font-size: 2rem;"></i>
-                    <p class="mb-0">Nessun militare coinvolto</p>
-                    <p class="small">Clicca su "Aggiungi" per assegnare militari</p>
-                </div>
-            `;
-        }
-    }
+    // Mostra il modal
+    const modal = new bootstrap.Modal(document.getElementById('confirmRemoveModal'));
+    modal.show();
 }
 
-// Funzione per aggiungere un militare alla vista dinamicamente
-function addMilitareToView(militare) {
+// Conferma rimozione militare
+async function confirmaRimuoviMilitare() {
+    if (!militareIdToRemove) return;
     
-    // Trova la lista dei militari nella card
-    const militariCard = document.querySelector('.col-md-4 .card-body');
-    if (!militariCard) {
-        return;
-    }
+    const militareId = militareIdToRemove;
+    const nome = militareNomeToRemove;
     
-    // Controlla se c'è il messaggio "Nessun militare coinvolto"
-    const noMilitariMessage = militariCard.querySelector('.text-center.py-4');
-    if (noMilitariMessage) {
-        // Rimuovi il messaggio e crea la lista
-        noMilitariMessage.remove();
-        militariCard.innerHTML = '<div class="list-group"></div>';
-    }
-    
-    // Trova la lista group
-    let listGroup = militariCard.querySelector('.list-group');
-    if (!listGroup) {
-        listGroup = document.createElement('div');
-        listGroup.className = 'list-group';
-        militariCard.appendChild(listGroup);
-    }
-    
-    // Costruisci i badge per plotone e polo
-    let badgesHtml = '';
-    if (militare.plotone || militare.polo) {
-        badgesHtml = '<div class="mt-1">';
-        if (militare.plotone) {
-            badgesHtml += `<span class="badge bg-light text-dark border me-1">${militare.plotone.nome}</span>`;
-        }
-        if (militare.polo) {
-            badgesHtml += `<span class="badge bg-light text-dark border">${militare.polo.nome}</span>`;
-        }
-        badgesHtml += '</div>';
-    }
-    
-    // Crea l'elemento del militare
-        const militareElement = document.createElement('div');
-        militareElement.className = 'list-group-item d-flex justify-content-between align-items-center';
-        militareElement.innerHTML = `
-            <div>
-                <strong>${militare.grado.abbreviazione} ${militare.cognome}</strong>
-                <br>
-                <small>${militare.nome}</small>
-            ${badgesHtml}
-            </div>
-            <div class="d-flex align-items-center">
-                <button type="button" class="btn btn-sm btn-outline-danger" 
-                        data-bs-toggle="modal" 
-                        data-bs-target="#removeMilitareModal"
-                        data-militare-id="${militare.id}"
-                    data-militare-name="${militare.grado.abbreviazione} ${militare.cognome}"
-                    title="Rimuovi militare">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            </div>
-        `;
-        
-    // Aggiungi alla lista
-    listGroup.appendChild(militareElement);
-    
-    // Rimuovi l'opzione dal select del modal "Aggiungi militare"
-    const selectOption = document.querySelector(`#militare_id option[value="${militare.id}"]`);
-    if (selectOption) {
-        selectOption.remove();
-    }
-    
-    // Aggiorna il select2 se presente
-    if (jQuery && jQuery.fn.select2) {
-        $('#militare_id').trigger('change');
-    }
-    
-}
-
-// Funzione per aggiornare la vista principale dopo l'autosave
-function updateMainView(activity) {
-    if (!activity) return;
-    
-    
-    // Aggiorna il titolo nella card header
-    const cardTitle = document.querySelector('.card-header h4');
-    if (cardTitle && activity.title) {
-        cardTitle.textContent = activity.title;
-    }
-    
-    // Aggiorna la descrizione
-    const descriptionParagraph = document.querySelector('.card-body .mb-4 p');
-    if (descriptionParagraph && activity.description) {
-        descriptionParagraph.textContent = activity.description;
-    }
-    
-    // Aggiorna le date se presenti
-    if (activity.start_date) {
-        const startDateElement = document.querySelector('.col-md-6 p i.fa-calendar').parentElement;
-        if (startDateElement) {
-            const formattedDate = new Date(activity.start_date).toLocaleDateString('it-IT');
-            startDateElement.innerHTML = `<i class="fas fa-calendar text-primary me-2"></i> ${formattedDate}`;
-        }
-    }
-    
-    if (activity.end_date) {
-        const endDateElement = document.querySelector('.col-md-6 p i.fa-calendar-check').parentElement;
-        if (endDateElement) {
-            const formattedDate = new Date(activity.end_date).toLocaleDateString('it-IT');
-            endDateElement.innerHTML = `<i class="fas fa-calendar-check text-primary me-2"></i> ${formattedDate}`;
-        }
-    }
-    
-    // Aggiorna il badge dello stato se la colonna è cambiata
-    if (activity.column) {
-        const statusBadge = document.getElementById('activity-status-badge');
-        if (statusBadge) {
-            // Mappa degli stili per colonna
-            const statusStyles = {
-                'urgenti': 'bg-danger text-white',
-                'in-scadenza': 'bg-warning text-dark', 
-                'pianificate': 'bg-success text-white',
-                'fuori-porta': 'bg-info text-white'
-            };
-            
-            const newClass = statusStyles[activity.column.slug] || 'bg-primary text-white';
-            statusBadge.className = `badge ${newClass} fs-6 px-3 py-2`;
-            statusBadge.innerHTML = `<i class="fas fa-tag me-2"></i>${activity.column.name}`;
-        }
-        
-        // Aggiorna anche il badge nell'header della card
-        const headerBadge = document.querySelector('.card-header .badge');
-        if (headerBadge) {
-            const headerStyles = {
-                'urgenti': 'bg-danger',
-                'in-scadenza': 'bg-warning',
-                'pianificate': 'bg-success', 
-                'fuori-porta': 'bg-info'
-            };
-            
-            const newHeaderClass = headerStyles[activity.column.slug] || 'bg-primary';
-            headerBadge.className = `badge ${newHeaderClass}`;
-            headerBadge.textContent = activity.column.name;
-        }
-    }
-}
-
-// Funzione per rimuovere un militare
-window.rimuoviMilitare = function(militareId) {
-    
-    // Controlla se il militare esiste nell'array
-    if (!window.militariAttuali.includes(parseInt(militareId))) {
-        return;
-    }
-    
-    // Rimuovi dall'array
-    window.militariAttuali = window.militariAttuali.filter(id => id != militareId);
-    
-    // Rimuovi dalla UI - cerca solo dentro la griglia del modal
-    const militareElement = document.querySelector(`#militariGrid [data-militare-id="${militareId}"]`);
-    if (militareElement) {
-        militareElement.remove();
-
-    
-    // Aggiorna il counter
-    updateMilitariCounter();
-    
-    // Aggiorna il messaggio se non ci sono più militari
-    checkEmptyState();
-    
-    // Aggiorna l'input hidden
-    updateHiddenInput();
-    
-    // Riaggiunge l'opzione al select dropdown dei nuovi militari
-    riaggiungeMilitareAlSelect(militareId);
-    
-    // Aggiorna le opzioni disponibili se la sezione aggiunta è aperta
-    const addSection = document.getElementById('addMilitareSection');
-    if (addSection && addSection.style.display !== 'none') {
-        aggiornaOpzioniDisponibili();
-    }
-    
-    }
-    
-};
-
-
-// Funzioni globali per gestire la sezione aggiunta militari
-window.showAddMilitareSection = function() {
-    const section = document.getElementById('addMilitareSection');
-    if (section) {
-        section.style.display = 'block';
-    }
-};
-
-window.hideAddMilitareSection = function() {
-    const section = document.getElementById('addMilitareSection');
-    if (section) {
-        section.style.display = 'none';
-    }
-};
-
-// Funzioni globali necessarie per rimuoviMilitare
-window.updateMilitariCounter = function() {
-    const counter = document.getElementById('militariCounter');
-    if (counter) {
-        counter.textContent = window.militariAttuali.length;
-    }
-};
-
-window.checkEmptyState = function() {
-    const noMilitariMessage = document.getElementById('noMilitariMessage');
-    const militariGrid = document.getElementById('militariGrid');
-    
-    if (window.militariAttuali.length === 0) {
-        if (militariGrid) {
-            militariGrid.style.display = 'none';
-        }
-        if (noMilitariMessage) {
-            noMilitariMessage.style.display = 'block';
-        }
-    } else {
-        if (militariGrid) {
-            militariGrid.style.display = 'block';
-        }
-        if (noMilitariMessage) {
-            noMilitariMessage.style.display = 'none';
-        }
-    }
-};
-
-window.updateHiddenInput = function() {
-    const hiddenInputs = document.querySelectorAll('input[name="militari[]"]');
-    hiddenInputs.forEach(input => input.remove());
-    
-    const form = document.getElementById('editActivityForm');
-    if (form) {
-        window.militariAttuali.forEach(militareId => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'militari[]';
-            input.value = militareId;
-            form.appendChild(input);
+    try {
+        const response = await fetch(`{{ route('board.activities.detach.militare', ['activity' => $activity->id, 'militare' => '__ID__']) }}`.replace('__ID__', militareId), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken},
+            body: JSON.stringify({_method: 'DELETE'})
         });
+        
+        const data = await response.json();
+        
+                if (data.success) {
+            // Rimuovi elemento dalla lista
+            document.querySelector(`[data-militare-id="${militareId}"]`).remove();
+            
+            const count = document.querySelectorAll('[data-militare-id]').length;
+            document.querySelector('.card-header h6').innerHTML = `<i class="fas fa-users me-2"></i>Militari Coinvolti (${count})`;
+            
+            if (count === 0) {
+                document.getElementById('militariList').parentElement.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-user-slash fa-2x mb-2"></i><p class="mb-0">Nessun militare assegnato</p></div>';
+        }
+} else {
+            showToast('Errore', data.message, 'error');
+        }
+    } catch (error) {
+        showToast('Errore', 'Errore di connessione', 'error');
     }
-};
+}
 
-window.riaggiungeMilitareAlSelect = function(militareId) {
-    // Funzione placeholder - può essere implementata se necessario
-};
-
-window.aggiornaOpzioniDisponibili = function() {
-    // Funzione placeholder - può essere implementata se necessario
-};
+// Reset modal quando chiuso
+document.getElementById('addMilitareModal').addEventListener('hidden.bs.modal', function() {
+    $('#militareSelect').val(null).trigger('change');
+    document.getElementById('verificaBtn').disabled = true;
+    document.getElementById('step1').classList.remove('d-none');
+    document.getElementById('step2').classList.add('d-none');
+    document.getElementById('aggiungiSelezionatiBtn').classList.add('d-none');
+    militariSelezionati = [];
+    risultatiVerifica.clear();
+});
 </script>
+
+<!-- Floating Button Export Excel -->
+<a href="{{ route('board.activities.export', $activity) }}" class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</a>
+
+@endpush
+
+@push('styles')
+<style>
+    .card { border: none; border-radius: 0.5rem; }
+    .card:hover { box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1) !important; }
+    .list-group-item { border-left: none; border-right: none; transition: background 0.2s; }
+    .list-group-item:first-child { border-top: none; }
+    .list-group-item:last-child { border-bottom: none; }
+    .list-group-item:hover { background-color: #f8f9fa; }
+    
+    /* Toast migliorato - più visibile */
+    #toast {
+        min-width: 350px;
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.3) !important;
+        border-left: 4px solid;
+    }
+    #toast.toast-success { border-left-color: #28a745; background-color: #d4edda; }
+    #toast.toast-error { border-left-color: #dc3545; background-color: #f8d7da; }
+    #toast.toast-warning { border-left-color: #ffc107; background-color: #fff3cd; }
+    #toast.toast-info { border-left-color: #17a2b8; background-color: #d1ecf1; }
+    
+    #toast .toast-header {
+        background-color: transparent;
+        border-bottom: none;
+        font-weight: 600;
+    }
+    #toast.toast-success .toast-header { color: #155724; }
+    #toast.toast-error .toast-header { color: #721c24; }
+    #toast.toast-warning .toast-header { color: #856404; }
+    #toast.toast-info .toast-header { color: #0c5460; }
+    
+    #toast .toast-body {
+        color: inherit;
+        font-size: 0.95rem;
+    }
+    
+    /* ========================================
+       SELECT2 MINIMAL SUGECO - Stile pulito e professionale
+       ======================================== */
+    
+    /* Contenitore principale - Layout a due sezioni */
+    .select2-container--bootstrap-5 .select2-selection--multiple {
+        min-height: 180px !important;
+        padding: 0 !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        background: white !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+        transition: all 0.2s ease !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple:hover {
+        border-color: #0b5ed7 !important;
+        background: white !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple:focus-within {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 0 0.35rem rgba(13, 110, 253, 0.25), inset 0 1px 3px rgba(0,0,0,0.05) !important;
+        background: white !important;
+    }
+    
+    /* Contenitore interno con flexbox per layout ottimale */
+    .select2-container--bootstrap-5 .select2-selection__rendered {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        padding: 0 !important;
+        align-items: flex-start !important;
+    }
+    
+    /* Barra di ricerca inline - SEMPRE VISIBILE E GRANDE */
+    .select2-container--bootstrap-5 .select2-search--inline {
+        flex: 1 1 auto !important;
+        min-width: 300px !important;
+        order: 999 !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+        min-width: 300px !important;
+        width: 100% !important;
+        height: 42px !important;
+        padding: 10px 15px !important;
+        font-size: 1rem !important;
+        margin: 0 !important;
+        border: 2px dashed #dee2e6 !important;
+        border-radius: 0.375rem !important;
+        background-color: #f8f9fa !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-search--inline .select2-search__field:focus {
+        outline: none !important;
+        border-color: #0d6efd !important;
+        border-style: solid !important;
+        background-color: white !important;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1) !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
+        color: #6c757d !important;
+        font-style: italic !important;
+    }
+    
+    /* Badge militari selezionati - Stile professionale */
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+        border: none !important;
+        color: white !important;
+        padding: 8px 14px !important;
+        margin: 0 !important;
+        border-radius: 6px !important;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        transition: all 0.2s ease !important;
+        max-width: 280px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.4) !important;
+    }
+    
+    /* Bottone rimozione militare */
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: white !important;
+        margin-right: 0 !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        background: rgba(255, 255, 255, 0.2) !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+        background: rgba(255, 255, 255, 0.3) !important;
+        color: #ffcccc !important;
+        transform: rotate(90deg) !important;
+    }
+    
+    /* Dropdown migliorato */
+    .select2-container--bootstrap-5 .select2-dropdown {
+        border: 2px solid #0d6efd !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.2) !important;
+        background: white !important;
+        margin-top: 4px !important;
+    }
+    
+    /* Opzioni nel dropdown */
+    .select2-container--bootstrap-5 .select2-results__option {
+        padding: 10px 15px !important;
+        transition: all 0.15s ease !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%) !important;
+        color: white !important;
+    }
+    
+    /* Gruppi nel dropdown */
+    .select2-container--bootstrap-5 .select2-results__group {
+        font-weight: 700 !important;
+        color: #0d6efd !important;
+        padding: 12px 15px 8px !important;
+        font-size: 0.85rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        background: #f8f9fa !important;
+        border-bottom: 2px solid #0d6efd !important;
+    }
+    
+    /* Scrollbar personalizzata per il contenitore */
+    .select2-container--bootstrap-5 .select2-selection--multiple::-webkit-scrollbar {
+        width: 8px !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple::-webkit-scrollbar-track {
+        background: #f1f1f1 !important;
+        border-radius: 4px !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple::-webkit-scrollbar-thumb {
+        background: #0d6efd !important;
+        border-radius: 4px !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-selection--multiple::-webkit-scrollbar-thumb:hover {
+        background: #0b5ed7 !important;
+    }
+    
+    /* Stile risultati militari nel dropdown */
+    .select2-result-militare {
+        display: flex !important;
+        align-items: center !important;
+        padding: 4px 0 !important;
+    }
+    
+    .select2-result-militare .militare-name {
+        font-weight: 500 !important;
+    }
+    
+    /* Messaggio "Nessun risultato" */
+    .select2-container--bootstrap-5 .select2-results__message {
+        padding: 15px !important;
+        text-align: center !important;
+        color: #6c757d !important;
+        font-style: italic !important;
+    }
+    
+    /* Indicatore di ricerca */
+    .select2-container--bootstrap-5 .select2-search--dropdown {
+        padding: 10px !important;
+        background: #f8f9fa !important;
+        border-bottom: 2px solid #dee2e6 !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field {
+        border: 2px solid #dee2e6 !important;
+        padding: 8px 12px !important;
+        font-size: 1rem !important;
+    }
+    
+    .select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field:focus {
+        border-color: #0d6efd !important;
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1) !important;
+    }
+    
+    /* Modal centrato */
+    .modal-dialog-centered {
+        display: flex;
+        align-items: center;
+        min-height: calc(100% - 1rem);
+    }
+</style>
 @endpush

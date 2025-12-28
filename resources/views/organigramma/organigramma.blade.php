@@ -818,6 +818,27 @@
     </div>
 
 <div class="organigramma-wrapper">
+    @if($compagnie->isNotEmpty())
+    <!-- Selettore Compagnia (solo per admin) -->
+    <div class="d-flex justify-content-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <label for="compagniaSelect" class="form-label mb-0 fw-semibold" style="color: var(--navy);">
+                <i class="fas fa-building me-2"></i>Compagnia:
+            </label>
+            <select id="compagniaSelect" 
+                    class="form-select form-select-sm" 
+                    style="width: 250px; border: 2px solid var(--navy); border-radius: 8px; font-weight: 600;"
+                    onchange="cambiaCompagnia(this.value)">
+                @foreach($compagnie as $comp)
+                    <option value="{{ $comp->id }}" {{ $compagniaSelezionataId == $comp->id ? 'selected' : '' }}>
+                        {{ $comp->nome }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+    @endif
+
     <!-- Toggle centrato -->
     <div class="d-flex justify-content-center mb-3">
         <div class="toggle-wrapper">
@@ -863,7 +884,7 @@
                     </div>
                     <div>
                         <span class="stat-label">Presenti</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('plotone_id', $compagnia->plotoni->pluck('id'))->whereHas('presenzaOggi', function($q) { $q->where('stato', 'Presente'); })->count() }}</span>
+                        <span class="stat-value">{{ \App\Models\Militare::whereIn('plotone_id', $compagnia->plotoni->pluck('id'))->get()->filter(fn($m) => $m->isPresente())->count() }}</span>
                     </div>
                 </div>
             </div>
@@ -883,19 +904,17 @@
                                 $militari = $plotone->militari->sortBy(function($militare) {
                                     return optional($militare->grado)->ordine ?? 999;
                                 });
-                                $presentiCount = $militari->filter(function($militare) {
-                                    return $militare->presenzaOggi && $militare->presenzaOggi->stato === 'Presente';
-                                })->count();
+                                $presentiCount = $militari->filter(fn($m) => $m->isPresente())->count();
                             @endphp
                             <div class="node-figlio" data-node-id="{{ $plotone->id }}">
                                 <div class="node-connector"></div>
-                                <div class="node-figlio-header">Plotone {{ $plotone->nome }}</div>
+                                <div class="node-figlio-header">{{ $plotone->nome }}</div>
                                 <div class="node-figlio-content">
                                     @if($militari->count() > 0)
                                         <ul class="lista-militari">
                                             @foreach($militari as $militare)
                                                 @php
-                                                    $isPresente = ($militare->presenzaOggi && $militare->presenzaOggi->stato === 'Presente');
+                                                    $isPresente = $militare->isPresente();
                                                 @endphp
                                                 <li class="militare-item">
                                                     <span class="stato-presenza {{ $isPresente ? 'presente' : 'assente' }}" data-status="{{ $isPresente ? 'Presente' : 'Assente' }}"></span>
@@ -960,47 +979,45 @@
                 <div class="node-compagnia-content">
                     <div>
                         <span class="stat-label">Poli</span>
-                        <span class="stat-value">{{ $compagnia->poli->count() }}</span>
+                        <span class="stat-value">{{ $poli->count() }}</span>
                     </div>
                     <div>
                         <span class="stat-label">Militari</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('polo_id', $compagnia->poli->pluck('id'))->count() }}</span>
+                        <span class="stat-value">{{ \App\Models\Militare::whereIn('polo_id', $poli->pluck('id'))->count() }}</span>
                     </div>
                     <div>
                         <span class="stat-label">Presenti</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('polo_id', $compagnia->poli->pluck('id'))->whereHas('presenzaOggi', function($q) { $q->where('stato', 'Presente'); })->count() }}</span>
+                        <span class="stat-value">{{ \App\Models\Militare::whereIn('polo_id', $poli->pluck('id'))->get()->filter(fn($m) => $m->isPresente())->count() }}</span>
                     </div>
                 </div>
             </div>
             
             <!-- Nodi Poli con scorrimento orizzontale -->
-            @if($compagnia->poli->count() > 0)
+            @if($poli->count() > 0)
                 <div class="nodi-figli-container">
-                    @if($compagnia->poli->count() > 3)
+                    @if($poli->count() > 3)
                     <button class="nav-arrow nav-prev" id="prevPoli" type="button" aria-label="Precedente">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     @endif
                     
-                    <div class="nodi-figli {{ $compagnia->poli->count() <= 3 ? 'centered' : '' }}" id="poli-container">
-                        @foreach($compagnia->poli as $polo)
+                    <div class="nodi-figli {{ $poli->count() <= 3 ? 'centered' : '' }}" id="poli-container">
+                        @foreach($poli as $polo)
                             @php
                                 $militari = $polo->militari->sortBy(function($militare) {
                                     return optional($militare->grado)->ordine ?? 999;
                                 });
-                                $presentiCount = $militari->filter(function($militare) {
-                                    return $militare->presenzaOggi && $militare->presenzaOggi->stato === 'Presente';
-                                })->count();
+                                $presentiCount = $militari->filter(fn($m) => $m->isPresente())->count();
                             @endphp
                             <div class="node-figlio" data-node-id="{{ $polo->id }}">
                                 <div class="node-connector"></div>
-                                <div class="node-figlio-header">Polo {{ $polo->nome }}</div>
+                                <div class="node-figlio-header">{{ $polo->nome }}</div>
                                 <div class="node-figlio-content">
                                     @if($militari->count() > 0)
                                         <ul class="lista-militari">
                                             @foreach($militari as $militare)
                                                 @php
-                                                    $isPresente = ($militare->presenzaOggi && $militare->presenzaOggi->stato === 'Presente');
+                                                    $isPresente = $militare->isPresente();
                                                 @endphp
                                                 <li class="militare-item">
                                                     <span class="stato-presenza {{ $isPresente ? 'presente' : 'assente' }}" data-status="{{ $isPresente ? 'Presente' : 'Assente' }}"></span>
@@ -1040,13 +1057,13 @@
                         @endforeach
                     </div>
                     
-                    @if($compagnia->poli->count() > 3)
+                    @if($poli->count() > 3)
                     <button class="nav-arrow nav-next" id="nextPoli" type="button" aria-label="Successivo">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                     
                     <div class="scroll-indicator" id="poli-indicator">
-                        @for($i = 0; $i < ceil($compagnia->poli->count() / 3); $i++)
+                        @for($i = 0; $i < ceil($poli->count() / 3); $i++)
                             <div class="indicator-dot {{ $i == 0 ? 'active' : '' }}" data-index="{{ $i }}"></div>
                         @endfor
                     </div>
@@ -1061,6 +1078,13 @@
 @push('scripts')
 
 <script>
+// Funzione per cambiare compagnia
+function cambiaCompagnia(compagniaId) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('compagnia_id', compagniaId);
+    window.location.href = url.toString();
+}
+
 // Inizializzazione dopo il caricamento della pagina
 document.addEventListener('DOMContentLoaded', function() {
     // Aggiungi classe alla pagina per identificazione

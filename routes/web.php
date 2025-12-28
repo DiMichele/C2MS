@@ -6,8 +6,6 @@ use App\Http\Controllers\CertificatiController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
-use App\Http\Controllers\EventiController;
-use App\Http\Controllers\NoteController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\PianificazioneController;
 use App\Http\Controllers\Auth\LoginController;
@@ -20,27 +18,6 @@ use App\Http\Controllers\Auth\LoginController;
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-
-/*
-|-------------------------------------------------
-| Rotte Pubbliche (solo Anagrafica)
-|-------------------------------------------------
-*/
-// Route per la ricerca (Anagrafica)
-Route::get('/anagrafica/search', [MilitareController::class, 'search'])
-    ->name('anagrafica.search');
-
-// API route per ottenere dati militare (per AJAX)
-Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData'])
-    ->name('api.militari.show');
-
-// Rotte Anagrafica (pubbliche - accessibili senza login)
-Route::get('/anagrafica', [MilitareController::class, 'index'])
-    ->name('anagrafica.index');
-
-// NOTA: La rotta parametrica /anagrafica/{militare} deve essere definita 
-// DOPO tutte le altre rotte specifiche (come /anagrafica/create, /anagrafica/export-excel, ecc.)
-// altrimenti cattura tutto come parametro militare
 
 // Redirect da vecchie URL militare a anagrafica
 Route::redirect('/militare', '/anagrafica', 301);
@@ -62,8 +39,12 @@ Route::middleware(['auth'])->group(function () {
      | Rotte Profilo Utente
      |-------------------------------------------------
     */
-    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'index'])->name('profile.index');
-    Route::post('/profile/change-password', [\App\Http\Controllers\ProfileController::class, 'changePassword'])->name('profile.change-password');
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'index'])
+        ->middleware('permission:profile.view')
+        ->name('profile.index');
+    Route::post('/profile/change-password', [\App\Http\Controllers\ProfileController::class, 'changePassword'])
+        ->middleware('permission:profile.edit')
+        ->name('profile.change-password');
 
     /*
      |-------------------------------------------------
@@ -98,6 +79,21 @@ Route::middleware(['auth'])->group(function () {
      | Rotte per la gestione dei militari (protette)
      |-------------------------------------------------
     */
+    // Rotta index anagrafica (richiede autenticazione e permesso view)
+    Route::get('/anagrafica', [MilitareController::class, 'index'])
+        ->middleware('permission:anagrafica.view')
+        ->name('anagrafica.index');
+    
+    // Route per la ricerca (Anagrafica)
+    Route::get('/anagrafica/search', [MilitareController::class, 'search'])
+        ->middleware('permission:anagrafica.view')
+        ->name('anagrafica.search');
+    
+    // API route per ottenere dati militare (per AJAX)
+    Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData'])
+        ->middleware('permission:anagrafica.view')
+        ->name('api.militari.show');
+    
     // Export Excel Anagrafica (DEVE essere prima della rotta parametrica)
     Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])
         ->middleware('permission:anagrafica.view')
@@ -129,6 +125,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/anagrafica/{militare}/update-field', [MilitareController::class, 'updateField'])
         ->middleware('permission:anagrafica.edit')
         ->name('anagrafica.update-field');
+    
+    // Rotta per aggiornare campi custom
+    Route::post('/anagrafica/{militare}/update-campo-custom', [MilitareController::class, 'updateCampoCustom'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('anagrafica.update-campo-custom');
     
     Route::get('/anagrafica/plotoni-per-compagnia', [MilitareController::class, 'getPlotoniPerCompagnia'])
         ->middleware('permission:anagrafica.view')
@@ -162,11 +163,11 @@ Route::middleware(['auth'])->group(function () {
  |-------------------------------------------------
 */
 Route::get('/organigramma', [OrganigrammaController::class, 'index'])
-    ->middleware('permission:anagrafica.view')
+    ->middleware('permission:organigramma.view')
     ->name('organigramma');
 
 Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCache'])
-    ->middleware('permission:anagrafica.view')
+    ->middleware('permission:organigramma.view')
     ->name('organigramma.refresh');
 
 /*
@@ -180,20 +181,15 @@ Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCach
 // Rotte per le certificazioni - commentate per controller mancante
 // Route::resource('certificati', CertificatoController::class);
 
-// Rotte per le note
-Route::post('/note/save', [NoteController::class, 'save'])->name('note.save');
+// Rotte per le note (rimossa - NoteController non esiste)
 
 
 
 /*
  |-------------------------------------------------
- | Rotte per gli Eventi
+ | NOTA: Rotte eventi RIMOSSE - Usare Board Attività
  |-------------------------------------------------
 */
-Route::get('/eventi', [EventiController::class, 'index'])->name('eventi.index');
-Route::get('/eventi/create', [EventiController::class, 'create'])->name('eventi.create');
-Route::post('/eventi', [EventiController::class, 'store'])->name('eventi.store');
-Route::delete('/eventi/{evento}', [EventiController::class, 'destroy'])->name('eventi.destroy');
 
 Route::prefix('board')->middleware('permission:board.view')->group(function () {
     Route::get('/', [BoardController::class, 'index'])->name('board.index');
@@ -210,9 +206,9 @@ Route::prefix('board')->middleware('permission:board.view')->group(function () {
     Route::post('/activities/{activity}/militari', [BoardController::class, 'attachMilitare'])->name('board.activities.attach.militare');
     Route::delete('/activities/{activity}/militari/{militare}', [BoardController::class, 'detachMilitare'])->name('board.activities.detach.militare');
     
-    // Rotte per la gestione degli allegati
-    Route::post('/activities/{activity}/attachments', [BoardController::class, 'attachFile'])->name('board.activities.attach.file');
-    Route::delete('/activities/{activity}/attachments/{attachment}', [BoardController::class, 'deleteAttachment'])->name('board.activities.detach.file');
+    // Rotte per l'export Excel
+    Route::get('/activities/{activity}/export', [BoardController::class, 'exportActivity'])->name('board.activities.export');
+    Route::get('/export', [BoardController::class, 'exportBoard'])->name('board.export');
 });
 
 /*
@@ -220,7 +216,7 @@ Route::prefix('board')->middleware('permission:board.view')->group(function () {
 | Rotte per il CPT (Controllo Presenza Truppe)
 |-------------------------------------------------
 */
-Route::prefix('cpt')->name('pianificazione.')->middleware('permission:cpt.view')->group(function () {
+Route::prefix('cpt')->name('pianificazione.')->middleware('permission:pianificazione.view')->group(function () {
     Route::get('/', [PianificazioneController::class, 'index'])->name('index');
     Route::get('/test', function(Request $request) {
         // Stessa logica del controller principale ma vista semplificata
@@ -260,8 +256,12 @@ Route::prefix('cpt')->name('pianificazione.')->middleware('permission:cpt.view')
         return view('pianificazione.test', compact('militariConPianificazione', 'giorniMese', 'mese', 'anno'));
     })->name('test');
     Route::get('/militare/{militare}', [PianificazioneController::class, 'militare'])->name('militare');
-    Route::post('/militare/{militare}/update-giorno', [PianificazioneController::class, 'updateGiorno'])->name('militare.update-giorno');
-    Route::post('/militare/{militare}/update-giorni-range', [PianificazioneController::class, 'updateGiorniRange'])->name('militare.update-giorni-range');
+    Route::post('/militare/{militare}/update-giorno', [PianificazioneController::class, 'updateGiorno'])
+        ->middleware('permission:pianificazione.edit')
+        ->name('militare.update-giorno');
+    Route::post('/militare/{militare}/update-giorni-range', [PianificazioneController::class, 'updateGiorniRange'])
+        ->middleware('permission:pianificazione.edit')
+        ->name('militare.update-giorni-range');
     Route::get('/export-excel', [PianificazioneController::class, 'exportExcel'])->name('export-excel');
 });
 
@@ -271,13 +271,21 @@ Route::prefix('cpt')->name('pianificazione.')->middleware('permission:cpt.view')
 |-------------------------------------------------
 */
 Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view')->group(function () {
-    Route::prefix('turni')->name('turni.')->group(function () {
+    Route::prefix('turni')->name('turni.')->middleware('permission:turni.view')->group(function () {
         Route::get('/', [\App\Http\Controllers\TurniController::class, 'index'])->name('index');
         Route::post('/check-disponibilita', [\App\Http\Controllers\TurniController::class, 'checkDisponibilita'])->name('check-disponibilita');
-        Route::post('/assegna', [\App\Http\Controllers\TurniController::class, 'assegna'])->name('assegna');
-        Route::post('/rimuovi', [\App\Http\Controllers\TurniController::class, 'rimuovi'])->name('rimuovi');
-        Route::post('/copia-settimana', [\App\Http\Controllers\TurniController::class, 'copiaSettimana'])->name('copia-settimana');
-        Route::post('/sincronizza', [\App\Http\Controllers\TurniController::class, 'sincronizza'])->name('sincronizza');
+        Route::post('/assegna', [\App\Http\Controllers\TurniController::class, 'assegna'])
+            ->middleware('permission:turni.edit')
+            ->name('assegna');
+        Route::post('/rimuovi', [\App\Http\Controllers\TurniController::class, 'rimuovi'])
+            ->middleware('permission:turni.edit')
+            ->name('rimuovi');
+        Route::post('/copia-settimana', [\App\Http\Controllers\TurniController::class, 'copiaSettimana'])
+            ->middleware('permission:turni.edit')
+            ->name('copia-settimana');
+        Route::post('/sincronizza', [\App\Http\Controllers\TurniController::class, 'sincronizza'])
+            ->middleware('permission:turni.edit')
+            ->name('sincronizza');
         Route::get('/export-excel', [\App\Http\Controllers\TurniController::class, 'exportExcel'])->name('export-excel');
     });
 });
@@ -287,9 +295,31 @@ Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view'
 | Rotte per la Trasparenza Servizi
 |-------------------------------------------------
 */
-Route::prefix('trasparenza')->name('trasparenza.')->middleware('permission:servizi.view')->group(function () {
+Route::prefix('trasparenza')->name('trasparenza.')->middleware('permission:trasparenza.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\TrasparenzaController::class, 'index'])->name('index');
     Route::get('/export-excel', [\App\Http\Controllers\TrasparenzaController::class, 'exportExcel'])->name('export-excel');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Disponibilità Personale
+|-------------------------------------------------
+*/
+Route::prefix('disponibilita')->name('disponibilita.')->middleware('auth')->group(function () {
+    // Panoramica disponibilità per polo
+    Route::get('/', [\App\Http\Controllers\DisponibilitaController::class, 'index'])
+        ->middleware('permission:cpt.view')
+        ->name('index');
+    
+    // Vista impegni singolo militare
+    Route::get('/militare/{militare}', [\App\Http\Controllers\DisponibilitaController::class, 'militare'])
+        ->middleware('permission:cpt.view')
+        ->name('militare');
+    
+    // API: Ottieni militari liberi per una data
+    Route::get('/militari-liberi', [\App\Http\Controllers\DisponibilitaController::class, 'getMilitariLiberi'])
+        ->middleware('permission:cpt.view')
+        ->name('militari-liberi');
 });
 
 /*
@@ -297,32 +327,44 @@ Route::prefix('trasparenza')->name('trasparenza.')->middleware('permission:servi
 | Rotte per le Scadenze Certificati
 |-------------------------------------------------
 */
-Route::prefix('scadenze')->name('scadenze.')->middleware('permission:scadenze.view')->group(function () {
-    // Pagina RSPP - Sicurezza sul Lavoro
-    Route::get('/rspp', [\App\Http\Controllers\RsppController::class, 'index'])->name('rspp');
-    Route::post('/rspp/{militare}/update-singola', [\App\Http\Controllers\RsppController::class, 'updateSingola'])
+// Redirect vecchia pagina scadenze alla dashboard (deprecata)
+Route::get('/scadenze', function() {
+    return redirect()->route('dashboard')->with('info', 'La pagina Scadenze è stata sostituita. Usa le sezioni SPP, Idoneità e Poligoni nel menu.');
+})->middleware('auth')->name('scadenze.index');
+
+// Gruppo SPP - Servizio di Prevenzione e Protezione
+Route::prefix('spp')->name('spp.')->middleware('permission:scadenze.view')->group(function () {
+    // Corsi di Formazione SPP (ex RSPP)
+    Route::get('/corsi-di-formazione', [\App\Http\Controllers\RsppController::class, 'index'])->name('corsi-di-formazione');
+    Route::post('/corsi-di-formazione/{militare}/update-singola', [\App\Http\Controllers\RsppController::class, 'updateSingola'])
         ->middleware('permission:scadenze.edit')
-        ->name('rspp.update-singola');
-    Route::get('/rspp/export-excel', [\App\Http\Controllers\RsppController::class, 'exportExcel'])->name('rspp.export-excel');
-    
-    // Pagina Idoneità Sanitarie
-    Route::get('/idoneita', [\App\Http\Controllers\IdoneitzController::class, 'index'])->name('idoneita');
-    Route::post('/idoneita/{militare}/update-singola', [\App\Http\Controllers\IdoneitzController::class, 'updateSingola'])
+        ->name('corsi-di-formazione.update-singola');
+    Route::get('/corsi-di-formazione/export-excel', [\App\Http\Controllers\RsppController::class, 'exportExcel'])->name('corsi-di-formazione.export-excel');
+
+    // Corsi Accordo Stato Regione
+    Route::get('/corsi-accordo-stato-regione', [\App\Http\Controllers\CorsiAccordoStatoRegioneController::class, 'index'])->name('corsi-accordo-stato-regione');
+    Route::post('/corsi-accordo-stato-regione/{militare}/update-singola', [\App\Http\Controllers\CorsiAccordoStatoRegioneController::class, 'updateSingola'])
         ->middleware('permission:scadenze.edit')
-        ->name('idoneita.update-singola');
-    Route::get('/idoneita/export-excel', [\App\Http\Controllers\IdoneitzController::class, 'exportExcel'])->name('idoneita.export-excel');
-    
-    // Pagina Poligoni - Tiri e Mantenimento
-    Route::get('/poligoni', [\App\Http\Controllers\PoligoniController::class, 'index'])->name('poligoni');
-    Route::post('/poligoni/{militare}/update-singola', [\App\Http\Controllers\PoligoniController::class, 'updateSingola'])
+        ->name('corsi-accordo-stato-regione.update-singola');
+    Route::get('/corsi-accordo-stato-regione/export-excel', [\App\Http\Controllers\CorsiAccordoStatoRegioneController::class, 'exportExcel'])->name('corsi-accordo-stato-regione.export-excel');
+});
+
+// Idoneità Sanitarie
+Route::prefix('idoneita')->name('idoneita.')->middleware('permission:scadenze.view')->group(function () {
+    Route::get('/', [\App\Http\Controllers\IdoneitzController::class, 'index'])->name('index');
+    Route::post('/{militare}/update-singola', [\App\Http\Controllers\IdoneitzController::class, 'updateSingola'])
         ->middleware('permission:scadenze.edit')
-        ->name('poligoni.update-singola');
-    Route::get('/poligoni/export-excel', [\App\Http\Controllers\PoligoniController::class, 'exportExcel'])->name('poligoni.export-excel');
-    
-    // DEPRECATED - Vecchia pagina scadenze unificata (manteniamo per compatibilità)
-    Route::get('/', [\App\Http\Controllers\ScadenzeController::class, 'index'])->name('index');
-    Route::post('/{militare}/update', [\App\Http\Controllers\ScadenzeController::class, 'update'])->name('update');
-    Route::post('/{militare}/update-singola', [\App\Http\Controllers\ScadenzeController::class, 'updateSingola'])->name('update-singola');
+        ->name('update-singola');
+    Route::get('/export-excel', [\App\Http\Controllers\IdoneitzController::class, 'exportExcel'])->name('export-excel');
+});
+
+// Poligoni - Tiri e Mantenimento
+Route::prefix('poligoni')->name('poligoni.')->middleware('permission:scadenze.view')->group(function () {
+    Route::get('/', [\App\Http\Controllers\PoligoniController::class, 'index'])->name('index');
+    Route::post('/{militare}/update-singola', [\App\Http\Controllers\PoligoniController::class, 'updateSingola'])
+        ->middleware('permission:scadenze.edit')
+        ->name('update-singola');
+    Route::get('/export-excel', [\App\Http\Controllers\PoligoniController::class, 'exportExcel'])->name('export-excel');
 });
 
 /*
@@ -330,8 +372,99 @@ Route::prefix('scadenze')->name('scadenze.')->middleware('permission:scadenze.vi
 || Rotte per i Ruolini
 |-------------------------------------------------
 */
-Route::prefix('ruolini')->name('ruolini.')->middleware('permission:anagrafica.view')->group(function () {
+Route::prefix('ruolini')->name('ruolini.')->middleware('permission:ruolini.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
+    Route::get('/export-excel', [\App\Http\Controllers\RuoliniController::class, 'exportExcel'])->name('export-excel');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Gestione Ruolini (Configurazione)
+|-------------------------------------------------
+*/
+Route::prefix('gestione-ruolini')->name('gestione-ruolini.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestioneRuoliniController::class, 'index'])->name('index');
+    Route::post('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'update'])->name('update');
+    Route::post('/batch/update', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateBatch'])->name('update-batch');
+    Route::delete('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'destroy'])->name('destroy');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Gestione SPP (Configurazione Corsi)
+|-------------------------------------------------
+*/
+Route::prefix('gestione-spp')->name('gestione-spp.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestioneSppController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\GestioneSppController::class, 'store'])->name('store');
+    Route::post('/{id}', [\App\Http\Controllers\GestioneSppController::class, 'update'])->name('update');
+    Route::put('/{id}/edit', [\App\Http\Controllers\GestioneSppController::class, 'edit'])->name('edit');
+    Route::delete('/{id}', [\App\Http\Controllers\GestioneSppController::class, 'destroy'])->name('destroy');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Gestione Poligoni (Configurazione Tipi)
+|-------------------------------------------------
+*/
+Route::prefix('gestione-poligoni')->name('gestione-poligoni.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestionePoligoniController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\GestionePoligoniController::class, 'store'])->name('store');
+    Route::post('/{id}', [\App\Http\Controllers\GestionePoligoniController::class, 'update'])->name('update');
+    Route::put('/{id}/edit', [\App\Http\Controllers\GestionePoligoniController::class, 'edit'])->name('edit');
+    Route::delete('/{id}', [\App\Http\Controllers\GestionePoligoniController::class, 'destroy'])->name('destroy');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Gestione Configurazione Idoneità
+|-------------------------------------------------
+*/
+Route::prefix('gestione-idoneita')->name('gestione-idoneita.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestioneIdoneitaController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\GestioneIdoneitaController::class, 'store'])->name('store');
+    Route::post('/{id}', [\App\Http\Controllers\GestioneIdoneitaController::class, 'update'])->name('update');
+    Route::put('/{id}/edit', [\App\Http\Controllers\GestioneIdoneitaController::class, 'edit'])->name('edit');
+    Route::delete('/{id}', [\App\Http\Controllers\GestioneIdoneitaController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/toggle', [\App\Http\Controllers\GestioneIdoneitaController::class, 'toggleActive'])->name('toggle');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Gestione Configurazione Anagrafica
+|-------------------------------------------------
+*/
+Route::prefix('gestione-anagrafica-config')->name('gestione-anagrafica-config.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'index'])->name('index');
+    
+    // Plotoni
+    Route::post('/plotoni', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'storePlotone'])->name('plotoni.store');
+    Route::put('/plotoni/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'updatePlotone'])->name('plotoni.update');
+    Route::delete('/plotoni/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'destroyPlotone'])->name('plotoni.destroy');
+    
+    // Uffici
+    Route::post('/uffici', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'storeUfficio'])->name('uffici.store');
+    Route::put('/uffici/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'updateUfficio'])->name('uffici.update');
+    Route::delete('/uffici/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'destroyUfficio'])->name('uffici.destroy');
+    
+    // Incarichi
+    Route::post('/incarichi', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'storeIncarico'])->name('incarichi.store');
+    Route::put('/incarichi/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'updateIncarico'])->name('incarichi.update');
+    Route::delete('/incarichi/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'destroyIncarico'])->name('incarichi.destroy');
+});
+
+/*
+|-------------------------------------------------
+| Rotte per la Gestione Campi Anagrafica (Colonne Custom)
+|-------------------------------------------------
+*/
+Route::prefix('gestione-campi-anagrafica')->name('gestione-campi-anagrafica.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\GestioneCampiAnagraficaController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\GestioneCampiAnagraficaController::class, 'store'])->name('store');
+    Route::put('/{id}/edit', [\App\Http\Controllers\GestioneCampiAnagraficaController::class, 'edit'])->name('edit');
+    Route::post('/{id}/order', [\App\Http\Controllers\GestioneCampiAnagraficaController::class, 'updateOrder'])->name('update-order');
+    Route::post('/{id}/toggle', [\App\Http\Controllers\GestioneCampiAnagraficaController::class, 'toggleActive'])->name('toggle');
+    Route::delete('/{id}', [\App\Http\Controllers\GestioneCampiAnagraficaController::class, 'destroy'])->name('destroy');
 });
 
 /*
@@ -399,10 +532,11 @@ Route::get('/debug-assets', function() {
     ], 200, [], JSON_PRETTY_PRINT);
 });
 
+    // Rotta parametrica anagrafica (DEVE essere DOPO tutte le altre rotte specifiche)
+    // Altrimenti cattura /anagrafica/export-excel, /anagrafica/create, ecc. come ID militare
+    Route::get('/anagrafica/{militare}', [MilitareController::class, 'show'])
+        ->middleware('permission:anagrafica.view')
+        ->name('anagrafica.show');
+        
 }); // Fine middleware auth
-
-// Rotta parametrica anagrafica (DEVE essere DOPO tutte le altre rotte specifiche)
-// Altrimenti cattura /anagrafica/export-excel, /anagrafica/create, ecc. come ID militare
-Route::get('/anagrafica/{militare}', [MilitareController::class, 'show'])
-    ->name('anagrafica.show');
 

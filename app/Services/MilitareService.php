@@ -8,7 +8,7 @@ use App\Models\Plotone;
 use App\Models\Polo;
 use App\Models\Ruolo;
 use App\Models\Mansione;
-use App\Models\MilitareValutazione;
+use App\Models\Compagnia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
@@ -70,18 +70,33 @@ class MilitareService
             $query->where('mansione_id', $request->input('mansione_id'));
         }
         
-        // Filtro per presenza
+        // Filtro per presenza (basato sul CPT)
         if ($request->filled('presenza')) {
             $presenza = $request->input('presenza');
-            $today = now()->format('Y-m-d');
+            $oggi = now();
+            $codiciAssenza = ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM'];
             
             if ($presenza === 'Presente') {
-                $query->whereHas('presenzaOggi', function($q) {
-                    $q->where('stato', 'Presente');
+                // Militari che non hanno codici di assenza oggi
+                $query->whereDoesntHave('pianificazioniGiornaliere', function($q) use ($oggi, $codiciAssenza) {
+                    $q->whereHas('pianificazioneMensile', function($qm) use ($oggi) {
+                        $qm->where('mese', $oggi->month)->where('anno', $oggi->year);
+                    })
+                    ->where('giorno', $oggi->day)
+                    ->whereHas('tipoServizio', function($qt) use ($codiciAssenza) {
+                        $qt->whereIn('codice', $codiciAssenza);
+                    });
                 });
             } elseif ($presenza === 'Assente') {
-                $query->whereDoesntHave('presenzaOggi', function($q) {
-                    $q->where('stato', 'Presente');
+                // Militari che hanno codici di assenza oggi
+                $query->whereHas('pianificazioniGiornaliere', function($q) use ($oggi, $codiciAssenza) {
+                    $q->whereHas('pianificazioneMensile', function($qm) use ($oggi) {
+                        $qm->where('mese', $oggi->month)->where('anno', $oggi->year);
+                    })
+                    ->where('giorno', $oggi->day)
+                    ->whereHas('tipoServizio', function($qt) use ($codiciAssenza) {
+                        $qt->whereIn('codice', $codiciAssenza);
+                    });
                 });
             }
         }
@@ -456,10 +471,24 @@ class MilitareService
      */
     public function getValidationRules($militare = null)
     {
+        $codiceFiscaleRule = 'required|string|size:16|regex:/^[A-Z]{6}[0-9]{2}[A-Z][0-9]{2}[A-Z][0-9]{3}[A-Z]$/i';
+        
+        // Per aggiornamento, il codice fiscale deve essere unico ma può essere quello attuale
+        if ($militare) {
+            $codiceFiscaleRule .= '|unique:militari,codice_fiscale,' . $militare->id;
+        } else {
+            $codiceFiscaleRule .= '|unique:militari,codice_fiscale';
+        }
+        
         return [
             'nome' => 'required|string|max:255',
             'cognome' => 'required|string|max:255',
+            'codice_fiscale' => $codiceFiscaleRule,
             'grado_id' => 'required|exists:gradi,id',
+            'data_nascita' => 'required|date',
+            'sesso' => 'required|in:M,F',
+            'luogo_nascita' => 'required|string|max:255',
+            'provincia_nascita' => 'required|string|size:2',
             'plotone_id' => 'nullable|exists:plotoni,id',
             'polo_id' => 'nullable|exists:poli,id',
             'ruolo_id' => 'nullable|exists:ruoli,id',
@@ -470,6 +499,30 @@ class MilitareService
             'note' => 'nullable|string',
             'certificati_note' => 'nullable|string',
             'idoneita_note' => 'nullable|string'
+        ];
+    }
+    
+    /**
+     * Messaggi di errore personalizzati per la validazione
+     */
+    public function getValidationMessages()
+    {
+        return [
+            'nome.required' => 'Il nome è obbligatorio.',
+            'cognome.required' => 'Il cognome è obbligatorio.',
+            'codice_fiscale.required' => 'Il codice fiscale è obbligatorio. Inserisci i dati anagrafici per calcolarlo automaticamente.',
+            'codice_fiscale.size' => 'Il codice fiscale deve essere di 16 caratteri.',
+            'codice_fiscale.regex' => 'Il formato del codice fiscale non è valido.',
+            'codice_fiscale.unique' => 'Questo codice fiscale è già registrato nel sistema.',
+            'grado_id.required' => 'Il grado è obbligatorio.',
+            'grado_id.exists' => 'Il grado selezionato non è valido.',
+            'data_nascita.required' => 'La data di nascita è obbligatoria per calcolare il codice fiscale.',
+            'data_nascita.date' => 'La data di nascita non è valida.',
+            'sesso.required' => 'Il sesso è obbligatorio per calcolare il codice fiscale.',
+            'sesso.in' => 'Il sesso deve essere M o F.',
+            'luogo_nascita.required' => 'Il luogo di nascita è obbligatorio per calcolare il codice fiscale.',
+            'provincia_nascita.required' => 'La provincia di nascita è obbligatoria per calcolare il codice fiscale.',
+            'provincia_nascita.size' => 'La provincia deve essere di 2 caratteri (es. BA, MI, RM).',
         ];
     }
 
@@ -547,7 +600,17 @@ class MilitareService
      */
     public function getFilteredMilitari(Request $request, $perPage = 20)
     {
-        $query = Militare::with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'presenzaOggi', 'patenti']);
+        $query = Militare::with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti']);
+        
+        // FILTRO PERMESSI: filtra per compagnia dell'utente se non è admin
+        $user = \Illuminate\Support\Facades\Auth::user();
+        $userCompagniaId = null;
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
+            if ($user->compagnia_id) {
+                $query->where('compagnia_id', $user->compagnia_id);
+                $userCompagniaId = $user->compagnia_id;
+            }
+        }
         
         // Filtri
         if ($request->filled('grado_id')) {
@@ -635,16 +698,31 @@ class MilitareService
             }
         }
         
+        // Filtro per presenza basato sul CPT
         if ($request->filled('presenza')) {
+            $oggi = now();
+            $codiciAssenza = ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM'];
+            
             if ($request->presenza === 'Presente') {
-                $query->whereHas('presenzaOggi', function($q) {
-                    $q->where('stato', 'Presente');
+                $query->whereDoesntHave('pianificazioniGiornaliere', function($q) use ($oggi, $codiciAssenza) {
+                    $q->whereHas('pianificazioneMensile', function($qm) use ($oggi) {
+                        $qm->where('mese', $oggi->month)->where('anno', $oggi->year);
+                    })
+                    ->where('giorno', $oggi->day)
+                    ->whereHas('tipoServizio', function($qt) use ($codiciAssenza) {
+                        $qt->whereIn('codice', $codiciAssenza);
+                    });
                 });
             } elseif ($request->presenza === 'Assente') {
-                $query->whereDoesntHave('presenzaOggi')
-                      ->orWhereHas('presenzaOggi', function($q) {
-                          $q->where('stato', 'Assente');
-                      });
+                $query->whereHas('pianificazioniGiornaliere', function($q) use ($oggi, $codiciAssenza) {
+                    $q->whereHas('pianificazioneMensile', function($qm) use ($oggi) {
+                        $qm->where('mese', $oggi->month)->where('anno', $oggi->year);
+                    })
+                    ->where('giorno', $oggi->day)
+                    ->whereHas('tipoServizio', function($qt) use ($codiciAssenza) {
+                        $qt->whereIn('codice', $codiciAssenza);
+                    });
+                });
             }
         }
         
@@ -656,10 +734,23 @@ class MilitareService
         $poli = Polo::orderBy('nome')->get();
         $mansioni = Mansione::orderBy('nome')->get();
         $ruoli = Ruolo::orderBy('nome')->get();
+        $compagnie = Compagnia::orderBy('nome')->get();
         
         // Calcola filtri attivi
         $activeFilters = [];
-        $filterFields = ['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'ruolo_id', 'email_istituzionale', 'telefono'];
+        $filterFields = [
+            'compagnia', 
+            'plotone_id', 
+            'grado_id', 
+            'polo_id', 
+            'mansione_id', 
+            'nos_status', 
+            'ruolo_id', 
+            'email_istituzionale', 
+            'telefono',
+            'presenza',
+            'compleanno'
+        ];
         
         foreach ($filterFields as $field) {
             if ($request->filled($field)) {
@@ -669,6 +760,12 @@ class MilitareService
         
         $hasActiveFilters = count($activeFilters) > 0;
         
+        // Carica tutti i campi attivi per l'anagrafica (inclusi quelli di sistema)
+        // Tutti i campi devono essere gestiti allo stesso modo: possono essere disattivati/eliminati/modificati
+        $campiCustom = \App\Models\ConfigurazioneCampoAnagrafica::attivi()
+            ->ordinati()
+            ->get();
+        
         return [
             'militari' => $militari,
             'gradi' => $gradi,
@@ -676,9 +773,11 @@ class MilitareService
             'poli' => $poli,
             'mansioni' => $mansioni,
             'ruoli' => $ruoli,
+            'compagnie' => $compagnie,
             'filtri' => $request->all(),
             'activeFilters' => $activeFilters,
-            'hasActiveFilters' => $hasActiveFilters
+            'hasActiveFilters' => $hasActiveFilters,
+            'campiCustom' => $campiCustom
         ];
     }
 
@@ -764,12 +863,13 @@ class MilitareService
      */
     public function createMilitare($data)
     {
-        // Valida i dati
+        // Valida i dati con messaggi personalizzati
         $rules = $this->getValidationRules();
-        $validator = validator($data, $rules);
+        $messages = $this->getValidationMessages();
+        $validator = validator($data, $rules, $messages);
         
         if ($validator->fails()) {
-            throw new \Exception('Dati non validi: ' . implode(', ', $validator->errors()->all()));
+            throw new \Illuminate\Validation\ValidationException($validator);
         }
         
         // Crea il militare
@@ -792,12 +892,13 @@ class MilitareService
     {
         $militare = Militare::findOrFail($militareId);
         
-        // Valida i dati
+        // Valida i dati con messaggi personalizzati
         $rules = $this->getValidationRules($militare);
-        $validator = validator($data, $rules);
+        $messages = $this->getValidationMessages();
+        $validator = validator($data, $rules, $messages);
         
         if ($validator->fails()) {
-            throw new \Exception('Dati non validi: ' . implode(', ', $validator->errors()->all()));
+            throw new \Illuminate\Validation\ValidationException($validator);
         }
         
         // Aggiorna il militare

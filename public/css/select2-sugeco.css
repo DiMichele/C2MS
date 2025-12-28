@@ -1,0 +1,279 @@
+/**
+ * SUGECO: Sistema Unico di Gestione e Controllo
+ * 
+ * Select2 COMPLETAMENTE RIDISEGNATO
+ * Layout forzato: Barra di ricerca in ALTO, Badge militari SOTTO
+ * 
+ * @version 2.0
+ */
+
+/* ==========================================
+   CONTENITORE PRINCIPALE
+   ========================================== */
+
+.select2-container--bootstrap-5 .select2-selection--multiple {
+    min-height: 220px !important;
+    padding: 0 !important;
+    border: 1px solid #CBD5E0 !important;
+    border-radius: 8px !important;
+    background: white !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+    transition: all 0.2s ease !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple:hover {
+    border-color: #0A2342 !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple:focus-within {
+    border-color: #0A2342 !important;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.08) !important;
+}
+
+/* ==========================================
+   CONTENITORE INTERNO - FLEXBOX COLUMN
+   ========================================== */
+
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    display: flex !important;
+    flex-direction: column-reverse !important; /* INVERTE L'ORDINE: ricerca va in alto */
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+/* ==========================================
+   BARRA DI RICERCA - SEMPRE IN ALTO
+   ========================================== */
+
+.select2-container--bootstrap-5 .select2-search--inline {
+    /* Forza in alto con column-reverse */
+    width: 100% !important;
+    padding: 16px !important;
+    background: #F4F2ED !important; /* Sand SUGECO */
+    border-bottom: 2px solid #E2E8F0 !important;
+    margin: 0 !important;
+    order: 999 !important; /* Backup per essere sicuri */
+}
+
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+    width: 100% !important;
+    height: 46px !important;
+    padding: 0 16px !important;
+    margin: 0 !important;
+    font-size: 0.95rem !important;
+    font-family: 'Roboto', sans-serif !important;
+    color: #0A2342 !important;
+    background: white !important;
+    border: 1px solid #CBD5E0 !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field:focus {
+    outline: none !important;
+    border-color: #0A2342 !important;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.06) !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
+    color: #718096 !important;
+}
+
+/* ==========================================
+   BADGE MILITARI - AREA SOTTO
+   ========================================== */
+
+/* Wrapper per i badge */
+.select2-container--bootstrap-5 .select2-selection__rendered::before {
+    content: '';
+    display: block;
+    width: 100%;
+    min-height: 120px;
+    max-height: 240px;
+    order: 1;
+}
+
+/* Badge singolo */
+.select2-container--bootstrap-5 .select2-selection__choice {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 7px 11px !important;
+    margin: 6px !important;
+    background: #0A2342 !important; /* Navy SUGECO */
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    font-family: 'Roboto', sans-serif !important;
+    box-shadow: 0 1px 3px rgba(10, 35, 66, 0.12) !important;
+    transition: all 0.15s ease !important;
+    max-width: calc(100% - 32px) !important;
+    order: 1 !important; /* Sotto la ricerca */
+}
+
+.select2-container--bootstrap-5 .select2-selection__choice:hover {
+    background: #0F3A6D !important; /* Navy light */
+    box-shadow: 0 2px 4px rgba(10, 35, 66, 0.16) !important;
+}
+
+/* X per rimuovere */
+.select2-container--bootstrap-5 .select2-selection__choice__remove {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 1.1rem !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+    margin-right: 0 !important;
+    margin-left: -2px !important;
+    transition: color 0.15s ease !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__choice__remove:hover {
+    color: #BF9D5E !important; /* Gold SUGECO */
+}
+
+/* Container badge con scroll */
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    max-height: 360px !important;
+    overflow-y: auto !important;
+}
+
+/* Area badge - padding per spaziatura */
+.select2-container--bootstrap-5 .select2-selection__choice:first-of-type {
+    margin-top: 12px !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__choice:last-of-type {
+    margin-bottom: 12px !important;
+}
+
+/* ==========================================
+   DROPDOWN
+   ========================================== */
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    border: 1px solid #0A2342 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(10, 35, 66, 0.12) !important;
+    background: white !important;
+    margin-top: 6px !important;
+}
+
+/* Opzioni */
+.select2-container--bootstrap-5 .select2-results__option {
+    padding: 11px 14px !important;
+    font-size: 0.9rem !important;
+    color: #2D3748 !important;
+    transition: all 0.12s ease !important;
+    border-left: 3px solid transparent !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background: #F4F2ED !important; /* Sand SUGECO */
+    color: #0A2342 !important;
+    border-left-color: #BF9D5E !important; /* Gold accent */
+}
+
+.select2-container--bootstrap-5 .select2-results__option--selected {
+    background: #e8f4f8 !important;
+    color: #0A2342 !important;
+}
+
+/* Gruppi */
+.select2-container--bootstrap-5 .select2-results__group {
+    padding: 9px 14px 5px !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    font-family: 'Oswald', sans-serif !important;
+    color: #0A2342 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.8px !important;
+    background: #F7FAFC !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+}
+
+/* Search nel dropdown */
+.select2-container--bootstrap-5 .select2-search--dropdown {
+    padding: 12px !important;
+    background: #F7FAFC !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field {
+    border: 1px solid #CBD5E0 !important;
+    padding: 9px 13px !important;
+    font-size: 0.9rem !important;
+    border-radius: 6px !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field:focus {
+    border-color: #0A2342 !important;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.06) !important;
+    outline: none !important;
+}
+
+/* Messaggi */
+.select2-container--bootstrap-5 .select2-results__message {
+    padding: 18px !important;
+    text-align: center !important;
+    color: #718096 !important;
+    font-size: 0.875rem !important;
+}
+
+/* ==========================================
+   SCROLLBAR MINIMAL
+   ========================================== */
+
+.select2-container--bootstrap-5 .select2-selection__rendered::-webkit-scrollbar {
+    width: 5px !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__rendered::-webkit-scrollbar-track {
+    background: #F7FAFC !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__rendered::-webkit-scrollbar-thumb {
+    background: #CBD5E0 !important;
+    border-radius: 3px !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__rendered::-webkit-scrollbar-thumb:hover {
+    background: #A0AEC0 !important;
+}
+
+/* ==========================================
+   ICONE NEI RISULTATI
+   ========================================== */
+
+.select2-result-militare {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
+.select2-result-militare i {
+    color: #718096 !important;
+    font-size: 0.85rem !important;
+}
+
+.select2-result-militare .militare-name {
+    font-weight: 400 !important;
+}
+
+/* ==========================================
+   FIX PER LAYOUT
+   ========================================== */
+
+/* Previeni wrap dei badge sulla stessa riga della ricerca */
+.select2-container--bootstrap-5 .select2-selection__choice {
+    flex-shrink: 0 !important;
+}
+
+/* Container flex per badge */
+.select2-container--bootstrap-5 .select2-selection__rendered > *:not(.select2-search--inline) {
+    margin-left: 10px !important;
+    margin-right: 4px !important;
+}

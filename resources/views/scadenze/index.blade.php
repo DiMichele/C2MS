@@ -131,9 +131,6 @@ table.table td,
         </span>
     </button>
     
-    <div>
-        <span class="badge bg-primary">{{ $militari->count() }} militari</span>
-    </div>
 </div>
 
 <!-- Filtri con sezione migliorata -->
@@ -277,10 +274,10 @@ table.table td,
                         </div>
                     </div>
                     
-                    {{-- Filtro Poligono Approntamento --}}
+                    {{-- Filtro Teatro Operativo --}}
                     <div class="col-md-3">
                         <label for="poligono_approntamento" class="form-label">
-                            <i class="fas fa-bullseye me-1"></i> Poligono Approntamento
+                            <i class="fas fa-bullseye me-1"></i> Teatro Operativo
                         </label>
                         <div class="select-wrapper">
                             <select name="poligono_approntamento" id="poligono_approntamento" class="form-select filter-select {{ (request('poligono_approntamento') && request('poligono_approntamento') != 'tutti') ? 'applied' : '' }}">
@@ -363,7 +360,7 @@ table.table td,
                     <th class="text-center">Lavoratore 8h</th>
                     <th class="text-center">Preposto</th>
                     <th class="text-center">Dirigenti</th>
-                    <th class="text-center">Poligono Approntamento</th>
+                    <th class="text-center">Teatro Operativo</th>
                     <th class="text-center">Poligono Mantenimento</th>
                 </tr>
             </thead>
@@ -525,7 +522,7 @@ table.table td,
                         @endif
                     </td>
 
-                    <!-- Poligono Approntamento -->
+                    <!-- Teatro Operativo -->
                     <td class="text-center @if($canEdit) scadenza-cell @endif" 
                         @if($scadenza && $scadenza->poligono_approntamento_data_conseguimento) style="{{ $scadenza->getColore('poligono_approntamento') }}" @endif
                         @if($canEdit)

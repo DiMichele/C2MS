@@ -41,7 +41,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * 
  * @property-read \App\Models\BoardColumn $column Colonna di appartenenza
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Militare[] $militari Militari assegnati
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ActivityAttachment[] $attachments Allegati
  * @property-read \App\Models\User $creator Utente creatore
  */
 class BoardActivity extends Model
@@ -61,6 +60,8 @@ class BoardActivity extends Model
         'column_id',
         'created_by',
         'compagnia_id',
+        'compagnia_mounting_id',
+        'sigla_cpt_suggerita',
         'status',
         'order'
     ];
@@ -107,16 +108,6 @@ class BoardActivity extends Model
     }
 
     /**
-     * Relazione con gli allegati dell'attività
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function attachments()
-    {
-        return $this->hasMany(ActivityAttachment::class, 'activity_id');
-    }
-
-    /**
      * Relazione con l'utente creatore dell'attività
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -134,6 +125,16 @@ class BoardActivity extends Model
     public function compagnia()
     {
         return $this->belongsTo(Compagnia::class);
+    }
+
+    /**
+     * Relazione con la compagnia mounting (organizzatrice)
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function compagniaMounting()
+    {
+        return $this->belongsTo(Compagnia::class, 'compagnia_mounting_id');
     }
 
     // ==========================================
@@ -196,16 +197,6 @@ class BoardActivity extends Model
     }
 
     /**
-     * Ottiene il numero di allegati
-     * 
-     * @return int Numero di allegati
-     */
-    public function getNumeroAllegati()
-    {
-        return $this->attachments()->count();
-    }
-
-    /**
      * Verifica se l'attività ha militari assegnati
      * 
      * @return bool True se ha militari assegnati
@@ -213,16 +204,6 @@ class BoardActivity extends Model
     public function hasMilitariAssegnati()
     {
         return $this->getNumeroMilitari() > 0;
-    }
-
-    /**
-     * Verifica se l'attività ha allegati
-     * 
-     * @return bool True se ha allegati
-     */
-    public function hasAllegati()
-    {
-        return $this->getNumeroAllegati() > 0;
     }
 
     /**

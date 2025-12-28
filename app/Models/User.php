@@ -124,8 +124,8 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permissionName): bool
     {
-        // L'amministratore ha SEMPRE tutti i permessi
-        if ($this->hasRole('amministratore')) {
+        // L'admin e l'amministratore hanno SEMPRE tutti i permessi
+        if ($this->hasRole('admin') || $this->hasRole('amministratore')) {
             return true;
         }
         

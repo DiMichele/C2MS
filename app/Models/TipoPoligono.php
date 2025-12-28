@@ -26,17 +26,22 @@ class TipoPoligono extends Model
     protected $table = 'tipi_poligono';
 
     protected $fillable = [
+        'codice',
         'nome',
         'descrizione',
         'punteggio_minimo',
         'punteggio_massimo',
-        'attivo'
+        'durata_mesi',
+        'attivo',
+        'ordine'
     ];
 
     protected $casts = [
         'attivo' => 'boolean',
         'punteggio_minimo' => 'integer',
-        'punteggio_massimo' => 'integer'
+        'punteggio_massimo' => 'integer',
+        'durata_mesi' => 'integer',
+        'ordine' => 'integer'
     ];
 
     // ==========================================
@@ -49,6 +54,14 @@ class TipoPoligono extends Model
     public function poligoni()
     {
         return $this->hasMany(Poligono::class, 'tipo_poligono_id');
+    }
+
+    /**
+     * Scadenze poligoni di questo tipo
+     */
+    public function scadenzePoligoni()
+    {
+        return $this->hasMany(ScadenzaPoligono::class, 'tipo_poligono_id');
     }
 
     // ==========================================
@@ -69,6 +82,22 @@ class TipoPoligono extends Model
     public function scopePerNome($query)
     {
         return $query->orderBy('nome');
+    }
+
+    /**
+     * Ordinati per ordine e nome
+     */
+    public function scopeOrdinati($query)
+    {
+        return $query->orderBy('ordine')->orderBy('nome');
+    }
+
+    /**
+     * Filtra per codice
+     */
+    public function scopePerCodice($query, $codice)
+    {
+        return $query->where('codice', $codice);
     }
 
     // ==========================================

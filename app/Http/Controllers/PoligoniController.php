@@ -14,24 +14,38 @@ use Illuminate\Support\Facades\Log;
 class PoligoniController extends Controller
 {
     /**
-     * Visualizza la pagina Poligoni
+     * Visualizza la pagina Poligoni (versione statica con i 3 tipi standard)
      */
     public function index(Request $request)
     {
-        // Ottieni tutti i militari con le loro scadenze
-        $militari = Militare::with('scadenza')
-            ->orderByGradoENome()
-            ->get();
+        // Query base per i militari con le loro scadenze
+        $query = Militare::with(['scadenza', 'compagnia', 'grado']);
         
-        // Calcola le scadenze per ogni militare
+        // FILTRO PERMESSI: filtra per compagnia dell'utente se non è admin
+        $user = \Illuminate\Support\Facades\Auth::user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
+            if ($user->compagnia_id) {
+                $query->where('compagnia_id', $user->compagnia_id);
+            }
+        }
+        
+        // Filtro compagnia esplicito
+        if ($request->filled('compagnia_id')) {
+            $query->where('compagnia_id', $request->compagnia_id);
+        }
+        
+        // Ottieni tutti i militari con le loro scadenze
+        $militari = $query->orderByGradoENome()->get();
+        
+        // Calcola le scadenze per ogni militare (HARDCODED per i 3 tipi standard)
         $data = $militari->map(function ($militare) {
             $scadenza = $militare->scadenza;
             
             return [
                 'militare' => $militare,
-                'tiri_approntamento' => $this->calcolaScadenza($scadenza?->tiri_approntamento_data_conseguimento, 6, 'mesi'), // 6 mesi
-                'mantenimento_arma_lunga' => $this->calcolaScadenza($scadenza?->mantenimento_arma_lunga_data_conseguimento, 6, 'mesi'), // 6 mesi
-                'mantenimento_arma_corta' => $this->calcolaScadenza($scadenza?->mantenimento_arma_corta_data_conseguimento, 6, 'mesi'), // 6 mesi
+                'tiri_approntamento' => $this->calcolaScadenza($scadenza?->tiri_approntamento_data_conseguimento, 6, 'mesi'),
+                'mantenimento_arma_lunga' => $this->calcolaScadenza($scadenza?->mantenimento_arma_lunga_data_conseguimento, 6, 'mesi'),
+                'mantenimento_arma_corta' => $this->calcolaScadenza($scadenza?->mantenimento_arma_corta_data_conseguimento, 6, 'mesi'),
             ];
         });
         
@@ -53,7 +67,7 @@ class PoligoniController extends Controller
         if (!$scadenza) {
             $scadenza = new ScadenzaMilitare();
             $scadenza->militare_id = $militare->id;
-            $scadenza->save(); // Salva prima il record con solo il militare_id
+            $scadenza->save();
         }
         
         $campo = $request->campo;
@@ -61,7 +75,7 @@ class PoligoniController extends Controller
         $scadenza->$campo = $request->data;
         $scadenza->save();
         
-        // Calcola la nuova scadenza (tutti i poligoni hanno durata 6 mesi)
+        // Calcola la nuova scadenza
         $scadenzaCalcolata = $this->calcolaScadenza($scadenza->$campo, 6, 'mesi');
         
         return response()->json([
@@ -164,13 +178,13 @@ class PoligoniController extends Controller
                 $sheet->setCellValue('D' . $row, strtoupper($militare->cognome));
                 $sheet->setCellValue('E' . $row, strtoupper($militare->nome));
                 
-                // Tiri Approntamento (6 mesi)
+                // Tiri Approntamento
                 $this->addScadenzaToSheet($sheet, $row, 'F', $scadenza?->tiri_approntamento_data_conseguimento, 6, 'mesi');
                 
-                // Mantenimento Arma Lunga (6 mesi)
+                // Mantenimento Arma Lunga
                 $this->addScadenzaToSheet($sheet, $row, 'H', $scadenza?->mantenimento_arma_lunga_data_conseguimento, 6, 'mesi');
                 
-                // Mantenimento Arma Corta (6 mesi)
+                // Mantenimento Arma Corta
                 $this->addScadenzaToSheet($sheet, $row, 'J', $scadenza?->mantenimento_arma_corta_data_conseguimento, 6, 'mesi');
                 
                 // Bordi
@@ -182,19 +196,17 @@ class PoligoniController extends Controller
             }
             
             // Larghezze colonne
-            $sheet->getColumnDimension('A')->setWidth(6);   // N.
-            $sheet->getColumnDimension('B')->setWidth(25);  // Compagnia
-            $sheet->getColumnDimension('C')->setWidth(12);  // Grado
-            $sheet->getColumnDimension('D')->setWidth(20);  // Cognome
-            $sheet->getColumnDimension('E')->setWidth(20);  // Nome
-            
-            // Date - larghezza aumentata per intestazioni lunghe
-            $sheet->getColumnDimension('F')->setWidth(28);  // TIRI APPRONTAMENTO CONS.
-            $sheet->getColumnDimension('G')->setWidth(28);  // TIRI APPRONTAMENTO SCAD.
-            $sheet->getColumnDimension('H')->setWidth(28);  // MANTENIMENTO A.L. CONS.
-            $sheet->getColumnDimension('I')->setWidth(28);  // MANTENIMENTO A.L. SCAD.
-            $sheet->getColumnDimension('J')->setWidth(28);  // MANTENIMENTO A.C. CONS.
-            $sheet->getColumnDimension('K')->setWidth(28);  // MANTENIMENTO A.C. SCAD.
+            $sheet->getColumnDimension('A')->setWidth(6);
+            $sheet->getColumnDimension('B')->setWidth(25);
+            $sheet->getColumnDimension('C')->setWidth(12);
+            $sheet->getColumnDimension('D')->setWidth(20);
+            $sheet->getColumnDimension('E')->setWidth(20);
+            $sheet->getColumnDimension('F')->setWidth(28);
+            $sheet->getColumnDimension('G')->setWidth(28);
+            $sheet->getColumnDimension('H')->setWidth(28);
+            $sheet->getColumnDimension('I')->setWidth(28);
+            $sheet->getColumnDimension('J')->setWidth(28);
+            $sheet->getColumnDimension('K')->setWidth(28);
             
             // Salva
             $filename = 'Scadenze_Poligoni_' . date('Y-m-d') . '.xlsx';

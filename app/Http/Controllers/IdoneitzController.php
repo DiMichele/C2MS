@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Militare;
 use App\Models\ScadenzaMilitare;
+use App\Models\Compagnia;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class IdoneitzController extends Controller
 {
@@ -18,10 +20,27 @@ class IdoneitzController extends Controller
      */
     public function index(Request $request)
     {
-        // Ottieni tutti i militari con le loro scadenze
-        $militari = Militare::with('scadenza')
-            ->orderByGradoENome()
-            ->get();
+        // Query base per i militari
+        $query = Militare::with(['scadenza', 'compagnia', 'grado']);
+        
+        // FILTRO PERMESSI: Se l'utente non è admin, filtra per la sua compagnia
+        $user = Auth::user();
+        $userCompagniaId = null;
+        
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
+            if ($user->compagnia_id) {
+                $query->where('compagnia_id', $user->compagnia_id);
+                $userCompagniaId = $user->compagnia_id;
+            }
+        }
+        
+        // Filtro compagnia (se l'utente è admin può filtrare per qualsiasi compagnia)
+        if ($request->filled('compagnia_id') && (!$userCompagniaId || $user->hasRole('admin') || $user->hasRole('amministratore'))) {
+            $query->where('compagnia_id', $request->compagnia_id);
+        }
+        
+        // Ordinamento
+        $militari = $query->orderByGradoENome()->get();
         
         // Calcola le scadenze per ogni militare
         $data = $militari->map(function ($militare) {
@@ -36,7 +55,13 @@ class IdoneitzController extends Controller
             ];
         });
         
-        return view('scadenze.idoneita', compact('data'));
+        // Ottieni le compagnie per il filtro (solo se admin o se l'utente non ha compagnia)
+        $compagnie = [];
+        if (!$userCompagniaId || $user->hasRole('admin') || $user->hasRole('amministratore')) {
+            $compagnie = Compagnia::orderBy('nome')->get();
+        }
+        
+        return view('scadenze.idoneita', compact('data', 'compagnie', 'userCompagniaId'));
     }
     
     /**
@@ -44,6 +69,17 @@ class IdoneitzController extends Controller
      */
     public function updateSingola(Request $request, Militare $militare)
     {
+        // Verifica permessi: l'utente può modificare solo militari della sua compagnia
+        $user = Auth::user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
+            if ($user->compagnia_id && $militare->compagnia_id !== $user->compagnia_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Non hai i permessi per modificare questo militare'
+                ], 403);
+            }
+        }
+        
         $request->validate([
             'campo' => 'required|string',
             'data' => 'nullable|date',
@@ -116,10 +152,23 @@ class IdoneitzController extends Controller
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
             
-            // Ottieni tutti i militari con le loro scadenze
-            $militari = Militare::with(['grado', 'compagnia', 'scadenza'])
-                ->orderByGradoENome()
-                ->get();
+            // Query base
+            $query = Militare::with(['grado', 'compagnia', 'scadenza']);
+            
+            // FILTRO PERMESSI: Se l'utente non è admin, filtra per la sua compagnia
+            $user = Auth::user();
+            if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
+                if ($user->compagnia_id) {
+                    $query->where('compagnia_id', $user->compagnia_id);
+                }
+            }
+            
+            // Filtro compagnia
+            if ($request->filled('compagnia_id')) {
+                $query->where('compagnia_id', $request->compagnia_id);
+            }
+            
+            $militari = $query->orderByGradoENome()->get();
             
             // Stile header
             $headerStyle = [
@@ -247,8 +296,13 @@ class IdoneitzController extends Controller
         $oggi = Carbon::now();
         $giorniRimanenti = $oggi->diffInDays($scadenza, false);
         
+        // Verifica se è prenotato (data conseguimento nel futuro)
+        $isPrenotato = $data->isFuture();
+        
         $coloreFondo = 'FFFFFF'; // Default bianco
-        if ($giorniRimanenti < 0) {
+        if ($isPrenotato) {
+            $coloreFondo = '87CEEB'; // Blu chiaro - prenotato
+        } elseif ($giorniRimanenti < 0) {
             $coloreFondo = 'FF6B6B'; // Rosso - scaduto
         } elseif ($giorniRimanenti <= 30) {
             $coloreFondo = 'FFD93D'; // Giallo - in scadenza
