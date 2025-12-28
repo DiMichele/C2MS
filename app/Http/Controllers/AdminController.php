@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Compagnia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -23,7 +24,7 @@ class AdminController extends Controller
      */
     public function usersIndex()
     {
-        $users = User::with('roles')->orderBy('name')->get();
+        $users = User::with(['roles', 'compagnia'])->orderBy('name')->get();
         $roles = Role::all();
         
         return view('admin.users.index', compact('users', 'roles'));
@@ -48,8 +49,9 @@ class AdminController extends Controller
      */
     public function create()
     {
-        $roles = Role::all();
-        return view('admin.create', compact('roles'));
+        $roles = Role::orderBy('name')->get();
+        $compagnie = Compagnia::orderBy('nome')->get();
+        return view('admin.create', compact('roles', 'compagnie'));
     }
 
     /**
@@ -61,6 +63,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users|regex:/^[a-z]+\.[a-z]+$/',
             'role_id' => 'required|exists:roles,id',
+            'compagnia_id' => 'nullable|exists:compagnie,id',
         ], [
             'name.required' => 'Il nome è obbligatorio',
             'username.required' => 'Lo username è obbligatorio',
@@ -68,6 +71,12 @@ class AdminController extends Controller
             'username.unique' => 'Questo username è già in uso',
             'role_id.required' => 'Seleziona un ruolo',
         ]);
+
+        // Verifica se il ruolo richiede una compagnia
+        $role = Role::findOrFail($validated['role_id']);
+        if (!$role->is_global && empty($validated['compagnia_id'])) {
+            return back()->withErrors(['compagnia_id' => 'La compagnia è obbligatoria per questo ruolo.'])->withInput();
+        }
 
         // Genera email automaticamente basata sullo username
         $username = strtolower($validated['username']);
@@ -77,16 +86,18 @@ class AdminController extends Controller
             'name' => $validated['name'],
             'username' => $username,
             'email' => $email,
+            'compagnia_id' => $validated['compagnia_id'] ?? null,
             'password' => Hash::make('11Reggimento'),
-            'must_change_password' => true, // Richiede cambio password al primo accesso
+            'must_change_password' => true,
         ]);
 
         // Assegna ruolo
-        $role = Role::findOrFail($validated['role_id']);
         $user->assignRole($role);
 
+        $compagniaInfo = $user->compagnia_id ? " (Compagnia: {$user->compagnia->nome})" : " (Accesso globale)";
+        
         return redirect()->route('admin.users.index')
-            ->with('success', "Utente {$user->name} creato con successo! Username: {$user->username}");
+            ->with('success', "Utente {$user->name} creato con successo! Username: {$user->username}{$compagniaInfo}");
     }
 
     /**
@@ -94,8 +105,9 @@ class AdminController extends Controller
      */
     public function edit(User $user)
     {
-        $roles = Role::all();
-        return view('admin.edit', compact('user', 'roles'));
+        $roles = Role::orderBy('name')->get();
+        $compagnie = Compagnia::orderBy('nome')->get();
+        return view('admin.edit', compact('user', 'roles', 'compagnie'));
     }
 
     /**
@@ -107,14 +119,22 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username,' . $user->id . '|regex:/^[a-z]+\.[a-z]+$/',
             'role_id' => 'required|exists:roles,id',
+            'compagnia_id' => 'nullable|exists:compagnie,id',
         ], [
             'username.regex' => 'Lo username deve essere nel formato: nome.cognome (tutto minuscolo)',
             'username.unique' => 'Questo username è già in uso',
         ]);
 
+        // Verifica se il ruolo richiede una compagnia
+        $role = Role::findOrFail($validated['role_id']);
+        if (!$role->is_global && empty($validated['compagnia_id'])) {
+            return back()->withErrors(['compagnia_id' => 'La compagnia è obbligatoria per questo ruolo.'])->withInput();
+        }
+
         $user->update([
             'name' => $validated['name'],
             'username' => strtolower($validated['username']),
+            'compagnia_id' => $validated['compagnia_id'] ?? null,
         ]);
 
         // Aggiorna ruolo

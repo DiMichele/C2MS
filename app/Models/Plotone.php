@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Militare;
 use App\Models\Compagnia;
+use App\Traits\BelongsToCompagnia;
 
 /**
  * Modello per i plotoni militari
@@ -27,8 +28,10 @@ use App\Models\Compagnia;
  * I plotoni appartengono a una compagnia e contengono militari.
  * Sono l'unità organizzativa di base per la gestione del personale.
  * 
+ * NOTA: Segregazione automatica per compagnia tramite BelongsToCompagnia
+ * 
  * @package App\Models
- * @version 1.0
+ * @version 1.1
  * 
  * @property int $id ID univoco del plotone
  * @property string $nome Nome del plotone
@@ -45,7 +48,7 @@ use App\Models\Compagnia;
  */
 class Plotone extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompagnia;
 
     /**
      * Nome della tabella associata al modello

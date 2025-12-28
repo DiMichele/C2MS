@@ -17,9 +17,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\BelongsToCompagnia;
 
 /**
  * Modello per le attività della bacheca (board)
+ * 
+ * NOTA: Questo modello usa il trait BelongsToCompagnia per la segregazione
+ * automatica dei dati per compagnia.
  * 
  * Questo modello rappresenta le attività organizzate nella bacheca di gestione,
  * con supporto per drag & drop, allegati e assegnazione di militari.
@@ -45,7 +49,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  */
 class BoardActivity extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompagnia;
 
     /**
      * Gli attributi che sono mass assignable

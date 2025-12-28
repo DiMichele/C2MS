@@ -112,6 +112,7 @@ table.table td,
                 <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">NOME</th>
                 <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">USERNAME</th>
                 <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">RUOLO</th>
+                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">COMPAGNIA</th>
                 <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">CREATO</th>
                 <th width="220" style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">AZIONI</th>
             </tr>
@@ -132,6 +133,15 @@ table.table td,
                             @foreach($user->roles as $role)
                                 {{ $role->display_name }}@if(!$loop->last), @endif
                             @endforeach
+                        </td>
+                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);">
+                            @if($user->compagnia)
+                                <span class="badge bg-info">{{ $user->compagnia->nome }}</span>
+                            @else
+                                <span class="badge bg-success">
+                                    <i class="fas fa-globe me-1"></i>Tutte
+                                </span>
+                            @endif
                         </td>
                         <td style="border: 1px solid rgba(10, 35, 66, 0.2);">{{ $user->created_at->format('d/m/Y') }}</td>
                         <td style="border: 1px solid rgba(10, 35, 66, 0.2);">
@@ -169,7 +179,7 @@ table.table td,
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="text-center text-muted py-4">
+                        <td colspan="6" class="text-center text-muted py-4">
                             <i class="fas fa-users fa-3x mb-3 d-block"></i>
                             Nessun utente presente
                         </td>

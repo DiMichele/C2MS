@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Traits\BelongsToCompagnia;
 
 /**
  * SUGECO: Sistema Unico di Gestione e Controllo
@@ -13,11 +14,16 @@ use Carbon\Carbon;
  * Rappresenta un militare con le sue informazioni personali, grado, assegnazioni
  * e relazioni con certificati, idoneità, presenze e valutazioni.
  * 
- * @version 1.0
+ * NOTA: Questo modello usa il trait BelongsToCompagnia per la segregazione
+ * automatica dei dati per compagnia. Tutte le query saranno filtrate
+ * automaticamente in base alla compagnia dell'utente autenticato.
+ * 
+ * @version 1.1
  * @author Michele Di Gennaro
  * 
  * @property int $id
  * @property int|null $grado_id
+ * @property int|null $compagnia_id
  * @property string $cognome
  * @property string $nome
  * @property int|null $plotone_id
@@ -34,13 +40,14 @@ use Carbon\Carbon;
  * @property-read \App\Models\Grado|null $grado
  * @property-read \App\Models\Plotone|null $plotone
  * @property-read \App\Models\Polo|null $polo
+ * @property-read \App\Models\Compagnia|null $compagnia
  * @property-read \App\Models\Ruolo|null $ruoloCertificati
  * @property-read \App\Models\Mansione|null $mansione
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ScadenzaIdoneita[] $scadenzeIdoneita
  */
 class Militare extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToCompagnia;
 
     /**
      * Nome della tabella associata al modello

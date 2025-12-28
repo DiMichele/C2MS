@@ -39,20 +39,52 @@
                             @enderror
                         </div>
 
-                        <div class="mb-3">
-                            <label for="role_id" class="form-label">Ruolo *</label>
-                            <select class="form-select @error('role_id') is-invalid @enderror" 
-                                    id="role_id" name="role_id" required>
-                                @foreach($roles as $role)
-                                    <option value="{{ $role->id }}" 
-                                        {{ (old('role_id', $user->roles->first()?->id) == $role->id) ? 'selected' : '' }}>
-                                        {{ $role->display_name }} - {{ $role->description }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('role_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="role_id" class="form-label">Ruolo *</label>
+                                <select class="form-select @error('role_id') is-invalid @enderror" 
+                                        id="role_id" name="role_id" required>
+                                    @foreach($roles as $role)
+                                        <option value="{{ $role->id }}" 
+                                            data-is-global="{{ $role->is_global ? 'true' : 'false' }}"
+                                            {{ (old('role_id', $user->roles->first()?->id) == $role->id) ? 'selected' : '' }}>
+                                            {{ $role->display_name }}
+                                            @if($role->is_global)
+                                                (Globale)
+                                            @endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('role_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="col-md-6 mb-3" id="compagniaContainer">
+                                <label for="compagnia_id" class="form-label">
+                                    Compagnia di appartenenza *
+                                    <i class="fas fa-info-circle text-muted" 
+                                       data-bs-toggle="tooltip" 
+                                       title="L'utente vedrà SOLO i dati della compagnia selezionata"></i>
+                                </label>
+                                <select class="form-select @error('compagnia_id') is-invalid @enderror" 
+                                        id="compagnia_id" name="compagnia_id">
+                                    <option value="">-- Tutte le compagnie (Admin) --</option>
+                                    @foreach($compagnie as $compagnia)
+                                        <option value="{{ $compagnia->id }}" 
+                                            {{ old('compagnia_id', $user->compagnia_id) == $compagnia->id ? 'selected' : '' }}>
+                                            {{ $compagnia->nome }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text text-warning" id="compagniaWarning" style="display: none;">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Ruolo globale: l'utente avrà accesso a TUTTE le compagnie
+                                </div>
+                                @error('compagnia_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
 
                         <div class="d-flex gap-2 mt-4">
@@ -71,5 +103,31 @@
         </div>
     </div>
 </div>
+
+<script>
+// Gestione dinamica campo compagnia
+document.getElementById('role_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const isGlobal = selectedOption.getAttribute('data-is-global') === 'true';
+    const compagniaSelect = document.getElementById('compagnia_id');
+    const compagniaWarning = document.getElementById('compagniaWarning');
+    
+    if (isGlobal) {
+        compagniaSelect.required = false;
+        compagniaWarning.style.display = 'block';
+    } else {
+        compagniaSelect.required = true;
+        compagniaWarning.style.display = 'none';
+    }
+});
+
+// Inizializza tooltips e stato iniziale
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(t => new bootstrap.Tooltip(t));
+    
+    document.getElementById('role_id').dispatchEvent(new Event('change'));
+});
+</script>
 @endsection
 

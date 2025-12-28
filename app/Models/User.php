@@ -158,7 +158,95 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->hasRole('admin');
+        return $this->hasRole('admin') || $this->hasRole('amministratore');
+    }
+
+    /**
+     * Verifica se l'utente ha visibilità globale su tutte le compagnie
+     * 
+     * @return bool
+     */
+    public function hasGlobalVisibility(): bool
+    {
+        // Admin e amministratori hanno sempre visibilità globale
+        if ($this->isAdmin()) {
+            return true;
+        }
+        
+        // Verifica permesso specifico
+        return $this->hasPermission('view_all_companies');
+    }
+    
+    /**
+     * Ottiene l'ID della compagnia dell'utente
+     * Restituisce null se l'utente ha visibilità globale
+     * 
+     * @return int|null
+     */
+    public function getCompagniaIdForScope(): ?int
+    {
+        if ($this->hasGlobalVisibility()) {
+            return null; // Nessun filtro
+        }
+        
+        return $this->compagnia_id;
+    }
+    
+    /**
+     * Verifica se l'utente può accedere ai dati di una specifica compagnia
+     * 
+     * @param int $compagniaId
+     * @return bool
+     */
+    public function canAccessCompagnia(int $compagniaId): bool
+    {
+        // Visibilità globale = può accedere a tutto
+        if ($this->hasGlobalVisibility()) {
+            return true;
+        }
+        
+        // Altrimenti può accedere solo alla propria compagnia
+        return $this->compagnia_id === $compagniaId;
+    }
+    
+    /**
+     * Verifica se l'utente può modificare i dati di una specifica compagnia
+     * 
+     * @param int $compagniaId
+     * @return bool
+     */
+    public function canEditCompagnia(int $compagniaId): bool
+    {
+        // Admin possono modificare tutto
+        if ($this->isAdmin()) {
+            return true;
+        }
+        
+        // Verifica permesso di modifica
+        if (!$this->hasPermission('edit_military')) {
+            return false;
+        }
+        
+        // Può modificare solo la propria compagnia
+        return $this->compagnia_id === $compagniaId;
+    }
+    
+    /**
+     * Ottiene le compagnie visibili all'utente
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getVisibleCompagnie()
+    {
+        if ($this->hasGlobalVisibility()) {
+            return \App\Models\Compagnia::orderBy('nome')->get();
+        }
+        
+        if ($this->compagnia_id) {
+            return \App\Models\Compagnia::where('id', $this->compagnia_id)->get();
+        }
+        
+        return collect();
     }
 
     /**
@@ -171,5 +259,15 @@ class User extends Authenticatable
             $permissions = $permissions->merge($role->permissions);
         }
         return $permissions->unique('id');
+    }
+    
+    /**
+     * Ottiene un array di tutti i nomi dei permessi dell'utente
+     * 
+     * @return array
+     */
+    public function getPermissionNames(): array
+    {
+        return $this->getAllPermissions()->pluck('name')->toArray();
     }
 } 
