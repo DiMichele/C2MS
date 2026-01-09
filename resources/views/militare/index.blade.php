@@ -453,7 +453,7 @@ table.table td,
         $larghezzaTotale += $larghezzeColonne[$campo->nome_campo] ?? 180;
     }
 @endphp
-<div class="table-container" style="position: relative; height: 600px; overflow: auto; overflow-x: auto;">
+<div class="table-container" style="position: relative; max-height: calc(100vh - 280px); overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
     <!-- Intestazione fissa -->
      <div class="table-header-fixed" style="position: sticky; top: 0; z-index: 10; background: white;">
          <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ $larghezzaTotale }}px; min-width: {{ $larghezzaTotale }}px;">
