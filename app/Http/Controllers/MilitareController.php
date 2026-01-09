@@ -449,6 +449,9 @@ class MilitareController extends Controller
     public function storeValutazione(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
+            
             $this->militareService->saveValutazione($militare, $request->all());
             
             return redirect()->route('anagrafica.show', $militare->id)
@@ -475,6 +478,9 @@ class MilitareController extends Controller
     public function updateValutazioneField(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
+            
             $result = $this->militareService->updateValutazioneField(
                 $militare,
                 $request->get('field'),
@@ -550,6 +556,9 @@ class MilitareController extends Controller
             // Trova il militare
             $militare = Militare::findOrFail($id);
             
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
+            
             // Carica la foto
             $result = $this->militareService->uploadFoto($militare, $request->file('foto'));
             
@@ -589,6 +598,9 @@ class MilitareController extends Controller
         try {
             // Trova il militare
             $militare = Militare::findOrFail($id);
+            
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
             
             // Elimina la foto
             $result = $this->militareService->deleteFoto($militare);
@@ -1072,6 +1084,9 @@ class MilitareController extends Controller
     public function addPatente(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
+            
             $patente = $request->input('patente');
             
             // Verifica che la patente sia valida
@@ -1129,6 +1144,9 @@ class MilitareController extends Controller
     public function removePatente(Request $request, Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
+            
             $patente = $request->input('patente');
             
             // Elimina la patente

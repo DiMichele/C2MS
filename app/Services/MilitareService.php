@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Militare;
+use App\Models\MilitareValutazione;
 use App\Models\Grado;
 use App\Models\Plotone;
 use App\Models\Polo;
@@ -74,7 +75,7 @@ class MilitareService
         if ($request->filled('presenza')) {
             $presenza = $request->input('presenza');
             $oggi = now();
-            $codiciAssenza = ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM'];
+            $codiciAssenza = config('cpt.codici_assenza', ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM']);
             
             if ($presenza === 'Presente') {
                 // Militari che non hanno codici di assenza oggi
@@ -131,12 +132,21 @@ class MilitareService
     /**
      * Salva una valutazione per un militare
      * 
+     * NOTA: Questa funzionalità richiede la tabella militare_valutazioni.
+     * Se la tabella non esiste, lancia un'eccezione.
+     * 
      * @param Militare $militare
      * @param array $data Dati della valutazione
-     * @return MilitareValutazione
+     * @return MilitareValutazione|null
+     * @throws \RuntimeException Se la tabella non esiste
      */
     public function saveValutazione(Militare $militare, array $data)
     {
+        // Verifica che la tabella esista
+        if (!MilitareValutazione::tableExists()) {
+            throw new \RuntimeException('La funzionalità valutazioni non è disponibile. Tabella militare_valutazioni non trovata.');
+        }
+        
         // Cerca valutazione esistente o crea nuova
         $valutazione = MilitareValutazione::firstOrNew([
             'militare_id' => $militare->id
@@ -155,13 +165,21 @@ class MilitareService
     /**
      * Aggiorna un singolo campo di valutazione
      * 
+     * NOTA: Questa funzionalità richiede la tabella militare_valutazioni.
+     * 
      * @param Militare $militare
      * @param string $field Nome del campo
      * @param mixed $value Valore del campo
      * @return bool
+     * @throws \RuntimeException Se la tabella non esiste
      */
     public function updateValutazioneField(Militare $militare, $field, $value)
     {
+        // Verifica che la tabella esista
+        if (!MilitareValutazione::tableExists()) {
+            throw new \RuntimeException('La funzionalità valutazioni non è disponibile. Tabella militare_valutazioni non trovata.');
+        }
+        
         $valutazione = MilitareValutazione::firstOrNew([
             'militare_id' => $militare->id
         ]);
@@ -697,7 +715,7 @@ class MilitareService
         // Filtro per presenza basato sul CPT
         if ($request->filled('presenza')) {
             $oggi = now();
-            $codiciAssenza = ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM'];
+            $codiciAssenza = config('cpt.codici_assenza', ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM']);
             
             if ($request->presenza === 'Presente') {
                 $query->whereDoesntHave('pianificazioniGiornaliere', function($q) use ($oggi, $codiciAssenza) {

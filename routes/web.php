@@ -487,52 +487,57 @@ Route::prefix('codici-cpt')->name('codici-cpt.')->middleware('permission:admin.a
     Route::post('/aggiorna-ordine', [\App\Http\Controllers\GestioneCptController::class, 'updateOrder'])->name('update-order');
 });
 
-// Debug route per tunnel
-Route::get('/debug-headers', function() {
-    return response()->json([
-        'host' => request()->header('Host'),
-        'x-forwarded-host' => request()->header('X-Forwarded-Host'),
-        'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
-        'request_uri' => request()->server('REQUEST_URI'),
-        'url_full' => request()->fullUrl(),
-        'url_current' => url()->current(),
-        'url_root' => url('/'),
-        'config_app_url' => config('app.url'),
-    ]);
-});
+// Debug routes - SOLO in ambiente di sviluppo e per admin
+if (config('app.debug')) {
+    Route::middleware(['auth', 'permission:admin.access'])->group(function () {
+        // Debug route per tunnel
+        Route::get('/debug-headers', function() {
+            return response()->json([
+                'host' => request()->header('Host'),
+                'x-forwarded-host' => request()->header('X-Forwarded-Host'),
+                'x-forwarded-proto' => request()->header('X-Forwarded-Proto'),
+                'request_uri' => request()->server('REQUEST_URI'),
+                'url_full' => request()->fullUrl(),
+                'url_current' => url()->current(),
+                'url_root' => url('/'),
+                'config_app_url' => config('app.url'),
+            ]);
+        });
 
-// Debug route per asset CSS
-Route::get('/debug-assets', function() {
-    $cssFiles = [
-        'global.css',
-        'common.css',
-        'components.css',
-        'filters.css',
-        'tooltips.css',
-        'layout.css',
-        'toast-system.css',
-        'dashboard.css',
-    ];
-    
-    $results = [];
-    foreach ($cssFiles as $file) {
-        $path = public_path("css/{$file}");
-        $results[$file] = [
-            'exists' => file_exists($path),
-            'readable' => file_exists($path) && is_readable($path),
-            'size' => file_exists($path) ? filesize($path) : 0,
-            'url' => asset("css/{$file}"),
-            'path' => $path,
-        ];
-    }
-    
-    return response()->json([
-        'public_path' => public_path(),
-        'asset_url' => asset('css/layout.css'),
-        'app_url' => config('app.url'),
-        'css_files' => $results,
-    ], 200, [], JSON_PRETTY_PRINT);
-});
+        // Debug route per asset CSS
+        Route::get('/debug-assets', function() {
+            $cssFiles = [
+                'global.css',
+                'common.css',
+                'components.css',
+                'filters.css',
+                'tooltips.css',
+                'layout.css',
+                'toast-system.css',
+                'dashboard.css',
+            ];
+            
+            $results = [];
+            foreach ($cssFiles as $file) {
+                $path = public_path("css/{$file}");
+                $results[$file] = [
+                    'exists' => file_exists($path),
+                    'readable' => file_exists($path) && is_readable($path),
+                    'size' => file_exists($path) ? filesize($path) : 0,
+                    'url' => asset("css/{$file}"),
+                    'path' => $path,
+                ];
+            }
+            
+            return response()->json([
+                'public_path' => public_path(),
+                'asset_url' => asset('css/layout.css'),
+                'app_url' => config('app.url'),
+                'css_files' => $results,
+            ], 200, [], JSON_PRETTY_PRINT);
+        });
+    });
+}
 
     // Rotta parametrica anagrafica (DEVE essere DOPO tutte le altre rotte specifiche)
     // Altrimenti cattura /anagrafica/export-excel, /anagrafica/create, ecc. come ID militare

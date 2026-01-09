@@ -400,6 +400,14 @@ class Militare extends Model
     }
 
     /**
+     * Relazione con le scadenze idoneità sanitarie
+     */
+    public function scadenzeIdoneita()
+    {
+        return $this->hasMany(ScadenzaIdoneita::class, 'militare_id');
+    }
+
+    /**
      * Relazione con le scadenze corsi SPP (dinamica)
      */
     public function scadenzeCorsiSpp()
@@ -597,8 +605,8 @@ class Militare extends Model
             ->with('tipoServizio')
             ->first();
         
-        // Codici che indicano assenza
-        $codiciAssenza = ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM', 'LICENZA', 'MALATTIA', 'RIPOSO'];
+        // Codici che indicano assenza - centralizzati in config/cpt.php
+        $codiciAssenza = config('cpt.codici_assenza', ['LIC', 'MAL', 'RIP', 'CONGEDO', 'PERM']);
         
         if ($isWeekend) {
             // Weekend: assente di default
