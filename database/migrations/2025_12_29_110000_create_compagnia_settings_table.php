@@ -8,6 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // La tabella potrebbe già esistere con struttura diversa
+        // Skip se esiste già
+        if (Schema::hasTable('compagnia_settings')) {
+            return;
+        }
+
         Schema::create('compagnia_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('compagnia_id')
