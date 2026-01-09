@@ -1,6 +1,6 @@
 ﻿@extends('layouts.app')
 
-@section('title', 'Gestione Ruoli')
+@section('title', 'Gestione Ruoli e Permessi')
 
 @section('styles')
 <style>
@@ -79,16 +79,110 @@ table.table td,
 .icon-permission:hover {
     transform: scale(1.15);
 }
+
+/* Separatore categorie */
+.category-separator {
+    background-color: #e9ecef !important;
+    font-weight: 600;
+    color: #495057;
+}
+
+.category-separator th {
+    background-color: #1a3a5c !important;
+    color: #ffc107;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Badge per tipo pagina */
+.badge-operative {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.badge-functional {
+    background-color: #198754;
+    color: white;
+}
+
+.badge-system {
+    background-color: #6c757d;
+    color: white;
+}
+
+/* Legenda */
+.legend-box {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
+}
+
+.legend-icon {
+    width: 24px;
+    text-align: center;
+    margin-right: 10px;
+}
 </style>
 @endsection
 
 @section('content')
-<!-- Header Minimal Solo Titolo -->
+<!-- Header -->
 <div class="text-center mb-4">
-    <h1 class="page-title">Gestione Ruoli</h1>
+    <h1 class="page-title">Gestione Ruoli e Permessi</h1>
+    <p class="text-muted">Configura i permessi per ogni ruolo del sistema</p>
 </div>
 
-<!-- Barra di ricerca centrata sotto il titolo -->
+<!-- Legenda -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="legend-box">
+            <h6 class="mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>Legenda Icone</h6>
+            <div class="legend-item">
+                <span class="legend-icon"><i class="fas fa-eye" style="color: #0dcaf0;"></i></span>
+                <span><strong>Visualizza</strong> - Permesso di lettura/visualizzazione</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon"><i class="fas fa-edit" style="color: #ffc107;"></i></span>
+                <span><strong>Modifica</strong> - Permesso di modifica/scrittura</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon"><i class="fas fa-eye" style="color: #ccc;"></i></span>
+                <span class="text-muted">Icona grigia = permesso disabilitato</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="legend-box">
+            <h6 class="mb-3"><i class="fas fa-layer-group me-2 text-primary"></i>Tipi di Pagine</h6>
+            <div class="legend-item">
+                <span class="badge badge-operative me-2" style="font-size: 0.7rem;">OPERATIVE</span>
+                <span>Usano segregazione per compagnia</span>
+            </div>
+            <div class="legend-item">
+                <span class="badge badge-functional me-2" style="font-size: 0.7rem;">FUNZIONALI</span>
+                <span>Visibilità cross-compagnia (SPP, Infermeria, ecc.)</span>
+            </div>
+            <div class="legend-item">
+                <span class="badge badge-system me-2" style="font-size: 0.7rem;">SISTEMA</span>
+                <span>Permessi di sistema e gestione utenti</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barra di ricerca -->
 <div class="d-flex justify-content-center mb-3">
     <div class="search-container" style="position: relative; width: 500px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
@@ -100,10 +194,11 @@ table.table td,
     </div>
 </div>
 
-<!-- Badge e azioni su riga separata -->
+<!-- Badge e azioni -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <span class="badge bg-primary">{{ $roles->count() }} ruoli</span>
+        <span class="badge bg-secondary ms-2">{{ $permissions->count() }} permessi</span>
     </div>
     
     <a href="{{ route('admin.roles.create') }}" class="btn btn-primary" style="border-radius: 6px !important;">
@@ -129,162 +224,263 @@ table.table td,
 @endif
 
 @php
-            // Raggruppa i permessi per pagina
-            $pageGroups = [];
-            foreach ($permissions as $perm) {
-                // Escludi permessi admin.* dalla visualizzazione
-                if (str_starts_with($perm->name, 'admin.')) {
-                    continue;
-                }
-                
-                $pageName = preg_replace('/\.(view|edit)$/', '', $perm->name);
-                if (!isset($pageGroups[$pageName])) {
-                    $pageGroups[$pageName] = [
-                        'category' => $perm->category,
-                        'display_name' => ucfirst(str_replace(['_', '.'], ' ', $pageName)),
-                        'permissions' => []
-                    ];
-                }
-                $pageGroups[$pageName]['permissions'][] = $perm;
-            }
-            
-            // Ordina per categoria e nome
-            uasort($pageGroups, function($a, $b) {
-                if ($a['category'] === $b['category']) {
-                    return strcmp($a['display_name'], $b['display_name']);
-                }
-                return strcmp($a['category'], $b['category']);
-            });
-        @endphp
+    // Organizza i permessi per categoria e tipo
+    $categorizedPermissions = [
+        'visibilita' => [
+            'title' => 'VISIBILITÀ DATI',
+            'type' => 'system',
+            'description' => 'Permessi base per accesso alle pagine operative standard',
+            'permissions' => [],
+        ],
+        'operative_standard' => [
+            'title' => 'PAGINE OPERATIVE STANDARD',
+            'type' => 'operative',
+            'description' => 'Pagine con segregazione per compagnia (owner + acquired)',
+            'permissions' => [],
+        ],
+        'funzionali_speciali' => [
+            'title' => 'PAGINE FUNZIONALI SPECIALI',
+            'type' => 'functional',
+            'description' => 'Pagine cross-compagnia (SPP, Infermeria, Armamento)',
+            'permissions' => [],
+        ],
+        'gestione_utenti' => [
+            'title' => 'GESTIONE UTENTI',
+            'type' => 'system',
+            'description' => 'Permessi per gestione utenti e ruoli',
+            'permissions' => [],
+        ],
+        'configurazione' => [
+            'title' => 'CONFIGURAZIONE',
+            'type' => 'system',
+            'description' => 'Impostazioni funzionali per compagnia',
+            'permissions' => [],
+        ],
+    ];
 
-        <div class="table-container" style="position: relative; overflow: auto;">
-            <table class="table table-sm table-bordered mb-0">
-                <thead style="background: #0a2342; position: sticky; top: 0; z-index: 10;">
-                    <tr>
-                        <th class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">
-                            <i class="fas fa-user-tag me-2"></i>
-                            RUOLO
-                        </th>
-                        @foreach($pageGroups as $pageName => $pageData)
-                        <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">
-                            {{ strtoupper($pageData['display_name']) }}
-                        </th>
-                        @endforeach
-                        <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">
-                            ELIMINA
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($roles as $role)
-                    @php
-                        $isProtectedRole = ($role->name === 'amministratore');
-                    @endphp
-                    <tr>
-                        <td class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.05)' : 'white' }};">
-                            <strong>{{ $role->display_name }}</strong>
-                            @if($isProtectedRole)
-                            <div class="mt-1">
-                                <span class="badge bg-danger" style="font-size: 0.65rem;">
-                                    <i class="fas fa-lock me-1"></i>PROTETTO
-                                </span>
-                            </div>
-                            @endif
-                        </td>
-                        @foreach($pageGroups as $pageName => $pageData)
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center; background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.03)' : 'white' }};">
-                            <form action="{{ route('admin.roles.permissions.update', $role) }}" 
-                                  method="POST" 
-                                  class="permission-form"
-                                  data-role-id="{{ $role->id }}"
-                                  data-protected="{{ $isProtectedRole ? 'true' : 'false' }}">
-                                @csrf
-                                
-                                @php
-                                    $viewPerm = collect($pageData['permissions'])->firstWhere('type', 'read');
-                                    $editPerm = collect($pageData['permissions'])->firstWhere('type', 'write');
-                                @endphp
-                                
-                                <div class="d-flex justify-content-center gap-3">
-                                    @if($viewPerm)
-                                    <div class="form-check mb-0">
-                                        <input class="form-check-input permission-checkbox" 
-                                               type="checkbox" 
-                                               name="permissions[]" 
-                                               value="{{ $viewPerm->id }}"
-                                               id="perm-{{ $role->id }}-{{ $viewPerm->id }}"
-                                               data-role-id="{{ $role->id }}"
-                                               @if($role->permissions->contains($viewPerm->id)) checked @endif
-                                               @if($isProtectedRole) disabled @endif
-                                               style="display: none;">
-                                        <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
-                                               for="perm-{{ $role->id }}-{{ $viewPerm->id }}" 
-                                               title="{{ $isProtectedRole ? 'Ruolo protetto - Tutti i permessi abilitati' : ($role->permissions->contains($viewPerm->id) ? 'Disabilita' : 'Abilita') . ' Lettura - ' . $pageData['display_name'] }}"
-                                               data-enabled-text="Disabilita Lettura - {{ $pageData['display_name'] }}"
-                                               data-disabled-text="Abilita Lettura - {{ $pageData['display_name'] }}"
-                                               style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
-                                            <i class="fas fa-eye" style="color: {{ $role->permissions->contains($viewPerm->id) || $isProtectedRole ? '#0dcaf0' : '#ccc' }};"></i>
-                                        </label>
-                                    </div>
-                                    @endif
-                                    
-                                    @if($editPerm)
-                                    <div class="form-check mb-0">
-                                        <input class="form-check-input permission-checkbox" 
-                                               type="checkbox" 
-                                               name="permissions[]" 
-                                               value="{{ $editPerm->id }}"
-                                               id="perm-{{ $role->id }}-{{ $editPerm->id }}"
-                                               data-role-id="{{ $role->id }}"
-                                               @if($role->permissions->contains($editPerm->id)) checked @endif
-                                               @if($isProtectedRole) disabled @endif
-                                               style="display: none;">
-                                        <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
-                                               for="perm-{{ $role->id }}-{{ $editPerm->id }}" 
-                                               title="{{ $isProtectedRole ? 'Ruolo protetto - Tutti i permessi abilitati' : ($role->permissions->contains($editPerm->id) ? 'Disabilita' : 'Abilita') . ' Modifica - ' . $pageData['display_name'] }}"
-                                               data-enabled-text="Disabilita Modifica - {{ $pageData['display_name'] }}"
-                                               data-disabled-text="Abilita Modifica - {{ $pageData['display_name'] }}"
-                                               style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
-                                            <i class="fas fa-edit" style="color: {{ $role->permissions->contains($editPerm->id) || $isProtectedRole ? '#ffc107' : '#ccc' }};"></i>
-                                        </label>
-                                    </div>
-                                    @endif
-                                </div>
-                            </form>
-                        </td>
-                        @endforeach
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center;">
+    foreach ($permissions as $perm) {
+        // Escludi permessi admin.* dalla visualizzazione
+        if (str_starts_with($perm->name, 'admin.')) {
+            continue;
+        }
+
+        $category = $perm->category ?? 'other';
+        
+        // Mappa le categorie vecchie alle nuove
+        if ($category === 'segregation') {
+            $category = 'visibilita';
+        }
+        
+        // Se la categoria non esiste, mettila in operative_standard
+        if (!isset($categorizedPermissions[$category])) {
+            // Determina la categoria basandosi su page_type se disponibile
+            $pageType = $perm->page_type ?? 'operative_standard';
+            if ($pageType === 'functional_special') {
+                $category = 'funzionali_speciali';
+            } else {
+                $category = 'operative_standard';
+            }
+        }
+        
+        // Raggruppa per pagina (es. anagrafica.view e anagrafica.edit insieme)
+        $pageName = preg_replace('/\.(view|edit)$/', '', $perm->name);
+        
+        if (!isset($categorizedPermissions[$category]['permissions'][$pageName])) {
+            $categorizedPermissions[$category]['permissions'][$pageName] = [
+                'display_name' => $perm->display_name ? preg_replace('/ - (Visualizza|Modifica)$/', '', $perm->display_name) : ucfirst(str_replace(['_', '.'], ' ', $pageName)),
+                'items' => [],
+            ];
+        }
+        
+        $categorizedPermissions[$category]['permissions'][$pageName]['items'][] = $perm;
+    }
+
+    // Rimuovi categorie vuote
+    $categorizedPermissions = array_filter($categorizedPermissions, fn($cat) => !empty($cat['permissions']));
+@endphp
+
+<div class="table-container" style="position: relative; overflow: auto;">
+    <table class="table table-sm table-bordered mb-0">
+        <thead style="background: #0a2342; position: sticky; top: 0; z-index: 10;">
+            <tr>
+                <th class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white; min-width: 200px;">
+                    <i class="fas fa-user-tag me-2"></i>
+                    RUOLO
+                </th>
+                
+                @foreach($categorizedPermissions as $catKey => $catData)
+                    @foreach($catData['permissions'] as $pageName => $pageData)
+                    <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 8px 6px; color: white; min-width: 100px; font-size: 0.75rem;" 
+                        title="{{ $pageData['display_name'] }}" 
+                        data-category="{{ $catKey }}">
+                        <div class="text-center">
+                            <div>{{ Str::limit(strtoupper($pageData['display_name']), 20) }}</div>
+                            <span class="badge {{ $catData['type'] === 'functional' ? 'badge-functional' : ($catData['type'] === 'system' ? 'badge-system' : 'badge-operative') }}" style="font-size: 0.55rem; margin-top: 2px;">
+                                {{ $catData['type'] === 'functional' ? 'FUNZ.' : ($catData['type'] === 'system' ? 'SIS.' : 'OPER.') }}
+                            </span>
+                        </div>
+                    </th>
+                    @endforeach
+                @endforeach
+                
+                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white; min-width: 80px;">
+                    ELIMINA
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($roles as $role)
+            @php
+                $isProtectedRole = ($role->name === 'amministratore');
+            @endphp
+            <tr>
+                <td class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.05)' : 'white' }};">
+                    <strong>{{ $role->display_name }}</strong>
+                    @if($isProtectedRole)
+                    <div class="mt-1">
+                        <span class="badge bg-danger" style="font-size: 0.65rem;">
+                            <i class="fas fa-lock me-1"></i>PROTETTO
+                        </span>
+                    </div>
+                    @endif
+                    @if($role->is_global)
+                    <div class="mt-1">
+                        <span class="badge bg-info" style="font-size: 0.65rem;">
+                            <i class="fas fa-globe me-1"></i>GLOBALE
+                        </span>
+                    </div>
+                    @endif
+                </td>
+                
+                @foreach($categorizedPermissions as $catKey => $catData)
+                    @foreach($catData['permissions'] as $pageName => $pageData)
+                    <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center; background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.03)' : 'white' }};">
+                        <form action="{{ route('admin.roles.permissions.update', $role) }}" 
+                              method="POST" 
+                              class="permission-form"
+                              data-role-id="{{ $role->id }}"
+                              data-protected="{{ $isProtectedRole ? 'true' : 'false' }}">
+                            @csrf
+                            
                             @php
-                                // Solo il ruolo "amministratore" non puÃ² essere eliminato
-                                $isSystemRole = ($role->name === 'amministratore');
-                                $usersCount = $role->users()->count();
+                                $viewPerm = collect($pageData['items'])->firstWhere('type', 'read');
+                                $editPerm = collect($pageData['items'])->firstWhere('type', 'write');
                             @endphp
                             
-                            @if(!$isSystemRole)
-                                <form action="{{ route('admin.roles.destroy', $role) }}" 
-                                      method="POST" 
-                                      class="d-inline delete-role-form"
-                                      data-role-name="{{ $role->display_name }}"
-                                      data-users-count="{{ $usersCount }}">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="button" 
-                                            class="btn btn-sm btn-outline-danger delete-role-btn" 
-                                            title="Elimina ruolo">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                            @else
-                                <span class="text-muted" title="Ruolo di sistema non eliminabile">
-                                    <i class="fas fa-lock"></i>
-                                </span>
-                            @endif
-                        </td>
-                    </tr>
+                            <div class="d-flex justify-content-center gap-2">
+                                @if($viewPerm)
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input permission-checkbox" 
+                                           type="checkbox" 
+                                           name="permissions[]" 
+                                           value="{{ $viewPerm->id }}"
+                                           id="perm-{{ $role->id }}-{{ $viewPerm->id }}"
+                                           data-role-id="{{ $role->id }}"
+                                           @if($role->permissions->contains($viewPerm->id)) checked @endif
+                                           @if($isProtectedRole) disabled @endif
+                                           style="display: none;">
+                                    <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
+                                           for="perm-{{ $role->id }}-{{ $viewPerm->id }}" 
+                                           title="{{ $viewPerm->display_name ?? $viewPerm->name }}: {{ $viewPerm->description ?? '' }}"
+                                           data-enabled-text="Disabilita: {{ $viewPerm->display_name ?? $viewPerm->name }}"
+                                           data-disabled-text="Abilita: {{ $viewPerm->display_name ?? $viewPerm->name }}"
+                                           style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
+                                        <i class="fas fa-eye" style="color: {{ $role->permissions->contains($viewPerm->id) || $isProtectedRole ? '#0dcaf0' : '#ccc' }};"></i>
+                                    </label>
+                                </div>
+                                @endif
+                                
+                                @if($editPerm)
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input permission-checkbox" 
+                                           type="checkbox" 
+                                           name="permissions[]" 
+                                           value="{{ $editPerm->id }}"
+                                           id="perm-{{ $role->id }}-{{ $editPerm->id }}"
+                                           data-role-id="{{ $role->id }}"
+                                           @if($role->permissions->contains($editPerm->id)) checked @endif
+                                           @if($isProtectedRole) disabled @endif
+                                           style="display: none;">
+                                    <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
+                                           for="perm-{{ $role->id }}-{{ $editPerm->id }}" 
+                                           title="{{ $editPerm->display_name ?? $editPerm->name }}: {{ $editPerm->description ?? '' }}"
+                                           data-enabled-text="Disabilita: {{ $editPerm->display_name ?? $editPerm->name }}"
+                                           data-disabled-text="Abilita: {{ $editPerm->display_name ?? $editPerm->name }}"
+                                           style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
+                                        <i class="fas fa-edit" style="color: {{ $role->permissions->contains($editPerm->id) || $isProtectedRole ? '#ffc107' : '#ccc' }};"></i>
+                                    </label>
+                                </div>
+                                @endif
+                                
+                                {{-- Se non ci sono permessi view/edit, mostra i permessi singoli --}}
+                                @if(!$viewPerm && !$editPerm)
+                                    @foreach($pageData['items'] as $singlePerm)
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input permission-checkbox" 
+                                               type="checkbox" 
+                                               name="permissions[]" 
+                                               value="{{ $singlePerm->id }}"
+                                               id="perm-{{ $role->id }}-{{ $singlePerm->id }}"
+                                               data-role-id="{{ $role->id }}"
+                                               @if($role->permissions->contains($singlePerm->id)) checked @endif
+                                               @if($isProtectedRole) disabled @endif
+                                               style="display: none;">
+                                        <label class="form-check-label icon-permission {{ $isProtectedRole ? 'protected-permission' : '' }}" 
+                                               for="perm-{{ $role->id }}-{{ $singlePerm->id }}" 
+                                               title="{{ $singlePerm->display_name ?? $singlePerm->name }}"
+                                               style="{{ $isProtectedRole ? 'cursor: not-allowed; opacity: 0.7;' : '' }}">
+                                            <i class="fas fa-check-circle" style="color: {{ $role->permissions->contains($singlePerm->id) || $isProtectedRole ? '#198754' : '#ccc' }};"></i>
+                                        </label>
+                                    </div>
+                                    @endforeach
+                                @endif
+                            </div>
+                        </form>
+                    </td>
                     @endforeach
-                </tbody>
-            </table>
-        </div>
+                @endforeach
+                
+                <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center;">
+                    @php
+                        $isSystemRole = ($role->name === 'amministratore');
+                        $usersCount = $role->users()->count();
+                    @endphp
+                    
+                    @if(!$isSystemRole)
+                        <form action="{{ route('admin.roles.destroy', $role) }}" 
+                              method="POST" 
+                              class="d-inline delete-role-form"
+                              data-role-name="{{ $role->display_name }}"
+                              data-users-count="{{ $usersCount }}">
+                            @csrf
+                            @method('DELETE')
+                            <button type="button" 
+                                    class="btn btn-sm btn-outline-danger delete-role-btn" 
+                                    title="Elimina ruolo">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    @else
+                        <span class="text-muted" title="Ruolo di sistema non eliminabile">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    @endif
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
+
+<!-- Info box sotto la tabella -->
+<div class="alert alert-info mt-4">
+    <h6><i class="fas fa-lightbulb me-2"></i>Come funzionano i permessi</h6>
+    <ul class="mb-0 small">
+        <li><strong>Pagine Operative Standard:</strong> Richiedono "Visualizza dati propria compagnia" o "Visualizza tutte le compagnie" per accedere. Mostrano solo i dati della compagnia dell'utente.</li>
+        <li><strong>Pagine Funzionali Speciali:</strong> Accesso indipendente dalla compagnia. L'utente vede tutti i militari di tutte le compagnie, ma solo per quella specifica funzione (es. SPP vede tutti per i corsi, ma non accede all'anagrafica).</li>
+        <li><strong>Regola d'oro:</strong> I permessi di una pagina NON conferiscono diritti su altre pagine.</li>
+    </ul>
+</div>
 
 <!-- Modale Conferma Eliminazione Ruolo -->
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
@@ -375,7 +571,7 @@ document.addEventListener('DOMContentLoaded', function() {
             alertDiv.style.zIndex = '9999';
             alertDiv.innerHTML = `
                 <i class="fas fa-lock me-2"></i>
-                <strong>Ruolo Protetto:</strong> L'Amministratore ha automaticamente tutti i permessi e non puÃ² essere modificato.
+                <strong>Ruolo Protetto:</strong> L'Amministratore ha automaticamente tutti i permessi e non può essere modificato.
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             `;
             document.body.appendChild(alertDiv);
@@ -412,8 +608,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.checked) {
                 if (icon.classList.contains('fa-eye')) {
                     icon.style.color = '#0dcaf0';
-                } else {
+                } else if (icon.classList.contains('fa-edit')) {
                     icon.style.color = '#ffc107';
+                } else {
+                    icon.style.color = '#198754';
                 }
                 label.setAttribute('title', label.getAttribute('data-enabled-text'));
             } else {
@@ -529,7 +727,7 @@ setTimeout(() => {
     });
 }, 5000);
 
-// FunzionalitÃ  di ricerca ruolo
+// Funzionalità di ricerca ruolo
 document.getElementById('searchRole').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('table tbody tr');
@@ -549,5 +747,3 @@ document.getElementById('searchRole').addEventListener('input', function() {
 });
 </script>
 @endpush
-
-

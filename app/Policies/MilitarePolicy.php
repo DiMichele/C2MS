@@ -150,6 +150,9 @@ class MilitarePolicy
     /**
      * Verifica se il militare è "acquisito" dalla compagnia dell'utente.
      * Acquisito = partecipa ad almeno un'attività della compagnia dell'utente
+     * 
+     * SICUREZZA: L'acquisizione è valida solo se l'attività esiste ancora
+     * (non è stata cancellata). Questo evita "acquisizioni fantasma".
      */
     public function isAcquired(User $user, Militare $militare): bool
     {
@@ -162,7 +165,8 @@ class MilitarePolicy
             return false;
         }
         
-        // Verifica se il militare partecipa ad attività della compagnia dell'utente
+        // Verifica se il militare partecipa ad attività ESISTENTI della compagnia dell'utente
+        // NOTA: La join implicita garantisce che l'attività esista ancora
         return \DB::table('activity_militare')
             ->join('board_activities', 'activity_militare.activity_id', '=', 'board_activities.id')
             ->where('activity_militare.militare_id', $militare->id)

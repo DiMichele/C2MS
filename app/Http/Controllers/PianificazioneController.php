@@ -50,27 +50,25 @@ class PianificazioneController extends Controller
         }
         
         // Ottieni tutti i militari con le loro informazioni e applica filtri
-        $militariQuery = Militare::with([
-            'grado',
-            'plotone',
-            'polo',
-            'mansione',
-            'ruolo', 
-            'approntamentoPrincipale',
-            'patenti',
-            'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
-                $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
-                      ->with(['tipoServizio', 'tipoServizio.codiceGerarchia']);
-            }
-        ]);
-
-        // FILTRO PERMESSI: filtra per compagnia dell'utente se non è admin
-        $user = \Illuminate\Support\Facades\Auth::user();
-        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-            if ($user->compagnia_id) {
-                $militariQuery->where('compagnia_id', $user->compagnia_id);
-            }
-        }
+        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
+        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+        //
+        // Lo scope withVisibilityFlags() aggiunge is_owner e is_acquired calcolati
+        // direttamente in SQL per evitare N+1 nelle liste.
+        $militariQuery = Militare::withVisibilityFlags()
+            ->with([
+                'grado',
+                'plotone',
+                'polo',
+                'mansione',
+                'ruolo', 
+                'approntamentoPrincipale',
+                'patenti',
+                'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
+                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                          ->with(['tipoServizio', 'tipoServizio.codiceGerarchia']);
+                }
+            ]);
 
         // Applica filtri
         if ($request->filled('compagnia')) {
@@ -566,14 +564,11 @@ class PianificazioneController extends Controller
             ], 403);
         }
         
-        // VERIFICA PERMESSI: Solo owner possono modificare CPT
-        if (!$militare->isEditableBy(auth()->user())) {
-            \Log::warning('Tentativo di modifica CPT militare acquisito', [
-                'user_id' => auth()->id(),
-                'militare_id' => $militare->id,
-                'relation_type' => $militare->getRelationType(auth()->user())
-            ]);
-            
+        try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            // updateCpt verifica che sia owner E abbia permesso cpt.edit
+            $this->authorize('updateCpt', $militare);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Non puoi modificare il CPT di questo militare. I militari acquisiti sono in sola lettura.'
@@ -670,8 +665,10 @@ class PianificazioneController extends Controller
             ], 403);
         }
         
-        // VERIFICA PERMESSI: Solo owner possono modificare CPT
-        if (!$militare->isEditableBy(auth()->user())) {
+        try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('updateCpt', $militare);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Non puoi modificare il CPT di questo militare. I militari acquisiti sono in sola lettura.'

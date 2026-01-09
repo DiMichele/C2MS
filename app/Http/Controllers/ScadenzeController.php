@@ -14,18 +14,12 @@ class ScadenzeController extends Controller
      */
     public function index(Request $request)
     {
-        // Carica tutti i militari con le loro scadenze
-        $query = Militare::with(['scadenza', 'grado', 'plotone', 'compagnia'])
+        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
+        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+        $query = Militare::withVisibilityFlags()
+            ->with(['scadenza', 'grado', 'plotone', 'compagnia'])
             ->orderBy('cognome')
             ->orderBy('nome');
-
-        // FILTRO PERMESSI: filtra per compagnia dell'utente se non è admin
-        $user = \Illuminate\Support\Facades\Auth::user();
-        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-            if ($user->compagnia_id) {
-                $query->where('compagnia_id', $user->compagnia_id);
-            }
-        }
 
         $militari = $query->get();
 

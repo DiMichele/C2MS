@@ -486,8 +486,11 @@ table.table td,
             <tbody id="militariTableBody">
             @forelse($militari as $m)
                 @php
-                    $isAcquired = $m->isAcquiredBy(auth()->user());
-                    $isReadOnly = $m->isReadOnlyFor(auth()->user());
+                    // PERFORMANCE: Usa attributi calcolati in query con withVisibilityFlags() (evita N+1)
+                    // NOTA: Se vedi errori qui, assicurati che il controller usi Militare::withVisibilityFlags()
+                    $isAcquired = (bool) ($m->is_acquired ?? false);
+                    $isOwner = (bool) ($m->is_owner ?? true);
+                    $isReadOnly = !$isOwner || !auth()->user()->can('anagrafica.edit');
                 @endphp
                 <tr id="militare-{{ $m->id }}" 
                     class="militare-row {{ $isAcquired ? 'acquired-militare' : '' }}" 

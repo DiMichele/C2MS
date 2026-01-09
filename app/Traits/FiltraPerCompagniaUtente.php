@@ -6,38 +6,29 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Trait per filtrare automaticamente i risultati per compagnia dell'utente
+ * @deprecated Questo trait è DEPRECATO. Usa il Global Scope CompagniaScope invece.
  * 
- * Se l'utente non è admin/amministratore e ha una compagnia_id assegnata,
- * i risultati verranno filtrati per mostrare solo i militari della sua compagnia.
+ * Il Global Scope (BelongsToCompagnia) filtra automaticamente per owner + acquired.
+ * Questo trait filtrava SOLO per owner, tagliando fuori i militari "acquired".
+ * 
+ * I metodi di questo trait ora sono no-op per retrocompatibilità.
+ * 
+ * @see \App\Scopes\CompagniaScope
+ * @see \App\Traits\BelongsToCompagnia
  */
 trait FiltraPerCompagniaUtente
 {
     /**
-     * Applica il filtro compagnia alla query dei militari
+     * @deprecated NON USARE - Il Global Scope CompagniaScope filtra già automaticamente.
+     * Questo metodo ora è un no-op per retrocompatibilità.
      * 
      * @param Builder $query
      * @return Builder
      */
     protected function applicaFiltroCompagniaUtente(Builder $query): Builder
     {
-        $user = Auth::user();
-        
-        // Se non c'è utente autenticato, non filtrare
-        if (!$user) {
-            return $query;
-        }
-        
-        // Admin e amministratori vedono tutto
-        if ($user->hasRole('admin') || $user->hasRole('amministratore')) {
-            return $query;
-        }
-        
-        // Se l'utente ha una compagnia assegnata, filtra per quella compagnia
-        if ($user->compagnia_id) {
-            $query->where('compagnia_id', $user->compagnia_id);
-        }
-        
+        // DEPRECATO: Il Global Scope CompagniaScope filtra già per owner + acquired
+        // Restituisce la query senza modifiche
         return $query;
     }
     

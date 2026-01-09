@@ -130,14 +130,27 @@
                     <div class="mb-3">
                         <label for="militari" class="form-label fw-bold">Militari Coinvolti</label>
                         <select class="form-control select2" id="militari" name="militari[]" multiple>
-                            @foreach(App\Models\Militare::with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
+                            @php
+                                // Verifica se l'utente può vedere tutti i militari nella Board
+                                $userCal = auth()->user();
+                                $canViewAllMilitariCal = $userCal && (
+                                    $userCal->isGlobalAdmin() || 
+                                    $userCal->hasPermission('board.view_all_militari') ||
+                                    $userCal->hasPermission('view_all_companies')
+                                );
+                                
+                                $militariCalQuery = $canViewAllMilitariCal 
+                                    ? App\Models\Militare::withoutGlobalScopes() 
+                                    : App\Models\Militare::query();
+                            @endphp
+                            @foreach($militariCalQuery->with(['grado', 'plotone', 'polo'])->orderByGradoENome()->get() as $militare)
                             <option value="{{ $militare->id }}">
                                 {{ optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
                                 @if($militare->plotone) - {{ $militare->plotone->nome }}@endif @if($militare->polo), {{ $militare->polo->nome }}@endif
                             </option>
                             @endforeach
                         </select>
-                        <small class="form-text text-muted">Seleziona uno o piÃ¹ militari coinvolti nell'attivitÃ </small>
+                        <small class="form-text text-muted">Seleziona uno o più militari coinvolti nell'attività</small>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">

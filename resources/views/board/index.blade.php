@@ -1,19 +1,19 @@
 ﻿@extends('layouts.app')
 
-@section('title', 'Hub AttivitÃ ')
+@section('title', 'Hub Attività')
 
 @section('content')
 <div class="container-fluid">
     <!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="page-title mb-0">Hub AttivitÃ  - Vista Battaglione</h1>
+    <h1 class="page-title mb-0">Hub Attività - Vista Battaglione</h1>
     
     <div class="d-flex align-items-center gap-3">
         <a href="{{ route('board.calendar') }}" class="btn btn-outline-primary">
             <i class="fas fa-calendar"></i> Vista Calendario
         </a>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createActivityModal">
-            <i class="fas fa-plus"></i> Nuova AttivitÃ 
+            <i class="fas fa-plus"></i> Nuova Attività
         </button>
     </div>
 </div>
@@ -111,10 +111,10 @@
                                         <i class="far fa-calendar-alt me-1"></i>{{ $activity->start_date->format('d/m/Y') }}
                                         @if($activity->end_date) - {{ $activity->end_date->format('d/m/Y') }} @endif
                                     </div>
-                                    <!-- Descrizione con piÃ¹ testo visibile -->
+                                    <!-- Descrizione con più testo visibile -->
                                     <p class="card-text small mb-3" style="max-height: 60px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;" title="{{ $activity->description ?: 'Nessuna descrizione' }}">{{ $activity->description ?: 'Nessuna descrizione' }}</p>
                                     
-                                    <!-- Militari coinvolti - Solo numero con possibilitÃ  di click -->
+                                    <!-- Militari coinvolti - Solo numero con possibilità  di click -->
                                     @if($activity->militari->isNotEmpty())
                                     <div class="mb-2">
                                         <div class="d-flex align-items-center justify-content-between">
@@ -261,7 +261,7 @@
         </div>
     </div>
 
-<!-- Modal per visualizzare militari di ogni attivitÃ  -->
+<!-- Modal per visualizzare militari di ogni attività  -->
 @foreach($columns as $column)
     @foreach($column->activities as $activity)
         @if($activity->militari->isNotEmpty())
@@ -320,7 +320,7 @@
                     <div class="modal-footer bg-light">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
                         <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-primary">
-                            <i class="fas fa-eye me-1"></i>Dettagli AttivitÃ 
+                            <i class="fas fa-eye me-1"></i>Dettagli Attività 
                         </a>
                     </div>
                 </div>
@@ -330,7 +330,7 @@
     @endforeach
 @endforeach
 
-<!-- Modal per la creazione di nuove attivitÃ  -->
+<!-- Modal per la creazione di nuove attività  -->
 <div class="modal fade" id="createActivityModal" tabindex="-1" aria-labelledby="createActivityModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
@@ -338,7 +338,7 @@
         @csrf
         <div class="modal-header bg-light">
           <h5 class="modal-title" id="createActivityModalLabel">
-            <i class="fas fa-plus-circle text-primary me-2"></i>Crea Nuova AttivitÃ 
+            <i class="fas fa-plus-circle text-primary me-2"></i>Crea Nuova Attività 
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
@@ -353,17 +353,17 @@
               </option>
               @endforeach
             </select>
-            <small class="form-text text-muted">Indica quale compagnia organizza/monta l'attivitÃ </small>
+            <small class="form-text text-muted">Indica quale compagnia organizza/monta l'attività </small>
           </div>
 
           <div class="mb-3">
             <label for="title" class="form-label fw-bold">Titolo *</label>
-            <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'attivitÃ " required>
+            <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'attività " required>
           </div>
           
           <div class="mb-3">
             <label for="description" class="form-label fw-bold">Descrizione</label>
-            <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrivi l'attivitÃ  (opzionale)"></textarea>
+            <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrivi l'attività  (opzionale)"></textarea>
           </div>
           
           <div class="row">
@@ -374,7 +374,7 @@
             <div class="col-md-6 mb-3">
               <label for="end_date" class="form-label fw-bold">Data Fine</label>
               <input type="date" class="form-control" id="end_date" name="end_date">
-              <small class="form-text text-muted">Se non specificata, sarÃ  considerata la stessa data di inizio</small>
+              <small class="form-text text-muted">Se non specificata, sarà  considerata la stessa data di inizio</small>
             </div>
           </div>
           
@@ -411,8 +411,20 @@
               <!-- Lista militari disponibili -->
               <div class="militari-list-section" id="militari-list">
                 @php
+                    // Verifica se l'utente può vedere tutti i militari nella Board
+                    $user = auth()->user();
+                    $canViewAllMilitari = $user && (
+                        $user->isGlobalAdmin() || 
+                        $user->hasPermission('board.view_all_militari') ||
+                        $user->hasPermission('view_all_companies')
+                    );
+                    
                     // Query con ordinamento corretto: prima compagnia (110, 124, 127), poi grado decrescente
-                    $militari = App\Models\Militare::with(['grado', 'compagnia'])
+                    $militariQuery = $canViewAllMilitari 
+                        ? App\Models\Militare::withoutGlobalScopes() 
+                        : App\Models\Militare::query();
+                    
+                    $militari = $militariQuery->with(['grado', 'compagnia'])
                         ->leftJoin('compagnie', 'militari.compagnia_id', '=', 'compagnie.id')
                         ->leftJoin('gradi', 'militari.grado_id', '=', 'gradi.id')
                         ->orderByRaw("CASE 
@@ -480,7 +492,7 @@
 
 @section('styles')
 <style>
-    /* Stile per il cursore di trascinamento su tutto il documento quando trascinamento Ã¨ attivo */
+    /* Stile per il cursore di trascinamento su tutto il documento quando trascinamento è attivo */
     body.dragging-active {
         cursor: grabbing !important;
     }
@@ -778,7 +790,7 @@
         transition: all 0.3s ease !important;
     }
     
-    /* Drop zone highlight quando Ã¨ la zona target corrente */
+    /* Drop zone highlight quando è la zona target corrente */
     .drop-zone-highlight {
         background-color: rgba(13, 110, 253, 0.15) !important;
         box-shadow: inset 0 0 10px rgba(13, 110, 253, 0.2) !important;
@@ -1252,18 +1264,18 @@
         }
     }
     
-    /* Fix per problemi di opacitÃ  globale */
+    /* Fix per problemi di opacità  globale */
     body:not(.cert-modal-open):not(.modal-open) {
         opacity: 1 !important;
         filter: none !important;
     }
     
-    /* Assicura che il main-content non abbia opacitÃ  ridotta */
+    /* Assicura che il main-content non abbia opacità  ridotta */
     .main-content {
         opacity: 1 !important;
     }
     
-    /* Rimuovi opacitÃ  da elementi che non dovrebbero averla */
+    /* Rimuovi opacità  da elementi che non dovrebbero averla */
     .board-container,
     .board-column,
     .activity-card:not(.sortable-chosen):not(.sortable-ghost) {
@@ -1278,7 +1290,7 @@
 <script src="{{ asset('vendor/js/sortable.min.js') }}"></script>
 <script src="{{ asset('vendor/js/select2.min.js') }}"></script>
 <script>
-// Controllo disponibilitÃ  militari
+// Controllo disponibilità  militari
 let conflittiDisponibilita = {};
 
 async function verificaDisponibilita(militareId, startDate, endDate) {
@@ -1292,7 +1304,7 @@ async function verificaDisponibilita(militareId, startDate, endDate) {
             dateRange.push(new Date(d).toISOString().split('T')[0]);
         }
         
-        // Verifica disponibilitÃ  per ogni data
+        // Verifica disponibilità  per ogni data
         const conflitti = [];
         for (const data of dateRange) {
             const response = await fetch(`{{ route('servizi.turni.check-disponibilita') }}`, {
@@ -1319,7 +1331,7 @@ async function verificaDisponibilita(militareId, startDate, endDate) {
         
         return conflitti;
     } catch (error) {
-        console.error('Errore verifica disponibilitÃ :', error);
+        console.error('Errore verifica disponibilità :', error);
         return [];
     }
 }
@@ -1358,7 +1370,7 @@ async function aggiornaConflitti() {
         return;
     }
     
-    // Verifica disponibilitÃ  per ogni militare
+    // Verifica disponibilità  per ogni militare
     conflittiDisponibilita = {};
     for (const militare of selectedMilitari) {
         const conflitti = await verificaDisponibilita(
@@ -1397,39 +1409,58 @@ async function aggiornaConflitti() {
 function openEditModal(activityId, event) {
     event.preventDefault();
     event.stopPropagation();
-    window.location.href = `/board/activities/${activityId}#editModal`;
+    window.location.href = `{{ url('board/activities') }}/${activityId}#editModal`;
 }
+
+// Variabili globali per il modal di eliminazione
+let activityIdToDelete = null;
 
 function openDeleteModal(activityId, event) {
     event.preventDefault();
     event.stopPropagation();
-    if (confirm('Sei sicuro di voler eliminare questa attivitÃ ?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/board/activities/${activityId}`;
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-        
-        const csrfField = document.createElement('input');
-        csrfField.type = 'hidden';
-        csrfField.name = '_token';
-        csrfField.value = csrfToken;
-        
-        form.appendChild(methodField);
-        form.appendChild(csrfField);
-        document.body.appendChild(form);
-        form.submit();
-    }
+    
+    // Salva l'ID dell'attività da eliminare
+    activityIdToDelete = activityId;
+    
+    // Mostra il modal di conferma
+    const modal = new bootstrap.Modal(document.getElementById('deleteActivityModal'));
+    modal.show();
+}
+
+function confirmDeleteActivity() {
+    if (!activityIdToDelete) return;
+    
+    // Mostra loading sul bottone
+    const btn = document.getElementById('confirmDeleteBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+    btn.disabled = true;
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `{{ url('board/activities') }}/${activityIdToDelete}`;
+    
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const methodField = document.createElement('input');
+    methodField.type = 'hidden';
+    methodField.name = '_method';
+    methodField.value = 'DELETE';
+    
+    const csrfField = document.createElement('input');
+    csrfField.type = 'hidden';
+    csrfField.name = '_token';
+    csrfField.value = csrfToken;
+    
+    form.appendChild(methodField);
+    form.appendChild(csrfField);
+    document.body.appendChild(form);
+    form.submit();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
     const token = document.querySelector('meta[name="csrf-token"]').content;
     
-    // Fix per rimuovere eventuali classi CSS problematiche che causano opacitÃ 
+    // Fix per rimuovere eventuali classi CSS problematiche che causano opacità 
     function fixOpacityIssues() {
         // Rimuovi classi sortable-chosen che potrebbero essere rimaste
         document.querySelectorAll('.sortable-chosen, .activity-card.sortable-chosen').forEach(el => {
@@ -1449,7 +1480,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Assicura che il body non abbia filtri di opacitÃ 
+        // Assicura che il body non abbia filtri di opacità 
         const bodyStyle = window.getComputedStyle(document.body);
         if (bodyStyle.opacity && parseFloat(bodyStyle.opacity) < 1) {
             document.body.style.opacity = '';
@@ -1634,12 +1665,12 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // Verifica campi obbligatori
             if (!titleField.value) {
-                alert('Il titolo Ã¨ obbligatorio');
+                alert('Il titolo è obbligatorio');
                 e.preventDefault();
                 return false;
             }
             if (!startDateField.value) {
-                alert('La data di inizio Ã¨ obbligatoria');
+                alert('La data di inizio è obbligatoria');
                 e.preventDefault();
                 return false;
             }
@@ -1656,7 +1687,7 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // Avviso se ci sono conflitti
             if (Object.keys(conflittiDisponibilita).length > 0) {
-                const conferma = confirm('ATTENZIONE: Alcuni militari selezionati hanno conflitti di disponibilitÃ . Vuoi procedere comunque?');
+                const conferma = confirm('ATTENZIONE: Alcuni militari selezionati hanno conflitti di disponibilità . Vuoi procedere comunque?');
                 if (!conferma) {
                     e.preventDefault();
                     return false;
@@ -1666,13 +1697,13 @@ window.addEventListener('DOMContentLoaded', () => {
             });
     }
     
-    // pulsanti "Nuova AttivitÃ "
+    // pulsanti "Nuova Attività "
     document.querySelectorAll('.add-activity-btn').forEach(btn => {
         btn.addEventListener('click', e => {
             const { columnId, columnName } = e.currentTarget.dataset;
             const sel = document.querySelector('#column_id'); if (sel) sel.value = columnId;
             document.querySelector('#createActivityModal .modal-title').innerHTML =
-                `<i class="fas fa-plus-circle text-primary me-2"></i>Nuova AttivitÃ  in "${columnName}"`;
+                `<i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività  in "${columnName}"`;
         });
     });
     
@@ -1701,7 +1732,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 $('#militari').val(null).trigger('change');
             }
             document.querySelector('#createActivityModal .modal-title').innerHTML =
-                '<i class="fas fa-plus-circle text-primary me-2"></i>Nuova AttivitÃ ';
+                '<i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività ';
             document.querySelector('#start_date').value = new Date().toISOString().split('T')[0];
         });
     }
@@ -1743,7 +1774,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 const from = evt.from, to = evt.to;
                 if (from === to && evt.oldIndex === evt.newIndex) {
-                    // Rimuovi classi anche se non c'Ã¨ stato movimento
+                    // Rimuovi classi anche se non c'è stato movimento
                     evt.item.classList.remove('sortable-chosen');
                     evt.item.style.opacity = '';
                     return;
@@ -1754,7 +1785,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 const colId = to.closest('.board-column').dataset.columnId;
                 const slug  = to.closest('.board-column').dataset.columnSlug;
 
-                // Rimuovi tutte le classi sortable-chosen e resetta opacitÃ 
+                // Rimuovi tutte le classi sortable-chosen e resetta opacità 
                 item.classList.remove('sortable-chosen');
                 item.style.opacity = '';
                 
@@ -1801,8 +1832,8 @@ window.addEventListener('DOMContentLoaded', () => {
             d.className = 'empty-column-message text-center py-4 text-muted';
             d.innerHTML = `
                 <i class="fas fa-inbox mb-2" style="font-size:1.5rem;"></i>
-                <p class="mb-0">Nessuna attivitÃ  in questa colonna</p>
-                <p class="small">Trascina qui un'attivitÃ  o creane una nuova</p>`;
+                <p class="mb-0">Nessuna attività  in questa colonna</p>
+                <p class="small">Trascina qui un'attività  o creane una nuova</p>`;
             el.appendChild(d);
         } else if (hasCards && emptyMsg) {
             emptyMsg.remove();
@@ -1845,6 +1876,35 @@ window.addEventListener('DOMContentLoaded', () => {
 <a href="{{ route('board.export') }}" class="fab fab-excel" data-tooltip="Esporta Board" aria-label="Esporta Board Excel">
     <i class="fas fa-file-excel"></i>
 </a>
+
+<!-- Modal Conferma Eliminazione Attività -->
+<div class="modal fade" id="deleteActivityModal" tabindex="-1" aria-labelledby="deleteActivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteActivityModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Elimina Attività
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">Sei sicuro di voler eliminare questa attività?</p>
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong>Attenzione:</strong> Questa operazione eliminerà definitivamente l'attività e la rimuoverà dal CPT di tutti i militari associati. Non può essere annullata.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annulla
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteActivity()">
+                    <i class="fas fa-trash me-1"></i>Elimina Definitivamente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @endpush
 

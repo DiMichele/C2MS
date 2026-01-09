@@ -20,22 +20,17 @@ class IdoneitzController extends Controller
      */
     public function index(Request $request)
     {
-        // Query base per i militari
-        $query = Militare::with(['scadenza', 'compagnia', 'grado']);
-        
-        // FILTRO PERMESSI: Se l'utente non è admin, filtra per la sua compagnia
+        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
+        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
         $user = Auth::user();
-        $userCompagniaId = null;
+        $userCompagniaId = $user->compagnia_id ?? null;
+        $isAdmin = $user && ($user->hasRole('admin') || $user->hasRole('amministratore'));
         
-        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-            if ($user->compagnia_id) {
-                $query->where('compagnia_id', $user->compagnia_id);
-                $userCompagniaId = $user->compagnia_id;
-            }
-        }
+        $query = Militare::withVisibilityFlags()
+            ->with(['scadenza', 'compagnia', 'grado']);
         
-        // Filtro compagnia (se l'utente è admin può filtrare per qualsiasi compagnia)
-        if ($request->filled('compagnia_id') && (!$userCompagniaId || $user->hasRole('admin') || $user->hasRole('amministratore'))) {
+        // Filtro compagnia esplicito (solo admin può filtrare per qualsiasi compagnia)
+        if ($request->filled('compagnia_id') && $isAdmin) {
             $query->where('compagnia_id', $request->compagnia_id);
         }
         
@@ -69,15 +64,15 @@ class IdoneitzController extends Controller
      */
     public function updateSingola(Request $request, Militare $militare)
     {
-        // Verifica permessi: l'utente può modificare solo militari della sua compagnia
-        $user = Auth::user();
-        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-            if ($user->compagnia_id && $militare->compagnia_id !== $user->compagnia_id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non hai i permessi per modificare questo militare'
-                ], 403);
-            }
+        // VERIFICA PERMESSI via Policy (single source of truth)
+        // La policy verifica che sia owner (non acquired) E abbia permessi
+        try {
+            $this->authorize('update', $militare);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.'
+            ], 403);
         }
         
         $request->validate([
@@ -152,19 +147,15 @@ class IdoneitzController extends Controller
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
             
-            // Query base
+            // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
+            // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+            $user = Auth::user();
+            $isAdmin = $user && ($user->hasRole('admin') || $user->hasRole('amministratore'));
+            
             $query = Militare::with(['grado', 'compagnia', 'scadenza']);
             
-            // FILTRO PERMESSI: Se l'utente non è admin, filtra per la sua compagnia
-            $user = Auth::user();
-            if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-                if ($user->compagnia_id) {
-                    $query->where('compagnia_id', $user->compagnia_id);
-                }
-            }
-            
-            // Filtro compagnia
-            if ($request->filled('compagnia_id')) {
+            // Filtro compagnia esplicito (solo admin può filtrare per qualsiasi compagnia)
+            if ($request->filled('compagnia_id') && $isAdmin) {
                 $query->where('compagnia_id', $request->compagnia_id);
             }
             

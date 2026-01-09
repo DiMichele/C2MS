@@ -4,9 +4,75 @@
 
 @section('content')
 <div class="container-fluid">
-    <!-- Header Centrato -->
-    <div class="text-center mb-4">
-        <h1 class="page-title">Gestione Ruolini</h1>
+    <!-- Header con info Compagnia -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="page-title mb-1">Gestione Ruolini</h1>
+            <p class="text-muted mb-0">
+                <i class="fas fa-building me-1"></i>
+                Configurazione per: <strong class="text-primary">{{ $compagniaCorrente->nome ?? 'N/D' }}</strong>
+            </p>
+        </div>
+        
+        <div class="d-flex align-items-center gap-3">
+            @if($isGlobalAdmin && $compagnie->isNotEmpty())
+            <!-- Selettore Compagnia per Admin -->
+            <div class="admin-compagnia-selector">
+                <label class="form-label mb-1 small text-muted">
+                    <i class="fas fa-shield-alt me-1"></i>Visualizza come:
+                </label>
+                <select id="compagniaSelector" class="form-select form-select-sm" style="min-width: 200px;">
+                    @foreach($compagnie as $comp)
+                    <option value="{{ $comp->id }}" {{ $compagniaId == $comp->id ? 'selected' : '' }}>
+                        {{ $comp->nome }}
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+            
+            <!-- Badge Compagnia -->
+            <div class="compagnia-badge bg-primary text-white px-3 py-2 rounded">
+                <i class="fas fa-flag me-1"></i>
+                {{ $compagniaCorrente->nome ?? 'N/D' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Impostazioni Generali -->
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="fas fa-cog me-2"></i>Impostazioni Generali Ruolini</h6>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">
+                        <i class="fas fa-question-circle me-1 text-info"></i>
+                        Stato di default (quando un servizio non è configurato):
+                    </label>
+                    <p class="text-muted small mb-2">
+                        Questa impostazione definisce se un militare con un servizio NON esplicitamente configurato 
+                        viene considerato presente o assente nel ruolino.
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-3">
+                        <select id="defaultStatoSelect" class="form-select" style="max-width: 250px;">
+                            <option value="assente" {{ ($defaultStato ?? 'assente') === 'assente' ? 'selected' : '' }}>
+                                ✗ Assente (default)
+                            </option>
+                            <option value="presente" {{ ($defaultStato ?? 'assente') === 'presente' ? 'selected' : '' }}>
+                                ✓ Presente
+                            </option>
+                        </select>
+                        <span id="defaultStatoFeedback" class="text-success" style="display: none;">
+                            <i class="fas fa-check-circle"></i> Salvato
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     @php
@@ -351,6 +417,66 @@
         
         // Aggiorna contatore iniziale
         updateVisibleCount();
+        
+        // ==========================================
+        // GESTIONE COMPAGNIA E DEFAULT STATO
+        // ==========================================
+        
+        // Selettore compagnia per admin
+        const compagniaSelector = document.getElementById('compagniaSelector');
+        if (compagniaSelector) {
+            compagniaSelector.addEventListener('change', function() {
+                const compagniaId = this.value;
+                const currentUrl = new URL(window.location.href);
+                currentUrl.searchParams.set('compagnia_id', compagniaId);
+                window.location.href = currentUrl.toString();
+            });
+        }
+        
+        // Salvataggio default stato
+        const defaultStatoSelect = document.getElementById('defaultStatoSelect');
+        const defaultStatoFeedback = document.getElementById('defaultStatoFeedback');
+        
+        if (defaultStatoSelect) {
+            defaultStatoSelect.addEventListener('change', function() {
+                const stato = this.value;
+                const selectElement = this;
+                
+                fetch('{{ route("gestione-ruolini.update-default-stato") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ default_stato: stato })
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success) {
+                        // Mostra feedback
+                        if (defaultStatoFeedback) {
+                            defaultStatoFeedback.style.display = 'inline';
+                            setTimeout(function() {
+                                defaultStatoFeedback.style.display = 'none';
+                            }, 2000);
+                        }
+                        window.SUGECO.showSaveFeedback(selectElement, true, 2000);
+                    } else {
+                        window.SUGECO.showSaveFeedback(selectElement, false, 2000);
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Errore salvataggio default stato:', error);
+                    window.SUGECO.showSaveFeedback(selectElement, false, 2000);
+                });
+            });
+        }
     }
 })();
 </script>

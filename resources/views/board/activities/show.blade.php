@@ -224,8 +224,20 @@
                             <!-- Lista militari disponibili -->
                             <div class="militari-list-section" id="militari-list-modal">
                                 @php
+                                    // Verifica se l'utente può vedere tutti i militari nella Board
+                                    $userModal = auth()->user();
+                                    $canViewAllMilitariModal = $userModal && (
+                                        $userModal->isGlobalAdmin() || 
+                                        $userModal->hasPermission('board.view_all_militari') ||
+                                        $userModal->hasPermission('view_all_companies')
+                                    );
+                                    
                                     // Query con ordinamento corretto: prima compagnia (110, 124, 127), poi grado decrescente
-                                    $militariModal = \App\Models\Militare::with(['grado', 'compagnia'])
+                                    $militariModalQuery = $canViewAllMilitariModal 
+                                        ? \App\Models\Militare::withoutGlobalScopes() 
+                                        : \App\Models\Militare::query();
+                                    
+                                    $militariModal = $militariModalQuery->with(['grado', 'compagnia'])
                                         ->leftJoin('compagnie', 'militari.compagnia_id', '=', 'compagnie.id')
                                         ->leftJoin('gradi', 'militari.grado_id', '=', 'gradi.id')
                                         ->orderByRaw("CASE 

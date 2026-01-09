@@ -8,6 +8,7 @@ use App\Models\Plotone;
 use App\Models\PianificazioneGiornaliera;
 use App\Models\BoardActivity;
 use App\Models\ConfigurazioneRuolino;
+use App\Services\CompagniaSettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -19,9 +20,19 @@ use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
  * 
  * Gestisce la visualizzazione del personale presente e assente
  * per una data selezionata, diviso per categorie (Ufficiali, Sottufficiali, Graduati, Volontari).
+ * 
+ * NOTA: Le regole di presenza/assenza sono configurate PER COMPAGNIA
+ * tramite CompagniaSettingsService.
  */
 class RuoliniController extends Controller
 {
+    /**
+     * Ottiene il service per la compagnia dell'utente corrente
+     */
+    private function getSettingsService(): CompagniaSettingsService
+    {
+        return CompagniaSettingsService::forCurrentUser();
+    }
     /**
      * Mostra la pagina dei ruolini con il personale diviso per categorie
      */
@@ -222,6 +233,9 @@ class RuoliniController extends Controller
     /**
      * Determina se un militare è presente in base agli impegni e alla configurazione
      * 
+     * SINGLE SOURCE OF TRUTH: Usa CompagniaSettingsService per le regole.
+     * Le regole sono quelle della compagnia dell'utente corrente.
+     * 
      * @param array $impegni Array di impegni del militare
      * @return bool True se il militare è presente, False se assente
      */
@@ -232,18 +246,19 @@ class RuoliniController extends Controller
             return true;
         }
         
-        // Controlla ogni impegno con la configurazione
+        // Controlla ogni impegno con la configurazione della compagnia
         foreach ($impegni as $impegno) {
             // Solo per impegni CPT (hanno tipo_servizio_id)
             if ($impegno['tipo'] === 'CPT' && isset($impegno['tipo_servizio_id'])) {
-                $statoConfigurato = ConfigurazioneRuolino::getStatoPresenzaForTipoServizio($impegno['tipo_servizio_id']);
+                // Usa il service centralizzato per le regole
+                $isPresente = $this->getSettingsService()->isPresente($impegno['tipo_servizio_id']);
                 
                 // Se configurato come presente, ignora questo impegno
-                if ($statoConfigurato === 'presente') {
+                if ($isPresente) {
                     continue;
                 }
                 
-                // Se configurato come assente o default, conta come assente
+                // Se configurato come assente, conta come assente
                 return false;
             }
             

@@ -4,22 +4,54 @@ namespace App\Http\Controllers;
 
 use App\Models\TipoServizio;
 use App\Models\ConfigurazioneRuolino;
+use App\Models\CompagniaSetting;
+use App\Services\CompagniaSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
- * Controller per la gestione delle configurazioni dei ruolini
+ * Controller per la gestione delle configurazioni dei ruolini PER COMPAGNIA
  * 
  * Permette di configurare quali impegni CPT rendono un militare
- * presente o assente nei ruolini giornalieri
+ * presente o assente nei ruolini giornalieri.
+ * 
+ * OGNI COMPAGNIA può avere le proprie regole.
+ * Il frontend NON passa mai la compagnia - è determinata dal backend.
  */
 class GestioneRuoliniController extends Controller
 {
+    private CompagniaSettingsService $settingsService;
+
+    public function __construct(CompagniaSettingsService $settingsService)
+    {
+        $this->settingsService = $settingsService;
+    }
+
     /**
      * Mostra la pagina di gestione configurazione ruolini
      */
     public function index(Request $request)
     {
+        // Verifica autorizzazione
+        $this->authorize('viewAny', CompagniaSetting::class);
+
+        $user = auth()->user();
+        $compagniaId = $user->compagnia_id;
+
+        // Admin globali possono vedere/modificare qualsiasi compagnia
+        $isGlobalAdmin = $user->hasRole('admin') || $user->hasRole('amministratore');
+        
+        // Se admin e richiesta compagnia specifica
+        if ($isGlobalAdmin && $request->filled('compagnia_id')) {
+            $compagniaId = $request->compagnia_id;
+        }
+
+        if (!$compagniaId) {
+            return redirect()->route('dashboard')
+                ->with('error', 'Devi essere assegnato a una compagnia per gestire i ruolini.');
+        }
+
         // Recupera SOLO i tipi di servizio ATTIVI che esistono ANCHE in codici_servizio_gerarchia
         $tipiServizioQuery = TipoServizio::where('tipi_servizio.attivo', true)
             ->join('codici_servizio_gerarchia', function($join) {
@@ -30,22 +62,16 @@ class GestioneRuoliniController extends Controller
             ->orderBy('tipi_servizio.ordine')
             ->orderBy('tipi_servizio.codice');
         
-        // Log per debugging
-        \Log::info('Gestione Ruolini - Tipi servizio sincronizzati:', [
-            'count_tipi_servizio_attivi' => TipoServizio::where('attivo', true)->count(),
-            'count_codici_gerarchia_attivi' => DB::table('codici_servizio_gerarchia')->where('attivo', true)->count(),
-            'count_sincronizzati' => $tipiServizioQuery->count()
-        ]);
-        
-        // Applica filtri
+        // Applica filtri categoria
         if ($request->filled('categoria') && $request->categoria != 'tutte') {
             $tipiServizioQuery->where('tipi_servizio.categoria', $request->categoria);
         }
         
         $tipiServizio = $tipiServizioQuery->get();
         
-        // Recupera tutte le configurazioni esistenti solo per i tipi servizio attivi
-        $configurazioni = ConfigurazioneRuolino::with('tipoServizio')
+        // Recupera le configurazioni PER LA COMPAGNIA CORRENTE
+        $configurazioni = ConfigurazioneRuolino::withoutGlobalScopes()
+            ->where('compagnia_id', $compagniaId)
             ->whereHas('tipoServizio', function($query) {
                 $query->where('attivo', true);
             })
@@ -60,8 +86,26 @@ class GestioneRuoliniController extends Controller
                 return $statoPresenza === $request->stato;
             });
         }
-        
-        return view('gestione-ruolini.index', compact('tipiServizio', 'configurazioni'));
+
+        // Ottieni impostazioni generali (default stato)
+        $compagniaSetting = CompagniaSetting::where('compagnia_id', $compagniaId)->first();
+        $defaultStato = $compagniaSetting?->getDefaultStato() ?? 'assente';
+
+        // Lista compagnie per admin
+        $compagnie = $isGlobalAdmin ? \App\Models\Compagnia::orderBy('nome')->get() : collect();
+
+        // Compagnia corrente
+        $compagniaCorrente = \App\Models\Compagnia::find($compagniaId);
+
+        return view('gestione-ruolini.index', compact(
+            'tipiServizio', 
+            'configurazioni', 
+            'defaultStato',
+            'isGlobalAdmin',
+            'compagnie',
+            'compagniaCorrente',
+            'compagniaId'
+        ));
     }
 
     /**
@@ -69,30 +113,31 @@ class GestioneRuoliniController extends Controller
      */
     public function update(Request $request, $tipoServizioId)
     {
+        // Verifica autorizzazione
+        $this->authorize('manageRuolini', CompagniaSetting::class);
+
         $request->validate([
             'stato_presenza' => 'required|in:presente,assente',
             'note' => 'nullable|string|max:500'
         ]);
 
-        $data = [
-            'stato_presenza' => $request->stato_presenza
-        ];
-        
-        // Aggiungi note solo se presente nella request
-        if ($request->has('note')) {
-            $data['note'] = $request->note;
+        try {
+            $this->settingsService->updateServizioConfig(
+                $tipoServizioId,
+                $request->stato_presenza,
+                $request->note
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configurazione aggiornata con successo'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore: ' . $e->getMessage()
+            ], 500);
         }
-
-        $configurazione = ConfigurazioneRuolino::updateOrCreate(
-            ['tipo_servizio_id' => $tipoServizioId],
-            $data
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Configurazione aggiornata con successo',
-            'configurazione' => $configurazione
-        ]);
     }
 
     /**
@@ -100,6 +145,9 @@ class GestioneRuoliniController extends Controller
      */
     public function updateBatch(Request $request)
     {
+        // Verifica autorizzazione
+        $this->authorize('manageRuolini', CompagniaSetting::class);
+
         $request->validate([
             'configurazioni' => 'required|array',
             'configurazioni.*.tipo_servizio_id' => 'required|exists:tipi_servizio,id',
@@ -109,15 +157,7 @@ class GestioneRuoliniController extends Controller
 
         DB::beginTransaction();
         try {
-            foreach ($request->configurazioni as $config) {
-                ConfigurazioneRuolino::updateOrCreate(
-                    ['tipo_servizio_id' => $config['tipo_servizio_id']],
-                    [
-                        'stato_presenza' => $config['stato_presenza'],
-                        'note' => $config['note'] ?? null
-                    ]
-                );
-            }
+            $this->settingsService->updateBatch($request->configurazioni);
 
             DB::commit();
 
@@ -136,20 +176,70 @@ class GestioneRuoliniController extends Controller
     }
 
     /**
+     * Aggiorna lo stato di default (presente/assente)
+     */
+    public function updateDefaultStato(Request $request)
+    {
+        // Verifica autorizzazione
+        $this->authorize('manageRuolini', CompagniaSetting::class);
+
+        $request->validate([
+            'default_stato' => 'required|in:presente,assente'
+        ]);
+
+        try {
+            $this->settingsService->updateDefaultStato($request->default_stato);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stato di default aggiornato con successo'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Elimina una configurazione (torna alla logica default)
      */
     public function destroy($tipoServizioId)
     {
-        $configurazione = ConfigurazioneRuolino::where('tipo_servizio_id', $tipoServizioId)->first();
+        // Verifica autorizzazione
+        $this->authorize('manageRuolini', CompagniaSetting::class);
 
-        if ($configurazione) {
-            $configurazione->delete();
+        try {
+            $this->settingsService->removeServizioConfig($tipoServizioId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configurazione rimossa, verrà usata la logica di default'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * API: Ottiene le regole ruolini per la compagnia dell'utente
+     */
+    public function getRules()
+    {
+        if (!$this->settingsService->isInitialized()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utente non assegnato a una compagnia'
+            ], 400);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Configurazione rimossa, verrà usata la logica di default'
+            'rules' => $this->settingsService->getRuoliniRules()
         ]);
     }
 }
-

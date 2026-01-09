@@ -17,13 +17,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use App\Traits\BelongsToCompagnia;
 
 /**
  * Modello per le attività della bacheca (board)
- * 
- * NOTA: Questo modello usa il trait BelongsToCompagnia per la segregazione
- * automatica dei dati per compagnia.
  * 
  * Questo modello rappresenta le attività organizzate nella bacheca di gestione,
  * con supporto per drag & drop, allegati e assegnazione di militari.
@@ -45,11 +41,12 @@ use App\Traits\BelongsToCompagnia;
  * 
  * @property-read \App\Models\BoardColumn $column Colonna di appartenenza
  * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Militare[] $militari Militari assegnati
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ActivityAttachment[] $attachments Allegati
  * @property-read \App\Models\User $creator Utente creatore
  */
 class BoardActivity extends Model
 {
-    use HasFactory, BelongsToCompagnia;
+    use HasFactory;
 
     /**
      * Gli attributi che sono mass assignable
@@ -109,6 +106,16 @@ class BoardActivity extends Model
                     ->orderBy('militari.cognome')
                     ->orderBy('militari.nome')
                     ->select('militari.*');
+    }
+
+    /**
+     * Relazione con gli allegati dell'attività
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function attachments()
+    {
+        return $this->hasMany(ActivityAttachment::class, 'activity_id');
     }
 
     /**
@@ -201,6 +208,16 @@ class BoardActivity extends Model
     }
 
     /**
+     * Ottiene il numero di allegati
+     * 
+     * @return int Numero di allegati
+     */
+    public function getNumeroAllegati()
+    {
+        return $this->attachments()->count();
+    }
+
+    /**
      * Verifica se l'attività ha militari assegnati
      * 
      * @return bool True se ha militari assegnati
@@ -208,6 +225,16 @@ class BoardActivity extends Model
     public function hasMilitariAssegnati()
     {
         return $this->getNumeroMilitari() > 0;
+    }
+
+    /**
+     * Verifica se l'attività ha allegati
+     * 
+     * @return bool True se ha allegati
+     */
+    public function hasAllegati()
+    {
+        return $this->getNumeroAllegati() > 0;
     }
 
     /**

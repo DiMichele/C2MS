@@ -227,29 +227,15 @@ class MilitareController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            // Trova il militare (senza scope per verificare esistenza)
-            $militare = Militare::withoutGlobalScopes()->findOrFail($id);
+            // SICUREZZA: Usa query scoped - il Global Scope filtra già per compagnia
+            // Il militare sarà trovato solo se:
+            // 1. Appartiene alla compagnia dell'utente (owner)
+            // 2. È acquisito tramite attività della compagnia dell'utente
+            $militare = Militare::findOrFail($id);
             
-            // VERIFICA PERMESSI: Solo owner possono modificare
-            if (!$militare->isEditableBy(auth()->user())) {
-                Log::warning('Tentativo di modifica militare non autorizzato', [
-                    'user_id' => auth()->id(),
-                    'user_compagnia' => auth()->user()->compagnia_id,
-                    'militare_id' => $id,
-                    'militare_compagnia' => $militare->compagnia_id,
-                    'relation_type' => $militare->getRelationType(auth()->user())
-                ]);
-                
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.'
-                    ], 403);
-                }
-                
-                return redirect()->back()
-                    ->with('error', 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.');
-            }
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            // La policy verifica che sia owner E abbia permesso anagrafica.edit
+            $this->authorize('update', $militare);
             
             if ($request->ajax() || $request->wantsJson()) {
                 $result = $this->militareService->updateMilitareAjax($id, $request->all());
@@ -261,6 +247,42 @@ class MilitareController extends Controller
             return redirect()->route('anagrafica.show', $id)
                 ->with('success', 'Militare aggiornato con successo!');
                 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            // Gestione centralizzata del 403 da Policy
+            Log::warning('Tentativo di modifica militare non autorizzato (policy denied)', [
+                'user_id' => auth()->id(),
+                'militare_id' => $id,
+            ]);
+            
+            $message = 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.';
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message
+                ], 403);
+            }
+            
+            return redirect()->back()->with('error', $message);
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            // Il militare non esiste o non è visibile per questo utente (Global Scope)
+            Log::warning('Militare non trovato o non accessibile', [
+                'user_id' => auth()->id(),
+                'militare_id' => $id,
+            ]);
+            
+            $message = 'Militare non trovato o non hai i permessi per accedervi.';
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message
+                ], 404);
+            }
+            
+            return redirect()->route('anagrafica.index')->with('error', $message);
+            
         } catch (\Illuminate\Validation\ValidationException $e) {
             if ($request->ajax()) {
                 return response()->json([
@@ -319,6 +341,9 @@ class MilitareController extends Controller
     public function destroy(Militare $militare)
     {
         try {
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('delete', $militare);
+            
             Log::info('Tentativo di eliminazione militare', [
                 'militare_id' => $militare->id,
                 'militare_nome' => $militare->cognome . ' ' . $militare->nome
@@ -391,13 +416,8 @@ class MilitareController extends Controller
     public function updateNotes(Request $request, Militare $militare)
     {
         try {
-            // VERIFICA PERMESSI: Solo owner possono modificare
-            if (!$militare->isEditableBy(auth()->user())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non hai i permessi per modificare questo militare.'
-                ], 403);
-            }
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
             
             $this->militareService->updateNotes($militare, $request->get('note'));
             
@@ -785,20 +805,8 @@ class MilitareController extends Controller
     public function updateField(Request $request, Militare $militare)
     {
         try {
-            // VERIFICA PERMESSI: Solo owner possono modificare
-            if (!$militare->isEditableBy(auth()->user())) {
-                Log::warning('Tentativo di modifica campo militare non autorizzato', [
-                    'user_id' => auth()->id(),
-                    'militare_id' => $militare->id,
-                    'field' => $request->input('field'),
-                    'relation_type' => $militare->getRelationType(auth()->user())
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non hai i permessi per modificare questo militare. I militari acquisiti sono in sola lettura.'
-                ], 403);
-            }
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
             
             $field = $request->input('field');
             $value = $request->input('value');
@@ -981,13 +989,8 @@ class MilitareController extends Controller
     public function updateCampoCustom(Request $request, Militare $militare)
     {
         try {
-            // VERIFICA PERMESSI: Solo owner possono modificare
-            if (!$militare->isEditableBy(auth()->user())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Non hai i permessi per modificare questo militare.'
-                ], 403);
-            }
+            // VERIFICA PERMESSI via Policy (single source of truth)
+            $this->authorize('update', $militare);
             
             $nomeCampo = $request->input('nome_campo');
             $valore = $request->input('valore');

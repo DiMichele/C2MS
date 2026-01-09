@@ -382,10 +382,12 @@ Route::prefix('ruolini')->name('ruolini.')->middleware('permission:ruolini.view'
 | Rotte per la Gestione Ruolini (Configurazione)
 |-------------------------------------------------
 */
-Route::prefix('gestione-ruolini')->name('gestione-ruolini.')->middleware('permission:admin.access')->group(function () {
+Route::prefix('gestione-ruolini')->name('gestione-ruolini.')->middleware('auth')->group(function () {
     Route::get('/', [\App\Http\Controllers\GestioneRuoliniController::class, 'index'])->name('index');
     Route::post('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'update'])->name('update');
     Route::post('/batch/update', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateBatch'])->name('update-batch');
+    Route::post('/default-stato', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateDefaultStato'])->name('update-default-stato');
+    Route::get('/rules', [\App\Http\Controllers\GestioneRuoliniController::class, 'getRules'])->name('rules');
     Route::delete('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'destroy'])->name('destroy');
 });
 

@@ -18,18 +18,12 @@ class PoligoniController extends Controller
      */
     public function index(Request $request)
     {
-        // Query base per i militari con le loro scadenze
-        $query = Militare::with(['scadenza', 'compagnia', 'grado']);
+        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
+        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+        $query = Militare::withVisibilityFlags()
+            ->with(['scadenza', 'compagnia', 'grado']);
         
-        // FILTRO PERMESSI: filtra per compagnia dell'utente se non è admin
-        $user = \Illuminate\Support\Facades\Auth::user();
-        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-            if ($user->compagnia_id) {
-                $query->where('compagnia_id', $user->compagnia_id);
-            }
-        }
-        
-        // Filtro compagnia esplicito
+        // Filtro compagnia esplicito (per admin che vogliono filtrare ulteriormente)
         if ($request->filled('compagnia_id')) {
             $query->where('compagnia_id', $request->compagnia_id);
         }

@@ -1,0 +1,511 @@
+// SUGECO Database - Entity Relationship Diagram
+// Formato: DBML (Database Markup Language)
+// Visualizza su: https://dbdiagram.io
+// 
+// Copia e incolla questo contenuto su dbdiagram.io per ottenere
+// un diagramma ER visivo e interattivo.
+
+Project SUGECO {
+  database_type: 'MySQL'
+  Note: '''
+    # SUGECO - Sistema Unico di Gestione e Controllo
+    Database per la gestione del personale militare
+    Versione: 1.0
+  '''
+}
+
+// ================================================
+// GESTIONE UTENTI E PERMESSI
+// ================================================
+
+Table users {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  username varchar(255) [not null, unique]
+  email varchar(255) [not null, unique]
+  codice_fiscale varchar(16)
+  compagnia_id bigint [ref: > compagnie.id]
+  role_type varchar(255) [default: 'utente']
+  password varchar(255) [not null]
+  must_change_password boolean [default: false]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Utenti del sistema con credenziali di accesso'
+}
+
+Table roles {
+  id bigint [pk, increment]
+  name varchar(255) [not null, unique, note: 'admin, amministratore, comandante, etc.']
+  display_name varchar(255) [not null]
+  description text
+  compagnia_id bigint [ref: > compagnie.id, note: 'NULL = accesso a tutte le compagnie']
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'RUOLI SISTEMA - Per autenticazione e autorizzazione'
+}
+
+Table permissions {
+  id bigint [pk, increment]
+  name varchar(255) [not null, unique, note: 'es. anagrafica.view, cpt.edit']
+  display_name varchar(255) [not null]
+  description text
+  category varchar(255) [note: 'personale, admin, servizi, etc.']
+  type varchar(255) [default: 'read', note: 'read, write, delete']
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Permessi singoli assegnabili ai ruoli'
+}
+
+Table role_user {
+  id bigint [pk, increment]
+  role_id bigint [ref: > roles.id]
+  user_id bigint [ref: > users.id]
+  created_at timestamp
+  updated_at timestamp
+  
+  indexes {
+    (role_id, user_id) [unique]
+  }
+  
+  Note: 'Pivot: associazione utenti-ruoli (N:M)'
+}
+
+Table permission_role {
+  id bigint [pk, increment]
+  permission_id bigint [ref: > permissions.id]
+  role_id bigint [ref: > roles.id]
+  created_at timestamp
+  updated_at timestamp
+  
+  indexes {
+    (permission_id, role_id) [unique]
+  }
+  
+  Note: 'Pivot: associazione permessi-ruoli (N:M)'
+}
+
+// ================================================
+// ANAGRAFICA MILITARE
+// ================================================
+
+Table militari {
+  id bigint [pk, increment]
+  nome varchar(100) [not null]
+  cognome varchar(100) [not null]
+  grado_id bigint [ref: > gradi.id]
+  categoria enum('U', 'SU', 'GRAD') [note: 'Ufficiali, Sottufficiali, Graduati']
+  compagnia_id bigint [ref: > compagnie.id]
+  plotone_id bigint [ref: > plotoni.id]
+  polo_id bigint [ref: > poli.id]
+  ruolo_id bigint [ref: > ruoli.id]
+  mansione_id bigint [ref: > mansioni.id]
+  approntamento_principale_id bigint [ref: > approntamenti.id]
+  nos_status enum('SI', 'NO', 'IN_ATTESA', 'DA_RICHIEDERE', 'NON_PREVISTO')
+  nos_scadenza date
+  data_nascita date
+  anzianita date
+  codice_fiscale varchar(16)
+  email varchar(255)
+  telefono varchar(20)
+  note text
+  statuti json [note: '104, Orario flessibile, Esente alzabandiera']
+  foto_path varchar(255)
+  created_at timestamp
+  updated_at timestamp
+  
+  indexes {
+    (cognome, nome)
+    grado_id
+  }
+  
+  Note: 'Anagrafica principale del personale militare'
+}
+
+Table gradi {
+  id bigint [pk, increment]
+  nome varchar(50) [not null]
+  ordine int [not null, note: 'Ordine gerarchico (90=Col, 17=Soldato)']
+  categoria varchar(50) [note: 'Ufficiali, Sottufficiali, Graduati, Volontari']
+  abbreviazione varchar(20) [note: 'Col., Ten., Serg., etc.']
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Gradi militari con gerarchia'
+}
+
+Table compagnie {
+  id bigint [pk, increment]
+  nome varchar(100) [not null]
+  descrizione varchar(255)
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Compagnie: 110^, 124^, 127^'
+}
+
+Table plotoni {
+  id bigint [pk, increment]
+  nome varchar(100) [not null]
+  compagnia_id bigint [not null, ref: > compagnie.id]
+  descrizione varchar(255)
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Plotoni appartenenti alle compagnie'
+}
+
+Table poli {
+  id bigint [pk, increment]
+  nome varchar(100) [not null]
+  compagnia_id bigint [not null, ref: > compagnie.id]
+  descrizione varchar(255)
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Poli/Uffici delle compagnie'
+}
+
+Table mansioni {
+  id bigint [pk, increment]
+  nome varchar(100) [not null]
+  descrizione text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Mansioni operative (Operatore TLC, Radiofonista, etc.)'
+}
+
+Table ruoli {
+  id bigint [pk, increment]
+  nome varchar(50) [not null]
+  descrizione text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'RUOLI OPERATIVI - Ruoli funzionali militari (NON confondere con roles!)'
+}
+
+Table approntamenti {
+  id bigint [pk, increment]
+  nome varchar(100) [not null, note: 'es. KOSOVO, CJ CBRN, CENTURIA']
+  codice varchar(20)
+  descrizione text
+  data_inizio date
+  data_fine date
+  stato enum('attivo', 'completato', 'sospeso', 'pianificato') [default: 'attivo']
+  colore_badge varchar(7)
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'TEATRI OPERATIVI - Missioni e operazioni militari'
+}
+
+Table patenti_militari {
+  id bigint [pk, increment]
+  militare_id bigint [not null, ref: > militari.id]
+  categoria varchar(10) [not null, note: 'A, B, C, etc.']
+  tipo varchar(50) [note: 'MIL, PROF, etc.']
+  data_ottenimento date [not null]
+  data_scadenza date [not null]
+  numero_patente varchar(50)
+  note text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Patenti di guida dei militari'
+}
+
+// ================================================
+// PIANIFICAZIONE (CPT)
+// ================================================
+
+Table pianificazioni_mensili {
+  id bigint [pk, increment]
+  anno int [not null]
+  mese int [not null, note: '1-12']
+  nome varchar(100) [not null]
+  descrizione text
+  stato enum('bozza', 'attiva', 'completata', 'archiviata') [default: 'bozza']
+  data_creazione date [not null]
+  creato_da bigint [ref: > users.id]
+  created_at timestamp
+  updated_at timestamp
+  
+  indexes {
+    (anno, mese) [unique]
+  }
+  
+  Note: 'Calendari mensili del CPT'
+}
+
+Table pianificazioni_giornaliere {
+  id bigint [pk, increment]
+  pianificazione_mensile_id bigint [not null, ref: > pianificazioni_mensili.id]
+  militare_id bigint [not null, ref: > militari.id]
+  giorno int [not null, note: '1-31']
+  tipo_servizio_id bigint [ref: > tipi_servizio.id]
+  note text
+  created_at timestamp
+  updated_at timestamp
+  
+  indexes {
+    (pianificazione_mensile_id, militare_id, giorno) [unique]
+  }
+  
+  Note: 'Assegnazioni giornaliere servizi/assenze'
+}
+
+Table tipi_servizio {
+  id bigint [pk, increment]
+  codice_gerarchia_id bigint [ref: > codici_servizio_gerarchia.id]
+  codice varchar(10) [not null, note: 'ls, lo, S-G1, etc.']
+  nome varchar(100) [not null]
+  descrizione text
+  colore_badge varchar(7) [default: '#6c757d']
+  categoria enum('servizio', 'permesso', 'assenza', 'formazione', 'missione') [default: 'servizio']
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Tipi di servizio/assenza per il CPT'
+}
+
+Table codici_servizio_gerarchia {
+  id bigint [pk, increment]
+  codice varchar(20) [not null, unique]
+  descrizione text
+  macro_attivita varchar(50)
+  tipo_attivita varchar(50)
+  impiego varchar(50)
+  colore_badge varchar(7) [default: '#6c757d']
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Gerarchia codici servizio con colori badge'
+}
+
+// ================================================
+// SCADENZE
+// ================================================
+
+Table scadenze_militari {
+  id bigint [pk, increment]
+  militare_id bigint [not null, ref: > militari.id]
+  
+  // Idoneità sanitarie
+  pefo_data_conseguimento date
+  idoneita_mans_data_conseguimento date
+  idoneita_smi_data_conseguimento date
+  ecg_data_conseguimento date
+  prelievi_data_conseguimento date
+  
+  // Corsi formazione
+  lavoratore_4h_data_conseguimento date
+  lavoratore_8h_data_conseguimento date
+  preposto_data_conseguimento date
+  dirigenti_data_conseguimento date
+  antincendio_data_conseguimento date
+  blsd_data_conseguimento date
+  primo_soccorso_aziendale_data_conseguimento date
+  
+  // Accordo stato-regione
+  abilitazione_trattori_data_conseguimento date
+  abilitazione_mmt_data_conseguimento date
+  abilitazione_muletto_data_conseguimento date
+  abilitazione_ple_data_conseguimento date
+  
+  // Poligono
+  tiri_approntamento_data_conseguimento date
+  mantenimento_arma_lunga_data_conseguimento date
+  mantenimento_arma_corta_data_conseguimento date
+  
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'TABELLA PRINCIPALE SCADENZE - Tutte le date conseguimento'
+}
+
+Table configurazione_corsi_spp {
+  id bigint [pk, increment]
+  codice_corso varchar(50) [not null, unique]
+  nome_corso varchar(100) [not null]
+  durata_anni int [not null]
+  tipo enum('formazione', 'accordo_stato_regione') [default: 'formazione']
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Configurazione corsi SPP con durate'
+}
+
+Table tipi_poligono {
+  id bigint [pk, increment]
+  codice varchar(100) [not null, unique]
+  nome varchar(100) [not null]
+  descrizione text
+  punteggio_minimo int [default: 0]
+  punteggio_massimo int [default: 100]
+  durata_mesi int [default: 6]
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Tipi di poligono (Teatro Op., Mantenimento, etc.)'
+}
+
+Table tipi_idoneita {
+  id bigint [pk, increment]
+  codice varchar(100) [not null, unique]
+  nome varchar(255) [not null]
+  descrizione text
+  durata_mesi int [default: 12]
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Tipi di idoneità sanitaria'
+}
+
+// ================================================
+// BOARD ATTIVITÀ
+// ================================================
+
+Table board_columns {
+  id bigint [pk, increment]
+  name varchar(100) [not null]
+  slug varchar(100) [not null, unique]
+  position int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Colonne del kanban board'
+}
+
+Table board_activities {
+  id bigint [pk, increment]
+  column_id bigint [not null, ref: > board_columns.id]
+  title varchar(255) [not null]
+  description text
+  data_inizio date
+  data_fine date
+  compagnia_id bigint [ref: > compagnie.id]
+  created_by bigint [ref: > users.id]
+  position int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Attività/card del board'
+}
+
+Table activity_militare {
+  id bigint [pk, increment]
+  activity_id bigint [not null, ref: > board_activities.id]
+  militare_id bigint [not null, ref: > militari.id]
+  created_at timestamp
+  updated_at timestamp
+  
+  indexes {
+    (activity_id, militare_id) [unique]
+  }
+  
+  Note: 'Pivot: militari assegnati alle attività'
+}
+
+// ================================================
+// TURNI SETTIMANALI
+// ================================================
+
+Table turni_settimanali {
+  id bigint [pk, increment]
+  anno int [not null]
+  numero_settimana int [not null]
+  data_inizio date [not null]
+  data_fine date [not null]
+  stato varchar(50) [default: 'bozza']
+  note text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Settimane di turno'
+}
+
+Table servizi_turno {
+  id bigint [pk, increment]
+  nome varchar(255) [not null]
+  codice varchar(10)
+  descrizione text
+  tipo enum('singolo', 'multiplo') [default: 'singolo']
+  num_posti int [default: 1]
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Tipi di servizio per turni settimanali'
+}
+
+Table assegnazioni_turno {
+  id bigint [pk, increment]
+  turno_settimanale_id bigint [not null, ref: > turni_settimanali.id]
+  militare_id bigint [not null, ref: > militari.id]
+  servizio_turno_id bigint [not null, ref: > servizi_turno.id]
+  data_servizio date [not null]
+  giorno_settimana int
+  posizione int [default: 1]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Assegnazioni ai turni settimanali'
+}
+
+// ================================================
+// CONFIGURAZIONI DINAMICHE
+// ================================================
+
+Table configurazione_campi_anagrafica {
+  id bigint [pk, increment]
+  nome_campo varchar(100) [not null, unique]
+  etichetta varchar(255) [not null]
+  tipo_campo enum('text', 'textarea', 'select', 'date', 'checkbox', 'email', 'tel') [default: 'text']
+  opzioni json [note: 'Opzioni per select']
+  placeholder varchar(255)
+  obbligatorio boolean [default: false]
+  attivo boolean [default: true]
+  ordine int [default: 0]
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Configurazione campi anagrafica dinamici'
+}
+
+Table valori_campi_anagrafica {
+  id bigint [pk, increment]
+  militare_id bigint [not null, ref: > militari.id]
+  configurazione_campo_id bigint [not null, ref: > configurazione_campi_anagrafica.id]
+  valore text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Valori dei campi anagrafica dinamici'
+}
+
+Table configurazione_ruolini {
+  id bigint [pk, increment]
+  tipo_servizio_id bigint [not null, ref: > tipi_servizio.id, unique]
+  stato_presenza enum('presente', 'assente', 'default') [default: 'default']
+  note text
+  created_at timestamp
+  updated_at timestamp
+  
+  Note: 'Configurazione stato presenza per ruolini'
+}
+

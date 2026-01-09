@@ -96,6 +96,8 @@ class CompagniaScope implements Scope
      * Applica il filtro per il modello Militare
      * Include sia i militari della compagnia che quelli "acquisiti" tramite attività
      * 
+     * PERFORMANCE: Usa EXISTS invece di IN per migliori prestazioni su dataset grandi
+     * 
      * @param Builder $builder
      * @param int $compagniaId
      */
@@ -106,10 +108,12 @@ class CompagniaScope implements Scope
             $query->where('militari.compagnia_id', $compagniaId);
             
             // 2. Militari acquisiti tramite partecipazione ad attività della compagnia
-            $query->orWhereIn('militari.id', function ($subquery) use ($compagniaId) {
-                $subquery->select('am.militare_id')
+            // NOTA: EXISTS è più efficiente di IN per subquery correlate
+            $query->orWhereExists(function ($subquery) use ($compagniaId) {
+                $subquery->select(DB::raw(1))
                     ->from('activity_militare as am')
                     ->join('board_activities as ba', 'am.activity_id', '=', 'ba.id')
+                    ->whereColumn('am.militare_id', 'militari.id')
                     ->where('ba.compagnia_id', $compagniaId);
             });
         });

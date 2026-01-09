@@ -134,6 +134,55 @@ class Militare extends Model
     // ============================================
     
     /**
+     * Scope per aggiungere i flag di visibilità (is_owner, is_acquired) alla query.
+     * 
+     * PERFORMANCE: Questo scope calcola i flag direttamente in SQL, evitando N+1.
+     * DEVE essere usato in TUTTE le liste di militari.
+     * 
+     * Comportamento:
+     * - Admin (o user senza compagnia): is_owner=1, is_acquired=0 (vede tutto come owner)
+     * - Non-admin: is_owner calcolato, is_acquired calcolato con EXISTS
+     * 
+     * Uso:
+     *   Militare::withVisibilityFlags()->with([...])->get();
+     * 
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param \App\Models\User|null $user Utente (default: auth()->user())
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeWithVisibilityFlags($query, $user = null)
+    {
+        $user = $user ?? auth()->user();
+        
+        // Se non c'è utente, non aggiungere flag (il Global Scope bloccherà comunque)
+        if (!$user) {
+            return $query->selectRaw('militari.*, 0 as is_owner, 0 as is_acquired');
+        }
+        
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('amministratore') 
+                   || $user->hasPermission('view_all_companies');
+        $userCompagniaId = $user->compagnia_id;
+        
+        // Admin o utente senza compagnia: vede tutto come owner
+        if ($isAdmin || !$userCompagniaId) {
+            return $query->selectRaw('militari.*, 1 as is_owner, 0 as is_acquired');
+        }
+        
+        // Non-admin con compagnia: calcola flag
+        return $query->selectRaw(
+            'militari.*, 
+             (militari.compagnia_id = ?) as is_owner,
+             (militari.compagnia_id != ? AND EXISTS (
+                 SELECT 1 FROM activity_militare am
+                 JOIN board_activities ba ON am.activity_id = ba.id
+                 WHERE am.militare_id = militari.id
+                 AND ba.compagnia_id = ?
+             )) as is_acquired',
+            [$userCompagniaId, $userCompagniaId, $userCompagniaId]
+        );
+    }
+    
+    /**
      * Scope per ordinare i militari per grado, anzianità e nome
      * 
      * Ordine di visualizzazione:
@@ -220,22 +269,21 @@ class Militare extends Model
     }
 
     /**
-     * Scope: Filtra militari per compagnia dell'utente corrente
+     * @deprecated Usa il Global Scope CompagniaScope che filtra automaticamente.
+     * Questo scope è mantenuto solo per retrocompatibilità ma NON deve essere usato
+     * perché taglia fuori i militari "acquired".
+     * 
+     * Il Global Scope già filtra per: owner OR acquired
+     * Questo scope filtrava solo per: owner (sbagliato!)
      * 
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeForCurrentUser($query)
     {
-        $user = auth()->user();
-        
-        // Se non c'è utente o è admin/comandante/rssp, mostra tutto
-        if (!$user || !$user->compagnia_id) {
-            return $query;
-        }
-
-        // Filtra per compagnia dell'utente
-        return $query->where('compagnia_id', $user->compagnia_id);
+        // DEPRECATO: Il Global Scope CompagniaScope filtra già automaticamente
+        // Restituisce la query senza modifiche (il Global Scope fa il lavoro)
+        return $query;
     }
     
     // ============================================
@@ -711,6 +759,11 @@ class Militare extends Model
      * Verifica se il militare è "acquisito" dalla compagnia dell'utente.
      * Acquisito = partecipa ad attività della compagnia ma appartiene ad altra compagnia
      * 
+     * NOTA TEMPORALE: L'acquisizione è valida solo finché l'attività esiste.
+     * Se l'attività viene cancellata, il militare non è più visibile per quella compagnia.
+     * Questo è garantito dalla JOIN con board_activities (se l'attività non esiste,
+     * la join non restituisce risultati).
+     * 
      * @return bool
      */
     public function isAcquiredBy(?User $user = null): bool
@@ -726,7 +779,8 @@ class Militare extends Model
             return false;
         }
         
-        // Verifica partecipazione ad attività della compagnia dell'utente
+        // Verifica partecipazione ad attività ESISTENTI della compagnia dell'utente
+        // La JOIN garantisce che l'attività esista ancora (non soft-deleted)
         return \DB::table('activity_militare')
             ->join('board_activities', 'activity_militare.activity_id', '=', 'board_activities.id')
             ->where('activity_militare.militare_id', $this->id)

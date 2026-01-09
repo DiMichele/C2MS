@@ -600,17 +600,13 @@ class MilitareService
      */
     public function getFilteredMilitari(Request $request, $perPage = 20)
     {
-        $query = Militare::with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti']);
-        
-        // FILTRO PERMESSI: filtra per compagnia dell'utente se non è admin
-        $user = \Illuminate\Support\Facades\Auth::user();
-        $userCompagniaId = null;
-        if ($user && !$user->hasRole('admin') && !$user->hasRole('amministratore')) {
-            if ($user->compagnia_id) {
-                $query->where('compagnia_id', $user->compagnia_id);
-                $userCompagniaId = $user->compagnia_id;
-            }
-        }
+        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
+        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+        // 
+        // Lo scope withVisibilityFlags() aggiunge is_owner e is_acquired calcolati
+        // direttamente in SQL per evitare N+1 nelle liste.
+        $query = Militare::withVisibilityFlags()
+            ->with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti']);
         
         // Filtri
         if ($request->filled('grado_id')) {
