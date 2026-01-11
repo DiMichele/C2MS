@@ -180,6 +180,29 @@
 .militare-libero-item:hover {
     background-color: rgba(10, 35, 66, 0.05);
 }
+
+.militare-impegnato-item {
+    transition: background-color 0.15s ease;
+}
+
+.militare-impegnato-item:hover {
+    background-color: rgba(220, 53, 69, 0.05);
+}
+
+.militare-impegnato-item:last-child {
+    border-bottom: none !important;
+}
+
+/* Tabs styling per modal */
+#disponibilitaTabs .nav-link {
+    border-radius: 6px 6px 0 0;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+}
+
+#disponibilitaTabs .nav-link.active {
+    font-weight: 600;
+}
 </style>
 
 <script>
@@ -241,9 +264,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                     </span>
                                 </div>
                             </div>
-                            <hr>
-                            <h6 class="mb-3"><i class="fas fa-user-check me-2 text-success"></i>Personale Libero:</h6>
-                            <div class="list-group list-group-flush" style="max-height: 350px; overflow-y: auto;">
+                            
+                            <!-- TABS per alternare tra liberi e impegnati -->
+                            <ul class="nav nav-tabs nav-fill mb-3" id="disponibilitaTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="liberi-tab" data-bs-toggle="tab" data-bs-target="#liberi-content" type="button" role="tab">
+                                        <i class="fas fa-user-check text-success me-1"></i>
+                                        Liberi <span class="badge bg-success ms-1">${responseData.liberi}</span>
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="impegnati-tab" data-bs-toggle="tab" data-bs-target="#impegnati-content" type="button" role="tab">
+                                        <i class="fas fa-briefcase text-danger me-1"></i>
+                                        Impegnati <span class="badge bg-danger ms-1">${responseData.impegnati}</span>
+                                    </button>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content" id="disponibilitaTabContent">
+                                <!-- TAB LIBERI -->
+                                <div class="tab-pane fade show active" id="liberi-content" role="tabpanel">
+                                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
                         `;
                         
                         if (responseData.militari_liberi && responseData.militari_liberi.length > 0) {
@@ -252,7 +293,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="militare-libero-item">
                                         <div>
                                             <strong>${m.nome_completo}</strong>
-                                            <small class="d-block text-muted">${m.grado || ''}</small>
                                         </div>
                                         <span class="badge bg-light text-dark">${m.polo || ''}</span>
                                     </div>
@@ -262,12 +302,53 @@ document.addEventListener('DOMContentLoaded', function() {
                             html += `
                                 <div class="text-center text-muted py-4">
                                     <i class="fas fa-user-slash fa-2x mb-2 opacity-50"></i>
-                                    <p class="mb-0">Nessun militare libero in questo giorno</p>
+                                    <p class="mb-0">Nessun militare libero</p>
                                 </div>
                             `;
                         }
                         
-                        html += '</div>';
+                        html += `
+                                    </div>
+                                </div>
+                                
+                                <!-- TAB IMPEGNATI -->
+                                <div class="tab-pane fade" id="impegnati-content" role="tabpanel">
+                                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                        `;
+                        
+                        if (responseData.militari_impegnati && responseData.militari_impegnati.length > 0) {
+                            responseData.militari_impegnati.forEach(function(m) {
+                                let badgeClass = m.fonte === 'CPT' ? 'bg-primary' : 'bg-info';
+                                html += `
+                                    <div class="militare-impegnato-item d-flex justify-content-between align-items-center p-2 border-bottom">
+                                        <div class="flex-grow-1">
+                                            <strong>${m.nome_completo}</strong>
+                                            <div class="mt-1">
+                                                <span class="badge ${badgeClass}" style="font-size: 0.7rem;">
+                                                    ${m.codice || m.fonte}
+                                                </span>
+                                                <small class="text-muted ms-2">${m.motivo}</small>
+                                            </div>
+                                        </div>
+                                        <span class="badge bg-light text-dark">${m.polo || ''}</span>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            html += `
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-coffee fa-2x mb-2 opacity-50"></i>
+                                    <p class="mb-0">Nessun militare impegnato</p>
+                                </div>
+                            `;
+                        }
+                        
+                        html += `
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
                         modalContent.innerHTML = html;
                     } else {
                         modalContent.innerHTML = `

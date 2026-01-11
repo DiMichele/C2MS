@@ -316,7 +316,7 @@ class DisponibilitaController extends Controller
     }
     
     /**
-     * API: Ottieni militari liberi per un giorno specifico
+     * API: Ottieni militari liberi e impegnati per un giorno specifico
      */
     public function getMilitariLiberi(Request $request)
     {
@@ -341,35 +341,72 @@ class DisponibilitaController extends Controller
         
         $militari = $militariQuery->orderByGradoENome()->get();
         
-        // Trova i militari impegnati
-        $militariImpegnatiCpt = collect();
+        // Trova i militari impegnati da CPT con dettagli
+        $impegniCpt = collect();
         if ($pianificazioneMensile) {
-            $militariImpegnatiCpt = PianificazioneGiornaliera::where('pianificazione_mensile_id', $pianificazioneMensile->id)
+            $impegniCpt = PianificazioneGiornaliera::where('pianificazione_mensile_id', $pianificazioneMensile->id)
                 ->where('giorno', $giorno)
                 ->whereNotNull('tipo_servizio_id')
-                ->pluck('militare_id');
+                ->with('tipoServizio')
+                ->get()
+                ->keyBy('militare_id');
         }
         
-        $militariImpegnatiTurno = AssegnazioneTurno::whereDate('data_servizio', $data)
-            ->pluck('militare_id');
+        // Trova i militari impegnati da Turni con dettagli
+        $impegniTurno = AssegnazioneTurno::whereDate('data_servizio', $data)
+            ->with('servizioTurno')
+            ->get()
+            ->keyBy('militare_id');
         
-        $militariImpegnati = $militariImpegnatiCpt->merge($militariImpegnatiTurno)->unique();
+        // Costruisci lista impegnati con motivo
+        $militariImpegnatiIds = $impegniCpt->keys()->merge($impegniTurno->keys())->unique();
         
-        // Filtra i militari liberi
-        $militariLiberi = $militari->whereNotIn('id', $militariImpegnati);
+        // Filtra i militari liberi e impegnati
+        $militariLiberi = $militari->whereNotIn('id', $militariImpegnatiIds);
+        $militariImpegnatiList = $militari->whereIn('id', $militariImpegnatiIds);
         
         return response()->json([
             'success' => true,
             'data' => $data->format('d/m/Y'),
             'totale' => $militari->count(),
             'liberi' => $militariLiberi->count(),
-            'impegnati' => $militariImpegnati->count(),
+            'impegnati' => $militariImpegnatiList->count(),
             'militari_liberi' => $militariLiberi->map(function($m) {
                 return [
                     'id' => $m->id,
                     'nome_completo' => ($m->grado->sigla ?? '') . ' ' . $m->cognome . ' ' . $m->nome,
+                    'grado' => $m->grado->sigla ?? '',
                     'polo' => $m->polo->nome ?? 'N/A',
                     'compagnia' => $m->compagnia->nome ?? 'N/A'
+                ];
+            })->values(),
+            'militari_impegnati' => $militariImpegnatiList->map(function($m) use ($impegniCpt, $impegniTurno) {
+                // Determina il motivo dell'impegno
+                $motivo = 'Impegnato';
+                $codice = '';
+                $fonte = '';
+                
+                if ($impegniCpt->has($m->id)) {
+                    $impegno = $impegniCpt[$m->id];
+                    $codice = $impegno->tipoServizio->codice ?? '';
+                    $motivo = $impegno->tipoServizio->nome ?? 'CPT';
+                    $fonte = 'CPT';
+                } elseif ($impegniTurno->has($m->id)) {
+                    $impegno = $impegniTurno[$m->id];
+                    $codice = $impegno->servizioTurno->codice ?? '';
+                    $motivo = $impegno->servizioTurno->nome ?? 'Turno';
+                    $fonte = 'Turno';
+                }
+                
+                return [
+                    'id' => $m->id,
+                    'nome_completo' => ($m->grado->sigla ?? '') . ' ' . $m->cognome . ' ' . $m->nome,
+                    'grado' => $m->grado->sigla ?? '',
+                    'polo' => $m->polo->nome ?? 'N/A',
+                    'compagnia' => $m->compagnia->nome ?? 'N/A',
+                    'codice' => $codice,
+                    'motivo' => $motivo,
+                    'fonte' => $fonte
                 ];
             })->values()
         ]);
