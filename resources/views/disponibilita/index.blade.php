@@ -190,6 +190,19 @@ document.addEventListener('DOMContentLoaded', function() {
         new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
+    // Riferimento al modal (singleton)
+    const modalElement = document.getElementById('dettaglioGiornoModal');
+    const modalContent = document.getElementById('dettaglioGiornoContent');
+    const modal = new bootstrap.Modal(modalElement);
+    
+    // Contenuto loading da mostrare subito
+    const loadingHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+            <p class="mt-2 text-muted">Caricamento dettagli...</p>
+        </div>
+    `;
+    
     // Click su cella per vedere dettaglio
     document.querySelectorAll('.disponibilita-cell').forEach(function(cell) {
         cell.addEventListener('click', function() {
@@ -199,51 +212,87 @@ document.addEventListener('DOMContentLoaded', function() {
             const impegnati = this.dataset.impegnati;
             const totale = this.dataset.totale;
             
-            // Mostra modal
-            const modal = new bootstrap.Modal(document.getElementById('dettaglioGiornoModal'));
+            // PRIMA resetta il contenuto con lo spinner
+            modalContent.innerHTML = loadingHTML;
+            
+            // POI mostra il modal (ora con lo spinner già visibile)
             modal.show();
             
             // Carica dettagli via AJAX
             fetch(`{{ url('disponibilita/militari-liberi') }}?data=${data}&polo_id=${poloId}`)
                 .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
+                .then(responseData => {
+                    if (responseData.success) {
                         let html = `
                             <div class="mb-3">
-                                <h6 class="text-muted">${data.data}</h6>
-                                <div class="d-flex gap-3 mb-3">
-                                    <span class="badge bg-success fs-6">Liberi: ${data.liberi}</span>
-                                    <span class="badge bg-danger fs-6">Impegnati: ${data.impegnati}</span>
-                                    <span class="badge bg-secondary fs-6">Totale: ${data.totale}</span>
+                                <h6 class="text-muted mb-2">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    ${responseData.data}
+                                </h6>
+                                <div class="d-flex gap-2 flex-wrap mb-3">
+                                    <span class="badge bg-success" style="font-size: 0.9rem; padding: 8px 12px;">
+                                        <i class="fas fa-check-circle me-1"></i>Liberi: ${responseData.liberi}
+                                    </span>
+                                    <span class="badge bg-danger" style="font-size: 0.9rem; padding: 8px 12px;">
+                                        <i class="fas fa-briefcase me-1"></i>Impegnati: ${responseData.impegnati}
+                                    </span>
+                                    <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 8px 12px;">
+                                        <i class="fas fa-users me-1"></i>Totale: ${responseData.totale}
+                                    </span>
                                 </div>
                             </div>
-                            <h6>Personale Libero:</h6>
-                            <div class="list-group">
+                            <hr>
+                            <h6 class="mb-3"><i class="fas fa-user-check me-2 text-success"></i>Personale Libero:</h6>
+                            <div class="list-group list-group-flush" style="max-height: 350px; overflow-y: auto;">
                         `;
                         
-                        if (data.militari_liberi.length > 0) {
-                            data.militari_liberi.forEach(function(m) {
+                        if (responseData.militari_liberi && responseData.militari_liberi.length > 0) {
+                            responseData.militari_liberi.forEach(function(m) {
                                 html += `
                                     <div class="militare-libero-item">
-                                        <span><strong>${m.nome_completo}</strong></span>
-                                        <span class="text-muted">${m.polo} - ${m.compagnia}</span>
+                                        <div>
+                                            <strong>${m.nome_completo}</strong>
+                                            <small class="d-block text-muted">${m.grado || ''}</small>
+                                        </div>
+                                        <span class="badge bg-light text-dark">${m.polo || ''}</span>
                                     </div>
                                 `;
                             });
                         } else {
-                            html += '<div class="text-center text-muted py-3">Nessun militare libero in questo giorno</div>';
+                            html += `
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-user-slash fa-2x mb-2 opacity-50"></i>
+                                    <p class="mb-0">Nessun militare libero in questo giorno</p>
+                                </div>
+                            `;
                         }
                         
                         html += '</div>';
-                        document.getElementById('dettaglioGiornoContent').innerHTML = html;
+                        modalContent.innerHTML = html;
+                    } else {
+                        modalContent.innerHTML = `
+                            <div class="alert alert-warning mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                ${responseData.message || 'Nessun dato disponibile'}
+                            </div>
+                        `;
                     }
                 })
                 .catch(error => {
-                    document.getElementById('dettaglioGiornoContent').innerHTML = `
-                        <div class="alert alert-danger">Errore nel caricamento dei dati</div>
+                    console.error('Errore:', error);
+                    modalContent.innerHTML = `
+                        <div class="alert alert-danger mb-0">
+                            <i class="fas fa-times-circle me-2"></i>
+                            Errore nel caricamento dei dati. Riprova.
+                        </div>
                     `;
                 });
         });
+    });
+    
+    // Reset contenuto quando il modal viene chiuso (per sicurezza)
+    modalElement.addEventListener('hidden.bs.modal', function () {
+        modalContent.innerHTML = loadingHTML;
     });
 });
 </script>
