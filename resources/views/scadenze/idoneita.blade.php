@@ -339,18 +339,19 @@ table.table td,
     </div>
 </div>
 
-<!-- Sezione Filtri (come Anagrafica) -->
+<!-- Sezione Filtri -->
 <div id="filtersContainer" class="filter-section" style="display: none;">
     <div class="filter-card mb-4">
         <div class="filter-card-header">
-            <i class="fas fa-filter me-2"></i> Filtri avanzati
+            Filtri avanzati
         </div>
         <div class="card-body p-3">
-            <form id="filtroForm" method="GET" action="{{ route('idoneita.index') }}">
-                <div class="row mb-3">
-                    @if(isset($compagnie) && count($compagnie) > 0)
-                    <div class="col-md-3">
-                        <label class="form-label">Compagnia:</label>
+            <div class="row mb-3">
+                {{-- Filtro Compagnia (server-side) --}}
+                @if(isset($compagnie) && count($compagnie) > 0)
+                <div class="col-md-3">
+                    <label class="form-label">Compagnia:</label>
+                    <form id="compagniaForm" method="GET" action="{{ route('idoneita.index') }}" style="margin: 0;">
                         <select name="compagnia_id" class="form-select filter-select" onchange="this.form.submit()">
                             <option value="">Tutte le compagnie</option>
                             @foreach($compagnie as $compagnia)
@@ -359,61 +360,70 @@ table.table td,
                             </option>
                             @endforeach
                         </select>
-                    </div>
-                    @endif
-                    <div class="col-md-3">
-                        <label class="form-label">Idoneità Mansione:</label>
-                        <select name="idoneita_mansione" class="form-select filter-select filter-stato" data-campo="idoneita_mansione">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="prenotato">Prenotato</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Idoneità SMI:</label>
-                        <select name="idoneita_smi" class="form-select filter-select filter-stato" data-campo="idoneita_smi">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="prenotato">Prenotato</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">ECG:</label>
-                        <select name="ecg" class="form-select filter-select filter-stato" data-campo="ecg">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="prenotato">Prenotato</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
+                    </form>
                 </div>
-                <div class="row mb-3">
-                    <div class="col-md-3">
-                        <label class="form-label">Prelievi:</label>
-                        <select name="prelievi" class="form-select filter-select filter-stato" data-campo="prelievi">
-                            <option value="">Tutti</option>
-                            <option value="valido">Valido</option>
-                            <option value="in_scadenza">In Scadenza</option>
-                            <option value="scaduto">Scaduto</option>
-                            <option value="prenotato">Prenotato</option>
-                            <option value="mancante">Mancante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-9 d-flex align-items-end">
-                        <button type="button" class="btn btn-secondary" onclick="resetFiltri()">
-                            <i class="fas fa-times me-1"></i> Reset Filtri
-                        </button>
-                    </div>
+                @endif
+                
+                {{-- Filtri Stato (client-side JavaScript) --}}
+                <div class="col-md-2">
+                    <label class="form-label">Idoneità Mansione:</label>
+                    <select class="form-select filter-select filter-stato" data-campo="idoneita_mansione">
+                        <option value="">Tutti</option>
+                        <option value="valido">Valido</option>
+                        <option value="in_scadenza">In Scadenza</option>
+                        <option value="scaduto">Scaduto</option>
+                        <option value="prenotato">Prenotato</option>
+                        <option value="mancante">Mancante</option>
+                    </select>
                 </div>
-            </form>
+                <div class="col-md-2">
+                    <label class="form-label">Idoneità SMI:</label>
+                    <select class="form-select filter-select filter-stato" data-campo="idoneita_smi">
+                        <option value="">Tutti</option>
+                        <option value="valido">Valido</option>
+                        <option value="in_scadenza">In Scadenza</option>
+                        <option value="scaduto">Scaduto</option>
+                        <option value="prenotato">Prenotato</option>
+                        <option value="mancante">Mancante</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">ECG:</label>
+                    <select class="form-select filter-select filter-stato" data-campo="ecg">
+                        <option value="">Tutti</option>
+                        <option value="valido">Valido</option>
+                        <option value="in_scadenza">In Scadenza</option>
+                        <option value="scaduto">Scaduto</option>
+                        <option value="prenotato">Prenotato</option>
+                        <option value="mancante">Mancante</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Prelievi:</label>
+                    <select class="form-select filter-select filter-stato" data-campo="prelievi">
+                        <option value="">Tutti</option>
+                        <option value="valido">Valido</option>
+                        <option value="in_scadenza">In Scadenza</option>
+                        <option value="scaduto">Scaduto</option>
+                        <option value="prenotato">Prenotato</option>
+                        <option value="mancante">Mancante</option>
+                    </select>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="resetFiltriStato()" title="Reset filtri stato">
+                        Reset
+                    </button>
+                </div>
+            </div>
+            
+            {{-- Contatore risultati filtrati --}}
+            <div class="row">
+                <div class="col-12">
+                    <small class="text-muted" id="filtroContatore">
+                        Visualizzati: <span id="contatoreVisibili">{{ count($data) }}</span> / {{ count($data) }} militari
+                    </small>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -427,7 +437,7 @@ table.table td,
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
-                <th style="min-width: 200px;"><i class="fas fa-fighter-jet me-1"></i>Teatro Operativo</th>
+                <th style="min-width: 200px;">Teatro Operativo</th>
                 <th style="min-width: 150px;">Idoneità Mansione</th>
                 <th style="min-width: 130px;">Idoneità SMI</th>
                 <th style="min-width: 130px;">ECG</th>
@@ -453,7 +463,7 @@ table.table td,
                         @foreach($item['teatro_operativo'] as $to)
                             <div class="to-badge" title="{{ $to['title'] }}&#10;Dal: {{ \Carbon\Carbon::parse($to['start_date'])->format('d/m/Y') }}{{ $to['end_date'] ? ' al ' . \Carbon\Carbon::parse($to['end_date'])->format('d/m/Y') : '' }}">
                                 <span class="badge bg-danger" style="font-size: 0.75rem; white-space: nowrap;">
-                                    <i class="fas fa-fighter-jet me-1"></i>{{ Str::limit($to['title'], 20) }}
+                                    {{ Str::limit($to['title'], 25) }}
                                 </span>
                                 <small class="text-muted d-block" style="font-size: 0.7rem;">
                                     {{ \Carbon\Carbon::parse($to['start_date'])->format('d/m') }}
@@ -718,6 +728,7 @@ function applicaFiltriStato() {
     });
     
     const rows = document.querySelectorAll('#scadenzeTable tbody tr');
+    let visibili = 0;
     
     rows.forEach(row => {
         let visible = true;
@@ -743,11 +754,28 @@ function applicaFiltriStato() {
         }
         
         row.style.display = visible ? '' : 'none';
+        if (visible) visibili++;
     });
+    
+    // Aggiorna contatore
+    const contatoreEl = document.getElementById('contatoreVisibili');
+    if (contatoreEl) {
+        contatoreEl.textContent = visibili;
+    }
 }
 
-// Reset filtri
+// Reset filtri stato (client-side)
+function resetFiltriStato() {
+    document.querySelectorAll('.filter-stato').forEach(select => {
+        select.value = '';
+    });
+    // Riapplica per mostrare tutti
+    applicaFiltriStato();
+}
+
+// Reset filtri completo (anche compagnia - server-side)
 function resetFiltri() {
+    // Reset filtri stato
     document.querySelectorAll('.filter-stato').forEach(select => {
         select.value = '';
     });
