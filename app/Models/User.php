@@ -162,6 +162,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Verifica se l'utente è un amministratore globale (può vedere tutte le compagnie)
+     * 
+     * @return bool
+     */
+    public function isGlobalAdmin(): bool
+    {
+        return $this->isAdmin() || $this->hasGlobalVisibility();
+    }
+
+    /**
      * Verifica se l'utente ha visibilità globale su tutte le compagnie
      * 
      * @return bool
