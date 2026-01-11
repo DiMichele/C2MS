@@ -20,6 +20,7 @@
             --navy: #0a2342;
             --navy-light: #1a3a5c;
             --gold: #c9a227;
+            --gold-light: #d4b44a;
         }
 
         * {
@@ -34,84 +35,146 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--navy);
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
             padding: 20px;
+            position: relative;
+        }
+
+        /* Subtle pattern overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
         }
 
         .login-card {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            border-radius: 16px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
             overflow: hidden;
+            position: relative;
+            z-index: 1;
         }
 
-        /* Header */
+        /* Header con gradiente */
         .login-header {
-            background: var(--navy);
-            padding: 32px 30px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            padding: 40px 35px 35px;
             text-align: center;
+            position: relative;
+        }
+
+        /* Decorative line */
+        .login-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: var(--gold);
+            border-radius: 2px;
         }
 
         .login-logo {
             font-family: 'Oswald', sans-serif;
-            font-size: 42px;
+            font-size: 48px;
             font-weight: 700;
-            letter-spacing: 8px;
+            letter-spacing: 10px;
             color: white;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
 
         .login-subtitle {
-            font-size: 12px;
+            font-size: 13px;
             color: var(--gold);
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
+            font-weight: 500;
         }
 
         /* Body */
         .login-body {
-            padding: 32px 30px;
+            padding: 40px 35px 35px;
+        }
+
+        .welcome-text {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .welcome-text h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 5px;
+        }
+
+        .welcome-text p {
+            font-size: 14px;
+            color: #666;
         }
 
         .form-label {
             font-size: 13px;
             font-weight: 600;
             color: var(--navy);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-label i {
+            color: var(--gold);
+            font-size: 12px;
         }
 
         .form-control {
-            padding: 12px 14px;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            padding: 14px 16px;
+            font-size: 15px;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            background: #fafafa;
         }
 
         .form-control:focus {
             border-color: var(--navy);
-            box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.1);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(10, 35, 66, 0.08);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: #aaa;
         }
 
         .form-control.is-invalid {
             border-color: #dc3545;
+            background: #fff8f8;
         }
 
-        .input-group-text {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-right: none;
-            color: #666;
+        .form-check {
+            margin: 20px 0 25px;
         }
 
-        .input-group .form-control {
-            border-left: none;
-        }
-
-        .input-group:focus-within .input-group-text {
-            border-color: var(--navy);
+        .form-check-input {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-right: 8px;
         }
 
         .form-check-input:checked {
@@ -120,86 +183,145 @@
         }
 
         .form-check-label {
-            font-size: 13px;
+            font-size: 14px;
             color: #666;
+            cursor: pointer;
         }
 
         .btn-login {
             width: 100%;
-            padding: 12px;
-            font-size: 14px;
+            padding: 15px 24px;
+            font-size: 15px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             color: white;
-            background: var(--navy);
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
             border: none;
-            border-radius: 6px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
 
         .btn-login:hover {
-            background: var(--navy-light);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(10, 35, 66, 0.3);
         }
 
         .btn-login:active {
-            transform: scale(0.98);
-        }
-
-        .btn-login i {
-            margin-right: 8px;
+            transform: translateY(0);
         }
 
         /* Alerts */
         .alert {
-            padding: 12px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            margin-bottom: 20px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
         }
 
         .alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
         }
 
         .invalid-feedback {
             font-size: 12px;
-            margin-top: 4px;
+            color: #dc3545;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .form-hint {
-            font-size: 11px;
-            color: #888;
-            margin-top: 4px;
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
         }
 
         /* Footer */
         .login-footer {
-            padding: 16px 30px;
+            padding: 20px 35px;
             background: #f8f9fa;
-            text-align: center;
             border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .login-footer-text {
-            font-size: 11px;
+        .footer-text {
+            font-size: 12px;
             color: #888;
-            margin: 0;
         }
 
-        /* Loading */
+        .footer-version {
+            font-size: 11px;
+            color: #aaa;
+            background: #eee;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+
+        /* Loading state */
         .btn-login.loading {
-            opacity: 0.7;
+            opacity: 0.8;
             pointer-events: none;
+        }
+
+        .btn-login .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .btn-login.loading .spinner {
+            display: block;
+        }
+
+        .btn-login.loading .btn-icon {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-header {
+                padding: 30px 25px 28px;
+            }
+            .login-body {
+                padding: 30px 25px 25px;
+            }
+            .login-logo {
+                font-size: 40px;
+                letter-spacing: 8px;
+            }
+            .login-footer {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -213,20 +335,28 @@
 
         <!-- Body -->
         <div class="login-body">
+            <div class="welcome-text">
+                <h2>Benvenuto</h2>
+                <p>Inserisci le credenziali per accedere</p>
+            </div>
+
             <!-- Success Message -->
             @if(session('success'))
                 <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                    <i class="fas fa-check-circle"></i>
+                    <span>{{ session('success') }}</span>
                 </div>
             @endif
 
             <!-- Error Messages -->
             @if($errors->any())
                 <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    @foreach($errors->all() as $error)
-                        {{ $error }}
-                    @endforeach
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>
+                        @foreach($errors->all() as $error)
+                            {{ $error }}
+                        @endforeach
+                    </span>
                 </div>
             @endif
 
@@ -236,68 +366,88 @@
 
                 <!-- Username -->
                 <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-user"></i></span>
-                        <input
-                            type="text"
-                            class="form-control @error('username') is-invalid @enderror"
-                            id="username"
-                            name="username"
-                            placeholder="nome.cognome"
-                            value="{{ old('username') }}"
-                            required
-                            autofocus
-                        >
-                    </div>
+                    <label for="username" class="form-label">
+                        <i class="fas fa-user"></i> Username
+                    </label>
+                    <input
+                        type="text"
+                        class="form-control @error('username') is-invalid @enderror"
+                        id="username"
+                        name="username"
+                        placeholder="nome.cognome"
+                        value="{{ old('username') }}"
+                        required
+                        autofocus
+                    >
                     @error('username')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        <div class="invalid-feedback d-block">
+                            <i class="fas fa-times-circle"></i> {{ $message }}
+                        </div>
                     @enderror
                     <div class="form-hint">Formato: nome.cognome</div>
                 </div>
 
                 <!-- Password -->
                 <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        <input 
-                            type="password" 
-                            class="form-control @error('password') is-invalid @enderror" 
-                            id="password" 
-                            name="password" 
-                            placeholder="••••••••"
-                            required
-                        >
-                    </div>
+                    <label for="password" class="form-label">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    <input 
+                        type="password" 
+                        class="form-control @error('password') is-invalid @enderror" 
+                        id="password" 
+                        name="password" 
+                        placeholder="••••••••"
+                        required
+                    >
                     @error('password')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        <div class="invalid-feedback d-block">
+                            <i class="fas fa-times-circle"></i> {{ $message }}
+                        </div>
                     @enderror
                 </div>
 
                 <!-- Remember Me -->
-                <div class="form-check mb-4">
+                <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                    <label class="form-check-label" for="remember">Ricordami</label>
+                    <label class="form-check-label" for="remember">
+                        Mantieni la sessione attiva
+                    </label>
                 </div>
 
                 <!-- Submit Button -->
                 <button type="submit" class="btn-login" id="submitBtn">
-                    <i class="fas fa-sign-in-alt"></i>Accedi
+                    <span class="spinner"></span>
+                    <i class="fas fa-sign-in-alt btn-icon"></i>
+                    <span>Accedi</span>
                 </button>
             </form>
         </div>
 
         <!-- Footer -->
         <div class="login-footer">
-            <p class="login-footer-text">Accesso riservato al personale autorizzato</p>
+            <span class="footer-text">
+                <i class="fas fa-shield-alt me-1"></i>
+                Accesso riservato
+            </span>
+            <span class="footer-version">v2.1.0</span>
         </div>
     </div>
 
     <script>
         document.getElementById('loginForm').addEventListener('submit', function() {
-            document.getElementById('submitBtn').classList.add('loading');
+            const btn = document.getElementById('submitBtn');
+            btn.classList.add('loading');
         });
+
+        // Auto-hide success
+        const successAlert = document.querySelector('.alert-success');
+        if (successAlert) {
+            setTimeout(() => {
+                successAlert.style.opacity = '0';
+                successAlert.style.transition = 'opacity 0.3s';
+            }, 4000);
+        }
     </script>
 </body>
 </html>
