@@ -7,7 +7,7 @@
     <!-- Header -->
     <div class="text-center mb-4">
         <h1 class="page-title">Disponibilità Personale</h1>
-        <p class="text-muted">Panoramica del personale libero per polo e giornata</p>
+        <p class="text-muted">Panoramica del personale libero per ufficio e giornata</p>
     </div>
 
     <!-- Selettori -->
@@ -29,7 +29,7 @@
             <span class="mx-2">|</span>
             
             <select name="polo_id" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 200px; border-radius: 6px !important;">
-                <option value="">Tutti i Poli</option>
+                <option value="">Tutti gli Uffici</option>
                 @foreach($poli as $polo)
                     <option value="{{ $polo->id }}" {{ $poloId == $polo->id ? 'selected' : '' }}>
                         {{ $polo->nome }}
@@ -181,27 +181,233 @@
     background-color: rgba(10, 35, 66, 0.05);
 }
 
-.militare-impegnato-item {
-    transition: background-color 0.15s ease;
+/* ===== MODAL DISPONIBILITA - DESIGN PROFESSIONALE ===== */
+
+/* Statistiche Cards */
+.disponibilita-stats .stat-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    border-radius: 12px;
+    padding: 16px 12px;
+    text-align: center;
+    border: 1px solid #e9ecef;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.militare-impegnato-item:hover {
-    background-color: rgba(220, 53, 69, 0.05);
+.disponibilita-stats .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-.militare-impegnato-item:last-child {
-    border-bottom: none !important;
+.stat-card.stat-liberi { border-left: 4px solid #28a745; }
+.stat-card.stat-impegnati { border-left: 4px solid #dc3545; }
+.stat-card.stat-totale { border-left: 4px solid #0a2342; }
+
+.stat-card .stat-icon {
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+    opacity: 0.7;
 }
 
-/* Tabs styling per modal */
-#disponibilitaTabs .nav-link {
-    border-radius: 6px 6px 0 0;
-    font-size: 0.85rem;
-    padding: 8px 12px;
+.stat-liberi .stat-icon { color: #28a745; }
+.stat-impegnati .stat-icon { color: #dc3545; }
+.stat-totale .stat-icon { color: #0a2342; }
+
+.stat-card .stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #0a2342;
 }
 
-#disponibilitaTabs .nav-link.active {
+.stat-card .stat-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+/* Tabs Pills */
+.disponibilita-tabs .nav-link {
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 500;
+    color: #495057;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s;
+}
+
+.disponibilita-tabs .nav-link:hover {
+    background: #e9ecef;
+}
+
+.disponibilita-tabs .nav-link.active {
+    background: linear-gradient(135deg, #0a2342 0%, #1a3a5a 100%);
+    color: white;
+    border-color: transparent;
+}
+
+.disponibilita-tabs .nav-item {
+    margin: 0 4px;
+}
+
+/* Militari Cards */
+.militari-list {
+    padding: 4px;
+}
+
+.militare-card {
+    display: flex;
+    align-items: center;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s;
+    animation: fadeInUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+.militare-card:hover {
+    border-color: #0a2342;
+    box-shadow: 0 2px 8px rgba(10, 35, 66, 0.1);
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.militare-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 14px;
+    font-size: 1rem;
+}
+
+.militare-avatar.libero {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #28a745;
+}
+
+.militare-avatar.impegnato {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #dc3545;
+}
+
+.militare-info {
+    flex: 1;
+}
+
+.militare-nome {
     font-weight: 600;
+    color: #0a2342;
+    font-size: 0.95rem;
+}
+
+.militare-dettagli {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.badge-ufficio {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.badge-servizio {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.badge-servizio.primary {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.badge-servizio.info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.servizio-desc {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.militare-status {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.militare-status.libero {
+    background: #d4edda;
+    color: #28a745;
+}
+
+.militare-ufficio {
+    margin-left: 12px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    opacity: 0.3;
+    margin-bottom: 12px;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Progress bar */
+.disponibilita-progress .progress {
+    background: #e9ecef;
+}
+
+/* Scrollbar stilizzata per lista */
+.militari-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.militari-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.militari-list::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.militari-list::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
 }
 </style>
 
@@ -246,63 +452,95 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(responseData => {
                     if (responseData.success) {
+                        // Calcola percentuale
+                        const percentuale = responseData.totale > 0 ? Math.round((responseData.liberi / responseData.totale) * 100) : 0;
+                        const percentualeClass = percentuale >= 70 ? 'success' : (percentuale >= 40 ? 'warning' : 'danger');
+                        
                         let html = `
-                            <div class="mb-3">
-                                <h6 class="text-muted mb-2">
-                                    <i class="fas fa-calendar-alt me-1"></i>
-                                    ${responseData.data}
-                                </h6>
-                                <div class="d-flex gap-2 flex-wrap mb-3">
-                                    <span class="badge bg-success" style="font-size: 0.9rem; padding: 8px 12px;">
-                                        <i class="fas fa-check-circle me-1"></i>Liberi: ${responseData.liberi}
-                                    </span>
-                                    <span class="badge bg-danger" style="font-size: 0.9rem; padding: 8px 12px;">
-                                        <i class="fas fa-briefcase me-1"></i>Impegnati: ${responseData.impegnati}
-                                    </span>
-                                    <span class="badge bg-secondary" style="font-size: 0.9rem; padding: 8px 12px;">
-                                        <i class="fas fa-users me-1"></i>Totale: ${responseData.totale}
-                                    </span>
+                            <!-- Header con statistiche -->
+                            <div class="disponibilita-stats mb-4">
+                                <div class="row g-3">
+                                    <div class="col-4">
+                                        <div class="stat-card stat-liberi">
+                                            <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+                                            <div class="stat-value">${responseData.liberi}</div>
+                                            <div class="stat-label">Liberi</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card stat-impegnati">
+                                            <div class="stat-icon"><i class="fas fa-briefcase"></i></div>
+                                            <div class="stat-value">${responseData.impegnati}</div>
+                                            <div class="stat-label">Impegnati</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="stat-card stat-totale">
+                                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                                            <div class="stat-value">${responseData.totale}</div>
+                                            <div class="stat-label">Totale</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Barra progresso disponibilità -->
+                                <div class="disponibilita-progress mt-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <small class="text-muted">Disponibilità</small>
+                                        <small class="fw-bold text-${percentualeClass}">${percentuale}%</small>
+                                    </div>
+                                    <div class="progress" style="height: 8px; border-radius: 4px;">
+                                        <div class="progress-bar bg-${percentualeClass}" role="progressbar" style="width: ${percentuale}%"></div>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <!-- TABS per alternare tra liberi e impegnati -->
-                            <ul class="nav nav-tabs nav-fill mb-3" id="disponibilitaTabs" role="tablist">
+                            <!-- TABS -->
+                            <ul class="nav nav-pills nav-fill mb-3 disponibilita-tabs" role="tablist">
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="liberi-tab" data-bs-toggle="tab" data-bs-target="#liberi-content" type="button" role="tab">
-                                        <i class="fas fa-user-check text-success me-1"></i>
-                                        Liberi <span class="badge bg-success ms-1">${responseData.liberi}</span>
+                                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#liberi-content" type="button">
+                                        <i class="fas fa-user-check me-2"></i>Liberi
+                                        <span class="badge bg-white text-success ms-2">${responseData.liberi}</span>
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="impegnati-tab" data-bs-toggle="tab" data-bs-target="#impegnati-content" type="button" role="tab">
-                                        <i class="fas fa-briefcase text-danger me-1"></i>
-                                        Impegnati <span class="badge bg-danger ms-1">${responseData.impegnati}</span>
+                                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#impegnati-content" type="button">
+                                        <i class="fas fa-briefcase me-2"></i>Impegnati
+                                        <span class="badge bg-white text-danger ms-2">${responseData.impegnati}</span>
                                     </button>
                                 </li>
                             </ul>
                             
-                            <div class="tab-content" id="disponibilitaTabContent">
+                            <div class="tab-content">
                                 <!-- TAB LIBERI -->
                                 <div class="tab-pane fade show active" id="liberi-content" role="tabpanel">
-                                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="militari-list" style="max-height: 320px; overflow-y: auto;">
                         `;
                         
                         if (responseData.militari_liberi && responseData.militari_liberi.length > 0) {
-                            responseData.militari_liberi.forEach(function(m) {
+                            responseData.militari_liberi.forEach(function(m, index) {
                                 html += `
-                                    <div class="militare-libero-item">
-                                        <div>
-                                            <strong>${m.nome_completo}</strong>
+                                    <div class="militare-card militare-libero" style="animation-delay: ${index * 0.03}s">
+                                        <div class="militare-avatar libero">
+                                            <i class="fas fa-user"></i>
                                         </div>
-                                        <span class="badge bg-light text-dark">${m.polo || ''}</span>
+                                        <div class="militare-info">
+                                            <div class="militare-nome">${m.nome_completo}</div>
+                                            <div class="militare-dettagli">
+                                                <span class="badge-ufficio">${m.polo || 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="militare-status libero">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
                                     </div>
                                 `;
                             });
                         } else {
                             html += `
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-user-slash fa-2x mb-2 opacity-50"></i>
-                                    <p class="mb-0">Nessun militare libero</p>
+                                <div class="empty-state">
+                                    <i class="fas fa-user-clock"></i>
+                                    <p>Nessun militare libero in questo giorno</p>
                                 </div>
                             `;
                         }
@@ -313,32 +551,38 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 <!-- TAB IMPEGNATI -->
                                 <div class="tab-pane fade" id="impegnati-content" role="tabpanel">
-                                    <div class="list-group list-group-flush" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="militari-list" style="max-height: 320px; overflow-y: auto;">
                         `;
                         
                         if (responseData.militari_impegnati && responseData.militari_impegnati.length > 0) {
-                            responseData.militari_impegnati.forEach(function(m) {
-                                let badgeClass = m.fonte === 'CPT' ? 'bg-primary' : 'bg-info';
+                            responseData.militari_impegnati.forEach(function(m, index) {
+                                let iconClass = m.fonte === 'CPT' ? 'fa-calendar-day' : 'fa-clock';
+                                let colorClass = m.fonte === 'CPT' ? 'primary' : 'info';
                                 html += `
-                                    <div class="militare-impegnato-item d-flex justify-content-between align-items-center p-2 border-bottom">
-                                        <div class="flex-grow-1">
-                                            <strong>${m.nome_completo}</strong>
-                                            <div class="mt-1">
-                                                <span class="badge ${badgeClass}" style="font-size: 0.7rem;">
-                                                    ${m.codice || m.fonte}
+                                    <div class="militare-card militare-impegnato" style="animation-delay: ${index * 0.03}s">
+                                        <div class="militare-avatar impegnato">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="militare-info">
+                                            <div class="militare-nome">${m.nome_completo}</div>
+                                            <div class="militare-dettagli">
+                                                <span class="badge-servizio ${colorClass}">
+                                                    <i class="fas ${iconClass} me-1"></i>${m.codice || m.fonte}
                                                 </span>
-                                                <small class="text-muted ms-2">${m.motivo}</small>
+                                                <span class="servizio-desc">${m.motivo}</span>
                                             </div>
                                         </div>
-                                        <span class="badge bg-light text-dark">${m.polo || ''}</span>
+                                        <div class="militare-ufficio">
+                                            <span class="badge-ufficio">${m.polo || 'N/A'}</span>
+                                        </div>
                                     </div>
                                 `;
                             });
                         } else {
                             html += `
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-coffee fa-2x mb-2 opacity-50"></i>
-                                    <p class="mb-0">Nessun militare impegnato</p>
+                                <div class="empty-state">
+                                    <i class="fas fa-mug-hot"></i>
+                                    <p>Nessun militare impegnato in questo giorno</p>
                                 </div>
                             `;
                         }

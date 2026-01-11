@@ -108,7 +108,7 @@ window.pageData = {
             <div class="table-container" style="border: 1px solid #dee2e6;">
                 <!-- Header fisso -->
             <div class="table-header-fixed">
-                <table class="table table-sm table-bordered mb-0" style="width: 3032px; min-width: 3032px; table-layout: fixed;">
+                <table class="table table-sm table-bordered mb-0" style="width: 3172px; min-width: 3172px; table-layout: fixed;">
                         <thead class="table-dark">
                         <tr>
                             <!-- Colonne fisse per info militare -->
@@ -117,6 +117,7 @@ window.pageData = {
                         <th class="bg-dark text-white" style="width: 230px;">Cognome</th>
                         <th class="bg-dark text-white" style="width: 170px;">Nome</th>
                             <th class="bg-dark text-white" style="width: 120px;">Plotone</th>
+                            <th class="bg-dark text-white" style="width: 140px;">Ufficio</th>
                             <th class="bg-dark text-white" style="width: 112px;">Patente</th>
                             <th class="bg-dark text-white" style="width: 120px;">Teatro Operativo</th>
                             
@@ -151,7 +152,7 @@ window.pageData = {
                 
                 <!-- Body scrollabile -->
                 <div class="table-body-scroll" style="max-height: 60vh; overflow: auto;">
-                    <table class="table table-sm table-bordered mb-0" id="pianificazioneTable" style="width: 3032px; min-width: 3032px; table-layout: fixed;">
+                    <table class="table table-sm table-bordered mb-0" id="pianificazioneTable" style="width: 3172px; min-width: 3172px; table-layout: fixed;">
                         <tbody>
                         @forelse($militariConPianificazione as $index => $item)
                             <tr class="militare-row" data-militare-id="{{ $item['militare']->id }}">
@@ -175,6 +176,9 @@ window.pageData = {
                                 </td>
                                 <td class="text-center" style="width: 120px; padding: 4px 6px;">
                                     {{ str_replace(['° Plotone', 'Plotone'], ['°', ''], $item['militare']->plotone->nome ?? '-') }}
+                                </td>
+                                <td class="text-center" style="width: 140px; padding: 4px 6px; font-size: 0.85rem;">
+                                    {{ $item['militare']->polo->nome ?? '-' }}
                                 </td>
                                 <td class="text-center" style="width: 112px; padding: 4px 2px; font-size: 0.85rem;">
                                     @php
