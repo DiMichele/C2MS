@@ -7,7 +7,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     <!-- Fonts -->
-    <link rel="stylesheet" href="{{ asset('vendor/css/google-fonts.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
     
     <!-- Bootstrap 5 CSS -->
     <link href="{{ asset('vendor/css/bootstrap.min.css') }}" rel="stylesheet">
@@ -18,9 +20,11 @@
     <style>
         :root {
             --navy: #0a2342;
-            --navy-light: #1a3a5c;
+            --navy-dark: #061628;
+            --navy-light: #163a5f;
             --gold: #c9a227;
-            --gold-light: #d4b44a;
+            --gold-light: #e4c254;
+            --gold-dark: #a68920;
         }
 
         * {
@@ -30,123 +34,192 @@
         }
 
         body {
-            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-            padding: 20px;
-            position: relative;
+            background: #f0f2f5;
         }
 
-        /* Subtle pattern overlay */
-        body::before {
+        /* Left Panel - Decorative */
+        .brand-panel {
+            flex: 0 0 45%;
+            background: linear-gradient(160deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-light) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Geometric Pattern */
+        .brand-panel::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 30px 30px;
-            pointer-events: none;
+            background: 
+                linear-gradient(30deg, rgba(201, 162, 39, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(201, 162, 39, 0.03) 87.5%),
+                linear-gradient(150deg, rgba(201, 162, 39, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(201, 162, 39, 0.03) 87.5%),
+                linear-gradient(30deg, rgba(201, 162, 39, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(201, 162, 39, 0.03) 87.5%),
+                linear-gradient(150deg, rgba(201, 162, 39, 0.03) 12%, transparent 12.5%, transparent 87%, rgba(201, 162, 39, 0.03) 87.5%);
+            background-size: 80px 140px;
+            background-position: 0 0, 0 0, 40px 70px, 40px 70px;
         }
 
-        .login-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
-            width: 100%;
-            max-width: 440px;
-            overflow: hidden;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Header con gradiente */
-        .login-header {
-            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-            padding: 40px 35px 35px;
-            text-align: center;
-            position: relative;
-        }
-
-        /* Decorative line */
-        .login-header::after {
+        /* Decorative Lines */
+        .brand-panel::after {
             content: '';
             position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 3px;
-            background: var(--gold);
-            border-radius: 2px;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 200px;
+            background: linear-gradient(180deg, transparent, var(--gold), transparent);
         }
 
-        .login-logo {
+        .brand-content {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        /* Logo Icon */
+        .brand-icon {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-dark) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 15px 40px rgba(201, 162, 39, 0.3);
+            transform: rotate(-5deg);
+        }
+
+        .brand-icon i {
+            font-size: 40px;
+            color: var(--navy-dark);
+        }
+
+        .brand-title {
             font-family: 'Oswald', sans-serif;
-            font-size: 48px;
+            font-size: 56px;
             font-weight: 700;
-            letter-spacing: 10px;
+            letter-spacing: 12px;
             color: white;
-            margin-bottom: 8px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            margin-bottom: 15px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
 
-        .login-subtitle {
-            font-size: 13px;
+        .brand-tagline {
+            font-size: 14px;
             color: var(--gold);
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             text-transform: uppercase;
             font-weight: 500;
+            margin-bottom: 50px;
         }
 
-        /* Body */
-        .login-body {
-            padding: 40px 35px 35px;
+        /* Features List */
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 30px;
         }
 
-        .welcome-text {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .welcome-text h2 {
-            font-size: 22px;
-            font-weight: 600;
-            color: var(--navy);
-            margin-bottom: 5px;
-        }
-
-        .welcome-text p {
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            color: rgba(255,255,255,0.7);
             font-size: 14px;
-            color: #666;
+        }
+
+        .feature-item i {
+            width: 36px;
+            height: 36px;
+            background: rgba(201, 162, 39, 0.15);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold);
+            font-size: 14px;
+        }
+
+        /* Right Panel - Form */
+        .form-panel {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            background: white;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .form-header {
+            margin-bottom: 40px;
+        }
+
+        .form-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--navy);
+            margin-bottom: 8px;
+        }
+
+        .form-header p {
+            font-size: 15px;
+            color: #6c757d;
+        }
+
+        /* Form Fields */
+        .form-group {
+            margin-bottom: 24px;
         }
 
         .form-label {
             font-size: 13px;
             font-weight: 600;
             color: var(--navy);
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            margin-bottom: 10px;
+            display: block;
         }
 
-        .form-label i {
-            color: var(--gold);
-            font-size: 12px;
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #adb5bd;
+            font-size: 16px;
+            transition: color 0.2s;
         }
 
         .form-control {
-            padding: 14px 16px;
+            width: 100%;
+            padding: 16px 16px 16px 48px;
             font-size: 15px;
-            border: 2px solid #e8e8e8;
-            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
             transition: all 0.2s ease;
-            background: #fafafa;
+            background: #f8f9fa;
         }
 
         .form-control:focus {
@@ -156,25 +229,50 @@
             outline: none;
         }
 
+        .form-control:focus + i,
+        .input-wrapper:focus-within i {
+            color: var(--navy);
+        }
+
         .form-control::placeholder {
-            color: #aaa;
+            color: #adb5bd;
         }
 
         .form-control.is-invalid {
             border-color: #dc3545;
-            background: #fff8f8;
+            background: #fff5f5;
         }
 
+        .invalid-feedback {
+            font-size: 12px;
+            color: #dc3545;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #adb5bd;
+            margin-top: 6px;
+        }
+
+        /* Checkbox */
         .form-check {
-            margin: 20px 0 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 28px 0;
         }
 
         .form-check-input {
-            width: 18px;
-            height: 18px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            margin-right: 8px;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
 
         .form-check-input:checked {
@@ -184,109 +282,63 @@
 
         .form-check-label {
             font-size: 14px;
-            color: #666;
+            color: #6c757d;
             cursor: pointer;
         }
 
+        /* Submit Button */
         .btn-login {
             width: 100%;
-            padding: 15px 24px;
+            padding: 16px 24px;
             font-size: 15px;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
             color: white;
             background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
         }
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(10, 35, 66, 0.3);
+            box-shadow: 0 10px 30px rgba(10, 35, 66, 0.25);
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
         }
 
         .btn-login:active {
             transform: translateY(0);
         }
 
-        /* Alerts */
-        .alert {
-            padding: 14px 16px;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-bottom: 25px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #c8e6c9;
-        }
-
-        .alert-danger {
-            background: #ffebee;
-            color: #c62828;
-            border: 1px solid #ffcdd2;
-        }
-
-        .invalid-feedback {
-            font-size: 12px;
-            color: #dc3545;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .form-hint {
-            font-size: 12px;
-            color: #999;
-            margin-top: 6px;
-        }
-
-        /* Footer */
-        .login-footer {
-            padding: 20px 35px;
-            background: #f8f9fa;
-            border-top: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .footer-text {
-            font-size: 12px;
-            color: #888;
-        }
-
-        .footer-version {
-            font-size: 11px;
-            color: #aaa;
-            background: #eee;
-            padding: 4px 10px;
-            border-radius: 12px;
-        }
-
-        /* Loading state */
+        /* Loading State */
         .btn-login.loading {
-            opacity: 0.8;
             pointer-events: none;
         }
 
         .btn-login .spinner {
             display: none;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border: 2px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
@@ -297,6 +349,7 @@
             display: block;
         }
 
+        .btn-login.loading .btn-text,
         .btn-login.loading .btn-icon {
             display: none;
         }
@@ -305,39 +358,155 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Alerts */
+        .alert {
+            padding: 14px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Footer */
+        .form-footer {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-footer-text {
+            font-size: 12px;
+            color: #adb5bd;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-footer-text i {
+            color: var(--gold);
+        }
+
+        .version-badge {
+            font-size: 11px;
+            color: #6c757d;
+            background: #e9ecef;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
         /* Responsive */
+        @media (max-width: 992px) {
+            .brand-panel {
+                display: none;
+            }
+            
+            .form-panel {
+                background: linear-gradient(160deg, var(--navy-dark) 0%, var(--navy) 100%);
+            }
+            
+            .form-container {
+                background: white;
+                padding: 40px 30px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+        }
+
         @media (max-width: 480px) {
-            .login-header {
-                padding: 30px 25px 28px;
+            .form-panel {
+                padding: 20px;
             }
-            .login-body {
-                padding: 30px 25px 25px;
+            
+            .form-container {
+                padding: 30px 24px;
             }
-            .login-logo {
-                font-size: 40px;
-                letter-spacing: 8px;
+            
+            .form-header h1 {
+                font-size: 24px;
             }
-            .login-footer {
+            
+            .form-footer {
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
                 text-align: center;
             }
+        }
+
+        /* Animation on load */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-container {
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .brand-content {
+            animation: fadeInUp 0.6s ease 0.1s both;
         }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <!-- Header -->
-        <div class="login-header">
-            <div class="login-logo">SUGECO</div>
-            <div class="login-subtitle">Sistema di Gestione e Controllo</div>
+    <!-- Brand Panel -->
+    <div class="brand-panel">
+        <div class="brand-content">
+            <div class="brand-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1 class="brand-title">SUGECO</h1>
+            <p class="brand-tagline">Sistema di Gestione e Controllo</p>
+            
+            <div class="feature-list">
+                <div class="feature-item">
+                    <i class="fas fa-users"></i>
+                    <span>Gestione Personale Militare</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Pianificazione Operativa</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Dashboard e Reportistica</span>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-lock"></i>
+                    <span>Accesso Sicuro e Controllato</span>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <!-- Body -->
-        <div class="login-body">
-            <div class="welcome-text">
-                <h2>Benvenuto</h2>
-                <p>Inserisci le credenziali per accedere</p>
+    <!-- Form Panel -->
+    <div class="form-panel">
+        <div class="form-container">
+            <div class="form-header">
+                <h1>Accedi al sistema</h1>
+                <p>Inserisci le tue credenziali per continuare</p>
             </div>
 
             <!-- Success Message -->
@@ -365,22 +534,23 @@
                 @csrf
 
                 <!-- Username -->
-                <div class="mb-3">
-                    <label for="username" class="form-label">
-                        <i class="fas fa-user"></i> Username
-                    </label>
-                    <input
-                        type="text"
-                        class="form-control @error('username') is-invalid @enderror"
-                        id="username"
-                        name="username"
-                        placeholder="nome.cognome"
-                        value="{{ old('username') }}"
-                        required
-                        autofocus
-                    >
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <div class="input-wrapper">
+                        <input
+                            type="text"
+                            class="form-control @error('username') is-invalid @enderror"
+                            id="username"
+                            name="username"
+                            placeholder="nome.cognome"
+                            value="{{ old('username') }}"
+                            required
+                            autofocus
+                        >
+                        <i class="fas fa-user"></i>
+                    </div>
                     @error('username')
-                        <div class="invalid-feedback d-block">
+                        <div class="invalid-feedback">
                             <i class="fas fa-times-circle"></i> {{ $message }}
                         </div>
                     @enderror
@@ -388,20 +558,21 @@
                 </div>
 
                 <!-- Password -->
-                <div class="mb-3">
-                    <label for="password" class="form-label">
-                        <i class="fas fa-lock"></i> Password
-                    </label>
-                    <input 
-                        type="password" 
-                        class="form-control @error('password') is-invalid @enderror" 
-                        id="password" 
-                        name="password" 
-                        placeholder="••••••••"
-                        required
-                    >
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="password" 
+                            class="form-control @error('password') is-invalid @enderror" 
+                            id="password" 
+                            name="password" 
+                            placeholder="••••••••"
+                            required
+                        >
+                        <i class="fas fa-lock"></i>
+                    </div>
                     @error('password')
-                        <div class="invalid-feedback d-block">
+                        <div class="invalid-feedback">
                             <i class="fas fa-times-circle"></i> {{ $message }}
                         </div>
                     @enderror
@@ -418,19 +589,19 @@
                 <!-- Submit Button -->
                 <button type="submit" class="btn-login" id="submitBtn">
                     <span class="spinner"></span>
-                    <i class="fas fa-sign-in-alt btn-icon"></i>
-                    <span>Accedi</span>
+                    <i class="fas fa-arrow-right btn-icon"></i>
+                    <span class="btn-text">Accedi</span>
                 </button>
             </form>
-        </div>
 
-        <!-- Footer -->
-        <div class="login-footer">
-            <span class="footer-text">
-                <i class="fas fa-shield-alt me-1"></i>
-                Accesso riservato
-            </span>
-            <span class="footer-version">v2.1.0</span>
+            <!-- Footer -->
+            <div class="form-footer">
+                <span class="form-footer-text">
+                    <i class="fas fa-shield-alt"></i>
+                    Connessione protetta
+                </span>
+                <span class="version-badge">v2.1.0</span>
+            </div>
         </div>
     </div>
 
@@ -440,7 +611,7 @@
             btn.classList.add('loading');
         });
 
-        // Auto-hide success
+        // Auto-hide success alert
         const successAlert = document.querySelector('.alert-success');
         if (successAlert) {
             setTimeout(() => {
