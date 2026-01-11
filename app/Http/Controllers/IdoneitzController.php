@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Militare;
 use App\Models\ScadenzaMilitare;
 use App\Models\Compagnia;
+use App\Models\BoardActivity;
+use App\Models\BoardColumn;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -37,8 +39,39 @@ class IdoneitzController extends Controller
         // Ordinamento
         $militari = $query->orderByGradoENome()->get();
         
+        // Ottieni la colonna "operazioni" (Teatro Operativo) dalla board
+        $colonnaTO = BoardColumn::where('slug', 'operazioni')->first();
+        
+        // Ottieni tutte le attività T.O. attive o future con i militari assegnati
+        $attivitaTO = collect();
+        if ($colonnaTO) {
+            $attivitaTO = BoardActivity::where('column_id', $colonnaTO->id)
+                ->where(function($q) {
+                    $q->whereNull('end_date')
+                      ->orWhere('end_date', '>=', Carbon::today());
+                })
+                ->with('militari')
+                ->get();
+        }
+        
+        // Crea una mappa militare_id => attività T.O.
+        $militariTO = [];
+        foreach ($attivitaTO as $attivita) {
+            foreach ($attivita->militari as $m) {
+                if (!isset($militariTO[$m->id])) {
+                    $militariTO[$m->id] = [];
+                }
+                $militariTO[$m->id][] = [
+                    'id' => $attivita->id,
+                    'title' => $attivita->title,
+                    'start_date' => $attivita->start_date,
+                    'end_date' => $attivita->end_date,
+                ];
+            }
+        }
+        
         // Calcola le scadenze per ogni militare
-        $data = $militari->map(function ($militare) {
+        $data = $militari->map(function ($militare) use ($militariTO) {
             $scadenza = $militare->scadenza;
             
             return [
@@ -47,6 +80,7 @@ class IdoneitzController extends Controller
                 'idoneita_smi' => $this->calcolaScadenza($scadenza?->idoneita_smi_data_conseguimento, 1), // 1 anno
                 'ecg' => $this->calcolaScadenza($scadenza?->ecg_data_conseguimento, 1), // 1 anno
                 'prelievi' => $this->calcolaScadenza($scadenza?->prelievi_data_conseguimento, 1), // 1 anno
+                'teatro_operativo' => $militariTO[$militare->id] ?? [],
             ];
         });
         
@@ -161,6 +195,30 @@ class IdoneitzController extends Controller
             
             $militari = $query->orderByGradoENome()->get();
             
+            // Ottieni attività T.O. per l'export
+            $colonnaTO = BoardColumn::where('slug', 'operazioni')->first();
+            $attivitaTO = collect();
+            if ($colonnaTO) {
+                $attivitaTO = BoardActivity::where('column_id', $colonnaTO->id)
+                    ->where(function($q) {
+                        $q->whereNull('end_date')
+                          ->orWhere('end_date', '>=', Carbon::today());
+                    })
+                    ->with('militari')
+                    ->get();
+            }
+            
+            // Mappa militare_id => attività T.O.
+            $militariTO = [];
+            foreach ($attivitaTO as $attivita) {
+                foreach ($attivita->militari as $m) {
+                    if (!isset($militariTO[$m->id])) {
+                        $militariTO[$m->id] = [];
+                    }
+                    $militariTO[$m->id][] = $attivita->title . ' (' . $attivita->start_date->format('d/m/Y') . ')';
+                }
+            }
+            
             // Stile header
             $headerStyle = [
                 'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
@@ -171,12 +229,12 @@ class IdoneitzController extends Controller
             
             // Titolo
             $sheet->setCellValue('A1', 'SCADENZE IDONEITÀ SANITARIE');
-            $sheet->mergeCells('A1:M1');
+            $sheet->mergeCells('A1:N1');
             $sheet->getStyle('A1')->applyFromArray($headerStyle);
             $sheet->getRowDimension('1')->setRowHeight(25);
             
             // Header colonne
-            $headers = ['N.', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 
+            $headers = ['N.', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'TEATRO OPERATIVO',
                         'IDONEITÀ MANS. CONS.', 'IDONEITÀ MANS. SCAD.', 
                         'IDONEITÀ SMI CONS.', 'IDONEITÀ SMI SCAD.', 
                         'ECG CONS.', 'ECG SCAD.',
@@ -204,20 +262,30 @@ class IdoneitzController extends Controller
                 $sheet->setCellValue('D' . $row, strtoupper($militare->cognome));
                 $sheet->setCellValue('E' . $row, strtoupper($militare->nome));
                 
+                // Teatro Operativo
+                $toList = $militariTO[$militare->id] ?? [];
+                $sheet->setCellValue('F' . $row, implode("\n", $toList));
+                if (count($toList) > 0) {
+                    $sheet->getStyle('F' . $row)->applyFromArray([
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFCDD2']],
+                    ]);
+                }
+                $sheet->getStyle('F' . $row)->getAlignment()->setWrapText(true);
+                
                 // Idoneità Mansione
-                $this->addScadenzaToSheet($sheet, $row, 'F', $scadenza?->idoneita_mans_data_conseguimento, 1);
+                $this->addScadenzaToSheet($sheet, $row, 'G', $scadenza?->idoneita_mans_data_conseguimento, 1);
                 
                 // Idoneità SMI
-                $this->addScadenzaToSheet($sheet, $row, 'H', $scadenza?->idoneita_smi_data_conseguimento, 1);
+                $this->addScadenzaToSheet($sheet, $row, 'I', $scadenza?->idoneita_smi_data_conseguimento, 1);
                 
                 // ECG
-                $this->addScadenzaToSheet($sheet, $row, 'J', $scadenza?->ecg_data_conseguimento, 1);
+                $this->addScadenzaToSheet($sheet, $row, 'K', $scadenza?->ecg_data_conseguimento, 1);
                 
                 // Prelievi
-                $this->addScadenzaToSheet($sheet, $row, 'L', $scadenza?->prelievi_data_conseguimento, 1);
+                $this->addScadenzaToSheet($sheet, $row, 'M', $scadenza?->prelievi_data_conseguimento, 1);
                 
                 // Bordi
-                $sheet->getStyle('A' . $row . ':M' . $row)->applyFromArray([
+                $sheet->getStyle('A' . $row . ':N' . $row)->applyFromArray([
                     'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                 ]);
                 
@@ -230,16 +298,17 @@ class IdoneitzController extends Controller
             $sheet->getColumnDimension('C')->setWidth(12);  // Grado
             $sheet->getColumnDimension('D')->setWidth(20);  // Cognome
             $sheet->getColumnDimension('E')->setWidth(20);  // Nome
+            $sheet->getColumnDimension('F')->setWidth(35);  // Teatro Operativo
             
             // Date - larghezza aumentata per intestazioni lunghe
-            $sheet->getColumnDimension('F')->setWidth(25);  // IDONEITÀ MANS. CONS.
-            $sheet->getColumnDimension('G')->setWidth(25);  // IDONEITÀ MANS. SCAD.
-            $sheet->getColumnDimension('H')->setWidth(25);  // IDONEITÀ SMI CONS.
-            $sheet->getColumnDimension('I')->setWidth(25);  // IDONEITÀ SMI SCAD.
-            $sheet->getColumnDimension('J')->setWidth(18);  // ECG CONS.
-            $sheet->getColumnDimension('K')->setWidth(18);  // ECG SCAD.
-            $sheet->getColumnDimension('L')->setWidth(20);  // PRELIEVI CONS.
-            $sheet->getColumnDimension('M')->setWidth(20);  // PRELIEVI SCAD.
+            $sheet->getColumnDimension('G')->setWidth(25);  // IDONEITÀ MANS. CONS.
+            $sheet->getColumnDimension('H')->setWidth(25);  // IDONEITÀ MANS. SCAD.
+            $sheet->getColumnDimension('I')->setWidth(25);  // IDONEITÀ SMI CONS.
+            $sheet->getColumnDimension('J')->setWidth(25);  // IDONEITÀ SMI SCAD.
+            $sheet->getColumnDimension('K')->setWidth(18);  // ECG CONS.
+            $sheet->getColumnDimension('L')->setWidth(18);  // ECG SCAD.
+            $sheet->getColumnDimension('M')->setWidth(20);  // PRELIEVI CONS.
+            $sheet->getColumnDimension('N')->setWidth(20);  // PRELIEVI SCAD.
             
             // Salva
             $filename = 'Scadenze_Idoneita_' . date('Y-m-d') . '.xlsx';

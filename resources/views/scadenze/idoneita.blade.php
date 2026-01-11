@@ -286,6 +286,23 @@ table.table td,
 .filter-select {
     border-radius: 0 !important;
 }
+
+/* Colonna Teatro Operativo */
+.teatro-operativo-cell {
+    vertical-align: middle;
+}
+
+.to-badge {
+    margin-bottom: 4px;
+}
+
+.to-badge:last-child {
+    margin-bottom: 0;
+}
+
+.to-badge .badge {
+    cursor: help;
+}
 </style>
 
 <!-- Header Minimal Solo Titolo -->
@@ -410,6 +427,7 @@ table.table td,
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
+                <th style="min-width: 200px;"><i class="fas fa-fighter-jet me-1"></i>Teatro Operativo</th>
                 <th style="min-width: 150px;">Idoneità Mansione</th>
                 <th style="min-width: 130px;">Idoneità SMI</th>
                 <th style="min-width: 130px;">ECG</th>
@@ -428,6 +446,27 @@ table.table td,
                     </a>
                 </td>
                 <td>{{ $item['militare']->nome }}</td>
+                
+                {{-- Colonna Teatro Operativo --}}
+                <td class="teatro-operativo-cell" style="padding: 6px 8px;">
+                    @if(count($item['teatro_operativo']) > 0)
+                        @foreach($item['teatro_operativo'] as $to)
+                            <div class="to-badge" title="{{ $to['title'] }}&#10;Dal: {{ \Carbon\Carbon::parse($to['start_date'])->format('d/m/Y') }}{{ $to['end_date'] ? ' al ' . \Carbon\Carbon::parse($to['end_date'])->format('d/m/Y') : '' }}">
+                                <span class="badge bg-danger" style="font-size: 0.75rem; white-space: nowrap;">
+                                    <i class="fas fa-fighter-jet me-1"></i>{{ Str::limit($to['title'], 20) }}
+                                </span>
+                                <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                    {{ \Carbon\Carbon::parse($to['start_date'])->format('d/m') }}
+                                    @if($to['end_date'])
+                                        - {{ \Carbon\Carbon::parse($to['end_date'])->format('d/m') }}
+                                    @endif
+                                </small>
+                            </div>
+                        @endforeach
+                    @else
+                        <span class="text-muted" style="font-size: 0.8rem;">-</span>
+                    @endif
+                </td>
                 
                 @foreach(['idoneita_mansione', 'idoneita_smi', 'ecg', 'prelievi'] as $campo)
                 @php
@@ -683,12 +722,12 @@ function applicaFiltriStato() {
     rows.forEach(row => {
         let visible = true;
         
-        // Mappa indici celle per campo
+        // Mappa indici celle per campo (aggiornata con colonna T.O.)
         const campiMap = {
-            'idoneita_mansione': 4,
-            'idoneita_smi': 5,
-            'ecg': 6,
-            'prelievi': 7
+            'idoneita_mansione': 5,
+            'idoneita_smi': 6,
+            'ecg': 7,
+            'prelievi': 8
         };
         
         for (const [campo, statoRichiesto] of Object.entries(filtri)) {
