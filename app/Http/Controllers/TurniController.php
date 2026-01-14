@@ -166,31 +166,31 @@ class TurniController extends Controller
     {
         $request->validate([
             'nome' => 'required|string|max:100',
-            'codice' => 'required|string|max:20|regex:/^[A-Za-z0-9-]+$/',
-            'sigla_cpt' => 'nullable|string|max:10|regex:/^[A-Za-z0-9-]+$/',
+            'sigla_cpt' => 'required|string|max:10|regex:/^[A-Za-z0-9-]+$/',
             'num_posti' => 'required|integer|min:1|max:20',
+            'smontante_cpt' => 'sometimes|boolean',
         ]);
 
         $ordine = (int) ServizioTurno::max('ordine') + 1;
         $numPosti = (int) $request->num_posti;
-        $codice = strtoupper(trim($request->codice));
-        $siglaCpt = $request->sigla_cpt ? strtoupper(trim($request->sigla_cpt)) : null;
+        $siglaCpt = strtoupper(trim($request->sigla_cpt));
+        $codice = $siglaCpt;
 
-        if ($siglaCpt && !TipoServizio::where('codice', $siglaCpt)->exists()) {
+        if (!TipoServizio::where('codice', $siglaCpt)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sigla CPT non valida: il codice non esiste nel CPT.',
             ], 422);
         }
 
-        if ($siglaCpt && ServizioTurno::where('sigla_cpt', $siglaCpt)->where('attivo', true)->exists()) {
+        if (ServizioTurno::where('sigla_cpt', $siglaCpt)->where('attivo', true)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sigla CPT già associata a un altro servizio attivo.',
             ], 422);
         }
 
-        $esistente = ServizioTurno::where('codice', $codice)->first();
+        $esistente = ServizioTurno::where('sigla_cpt', $siglaCpt)->orWhere('codice', $codice)->first();
         if ($esistente) {
             if ($esistente->attivo) {
                 return response()->json([
@@ -202,10 +202,12 @@ class TurniController extends Controller
             $esistente->update([
                 'nome' => trim($request->nome),
                 'sigla_cpt' => $siglaCpt,
+                'codice' => $codice,
                 'num_posti' => $numPosti,
                 'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
                 'ordine' => $ordine,
                 'attivo' => true,
+                'smontante_cpt' => $request->boolean('smontante_cpt', false),
             ]);
 
             return response()->json([
@@ -223,6 +225,7 @@ class TurniController extends Controller
             'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
             'ordine' => $ordine,
             'attivo' => true,
+            'smontante_cpt' => $request->boolean('smontante_cpt', false),
         ]);
 
         return response()->json([
@@ -239,21 +242,23 @@ class TurniController extends Controller
     {
         $request->validate([
             'nome' => 'required|string|max:100',
-            'sigla_cpt' => 'nullable|string|max:10|regex:/^[A-Za-z0-9-]+$/',
+            'sigla_cpt' => 'required|string|max:10|regex:/^[A-Za-z0-9-]+$/',
             'num_posti' => 'required|integer|min:1|max:20',
+            'smontante_cpt' => 'sometimes|boolean',
         ]);
 
         $numPosti = (int) $request->num_posti;
-        $siglaCpt = $request->sigla_cpt ? strtoupper(trim($request->sigla_cpt)) : null;
+        $siglaCpt = strtoupper(trim($request->sigla_cpt));
+        $codice = $siglaCpt;
 
-        if ($siglaCpt && !TipoServizio::where('codice', $siglaCpt)->exists()) {
+        if (!TipoServizio::where('codice', $siglaCpt)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sigla CPT non valida: il codice non esiste nel CPT.',
             ], 422);
         }
 
-        if ($siglaCpt && ServizioTurno::where('sigla_cpt', $siglaCpt)->where('id', '!=', $servizio->id)->where('attivo', true)->exists()) {
+        if (ServizioTurno::where('sigla_cpt', $siglaCpt)->where('id', '!=', $servizio->id)->where('attivo', true)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Sigla CPT già associata a un altro servizio attivo.',
@@ -276,8 +281,10 @@ class TurniController extends Controller
         $servizio->update([
             'nome' => trim($request->nome),
             'sigla_cpt' => $siglaCpt,
+            'codice' => $codice,
             'num_posti' => $numPosti,
             'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
+            'smontante_cpt' => $request->boolean('smontante_cpt', false),
         ]);
 
         return response()->json([

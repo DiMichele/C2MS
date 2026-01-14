@@ -315,17 +315,16 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-info mb-3">
-                    <strong>Codice servizio:</strong> identificativo interno stabile (non sincronizza con CPT).<br>
-                    <strong>Sigla CPT:</strong> codice presente nel CPT (tabella “Codici CPT”) usato per la sincronizzazione.
+                    <strong>Sigla CPT:</strong> identifica il servizio in modo univoco ed è usata per la sincronizzazione con il CPT.
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle">
                         <thead>
                             <tr>
                                 <th>Nome</th>
-                                <th>Codice (interno)</th>
                                 <th>Sigla CPT</th>
                                 <th>Posti</th>
+                                <th>Smontante (CPT +1)</th>
                                 <th class="text-end">Azioni</th>
                             </tr>
                         </thead>
@@ -337,9 +336,6 @@
                                                id="servizio-nome-{{ $servizio->id }}" 
                                                value="{{ $servizio->nome }}">
                                     </td>
-                                    <td>
-                                        <span class="badge bg-secondary">{{ $servizio->codice }}</span>
-                                    </td>
                                     <td style="max-width: 140px;">
                                         <input type="text" class="form-control form-control-sm" 
                                                id="servizio-sigla-{{ $servizio->id }}" 
@@ -349,6 +345,11 @@
                                         <input type="number" min="1" class="form-control form-control-sm" 
                                                id="servizio-posti-{{ $servizio->id }}" 
                                                value="{{ $servizio->num_posti }}">
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" class="form-check-input"
+                                               id="servizio-smontante-{{ $servizio->id }}"
+                                               {{ $servizio->smontante_cpt ? 'checked' : '' }}>
                                     </td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-primary" onclick="aggiornaServizio({{ $servizio->id }})">
@@ -369,16 +370,12 @@
 
                 <h6 class="mb-2">Aggiungi nuovo servizio</h6>
                 <small class="text-muted d-block mb-2">
-                    Se non vuoi sincronizzare col CPT, lascia vuota la sigla CPT.
+                    La sigla CPT è obbligatoria.
                 </small>
                 <div class="row g-2">
                     <div class="col-md-4">
                         <input type="text" class="form-control form-control-sm" id="nuovoServizioNome" 
                                placeholder="Nome servizio">
-                    </div>
-                    <div class="col-md-2">
-                        <input type="text" class="form-control form-control-sm" id="nuovoServizioCodice" 
-                               placeholder="Codice interno (es. G3)">
                     </div>
                     <div class="col-md-2">
                         <input type="text" class="form-control form-control-sm" id="nuovoServizioSigla" 
@@ -387,6 +384,14 @@
                     <div class="col-md-2">
                         <input type="number" min="1" class="form-control form-control-sm" id="nuovoServizioPosti" 
                                placeholder="Posti" value="1">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-center">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="nuovoServizioSmontante">
+                            <label class="form-check-label" for="nuovoServizioSmontante">
+                                Smontante +1
+                            </label>
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-success btn-sm w-100" onclick="creaServizio()">
@@ -1181,12 +1186,12 @@ async function salvaComandante() {
 // Gestione servizi (crea/aggiorna/rimuovi)
 async function creaServizio() {
     const nome = document.getElementById('nuovoServizioNome')?.value.trim();
-    const codice = document.getElementById('nuovoServizioCodice')?.value.trim();
     const sigla = document.getElementById('nuovoServizioSigla')?.value.trim();
     const numPosti = parseInt(document.getElementById('nuovoServizioPosti')?.value, 10);
+    const smontante = !!document.getElementById('nuovoServizioSmontante')?.checked;
 
-    if (!nome || !codice || !numPosti || numPosti < 1) {
-        showToast('Compila nome, codice e posti validi', 'error');
+    if (!nome || !sigla || !numPosti || numPosti < 1) {
+        showToast('Compila nome, sigla CPT e posti validi', 'error');
         return;
     }
 
@@ -1201,9 +1206,9 @@ async function creaServizio() {
             },
             body: JSON.stringify({
                 nome,
-                codice,
                 sigla_cpt: sigla || null,
-                num_posti: numPosti
+                num_posti: numPosti,
+                smontante_cpt: smontante
             })
         });
         const result = await response.json();
@@ -1226,9 +1231,10 @@ async function aggiornaServizio(servizioId) {
     const nome = document.getElementById(`servizio-nome-${servizioId}`)?.value.trim();
     const sigla = document.getElementById(`servizio-sigla-${servizioId}`)?.value.trim();
     const numPosti = parseInt(document.getElementById(`servizio-posti-${servizioId}`)?.value, 10);
+    const smontante = !!document.getElementById(`servizio-smontante-${servizioId}`)?.checked;
 
-    if (!nome || !numPosti || numPosti < 1) {
-        showToast('Nome e posti devono essere validi', 'error');
+    if (!nome || !sigla || !numPosti || numPosti < 1) {
+        showToast('Nome, sigla CPT e posti devono essere validi', 'error');
         return;
     }
 
@@ -1244,7 +1250,8 @@ async function aggiornaServizio(servizioId) {
             body: JSON.stringify({
                 nome,
                 sigla_cpt: sigla || null,
-                num_posti: numPosti
+                num_posti: numPosti,
+                smontante_cpt: smontante
             })
         });
         const result = await response.json();
@@ -1292,6 +1299,19 @@ async function rimuoviServizio(servizioId, nomeServizio) {
         showToast('Errore di rete', 'error');
     }
 }
+
+// Evita focus su modal nascosto (accessibilità)
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('modalAssegnazione');
+    if (modal) {
+        modal.addEventListener('hidden.bs.modal', () => {
+            if (modal.contains(document.activeElement)) {
+                document.activeElement.blur();
+                document.body.focus();
+            }
+        });
+    }
+});
 </script>
 
 <!-- Floating Button Export Excel -->

@@ -15,38 +15,43 @@
     </div>
 
     <!-- Controlli -->
-    <div class="card ruolini-toolbar mb-4">
+    <div class="filter-card mb-4">
+        <div class="filter-card-header">
+            <span>Filtri Ruolini</span>
+        </div>
         <div class="card-body">
-            <div class="ruolini-toolbar-grid">
-                <div class="ruolini-toolbar-group">
-                    <div class="ruolini-toolbar-label">Data</div>
-                    <div class="ruolini-date-controls">
-                        <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->subDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
-                           class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-chevron-left"></i>
-                        </a>
-
-                        <input type="date" id="dataSelect" class="form-control form-control-sm"
-                               value="{{ $dataSelezionata }}" onchange="cambiaData()">
-
-                        <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->addDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
-                           class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-chevron-right"></i>
-                        </a>
-
-                        @if(!$dataObj->isToday())
-                            <a href="{{ route('ruolini.index', array_filter(['compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
-                               class="btn btn-primary btn-sm">
-                                Oggi
+            <div class="filter-row">
+                <div class="filter-col">
+                    <div class="filter-control">
+                        <label for="dataSelect">Data</label>
+                        <div class="ruolini-date-controls">
+                            <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->subDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-chevron-left"></i>
                             </a>
-                        @endif
+
+                            <input type="date" id="dataSelect" class="form-control form-control-sm"
+                                   value="{{ $dataSelezionata }}" onchange="cambiaData()">
+
+                            <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->addDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
+                               class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+
+                            @if(!$dataObj->isToday())
+                                <a href="{{ route('ruolini.index', array_filter(['compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
+                                   class="btn btn-primary btn-sm">
+                                    Oggi
+                                </a>
+                            @endif
+                        </div>
                     </div>
                 </div>
-
-                <div class="ruolini-toolbar-group">
-                    <div class="ruolini-toolbar-label">Filtri</div>
-                    <div class="ruolini-filter-controls">
-                        <select id="compagniaSelect" class="form-select form-select-sm" onchange="applicaFiltri()">
+                <div class="filter-col">
+                    <div class="filter-control">
+                        <label for="compagniaSelect">Compagnia</label>
+                        @if($canChangeCompagnia ?? false)
+                        <select id="compagniaSelect" class="form-select form-select-sm filter-select" onchange="cambiaCompagnia()">
                             <option value="">Tutte le compagnie</option>
                             @foreach($compagnie as $compagnia)
                                 <option value="{{ $compagnia->id }}" {{ $compagniaId == $compagnia->id ? 'selected' : '' }}>
@@ -54,17 +59,37 @@
                                 </option>
                             @endforeach
                         </select>
-
-                        <select id="plotoneSelect" class="form-select form-select-sm" onchange="applicaFiltri()">
-                            <option value="">Tutti i plotoni</option>
+                        @else
+                        <select id="compagniaSelect" class="form-select form-select-sm filter-select" disabled>
+                            @foreach($compagnie as $compagnia)
+                                @if($compagniaId == $compagnia->id)
+                                <option value="{{ $compagnia->id }}" selected>{{ $compagnia->nome }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                        <input type="hidden" id="compagniaIdHidden" value="{{ $compagniaId }}">
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <div class="filter-row">
+                <div class="filter-col">
+                    <div class="filter-control">
+                        <label for="plotoneSelect">Plotone</label>
+                        <select id="plotoneSelect" class="form-select form-select-sm filter-select" onchange="applicaFiltri()" {{ empty($compagniaId) ? 'disabled' : '' }}>
+                            <option value="">{{ empty($compagniaId) ? 'Seleziona prima una compagnia' : 'Tutti i plotoni' }}</option>
                             @foreach($plotoni as $plotone)
                                 <option value="{{ $plotone->id }}" {{ $plotoneId == $plotone->id ? 'selected' : '' }}>
                                     {{ $plotone->nome }}
                                 </option>
                             @endforeach
                         </select>
-
-                        <select id="ufficioSelect" class="form-select form-select-sm" onchange="applicaFiltri()">
+                    </div>
+                </div>
+                <div class="filter-col">
+                    <div class="filter-control">
+                        <label for="ufficioSelect">Ufficio (polo)</label>
+                        <select id="ufficioSelect" class="form-select form-select-sm filter-select" onchange="applicaFiltri()">
                             <option value="">Tutti gli uffici</option>
                             @foreach($uffici as $ufficio)
                                 <option value="{{ $ufficio->id }}" {{ $ufficioId == $ufficio->id ? 'selected' : '' }}>
@@ -72,17 +97,17 @@
                                 </option>
                             @endforeach
                         </select>
-
-                        @if($compagniaId || $plotoneId || $ufficioId)
-                            <a href="{{ route('ruolini.index', ['data' => $dataSelezionata]) }}"
-                               class="btn btn-outline-secondary btn-sm">
-                                <i class="fas fa-times me-1"></i>Reset
-                            </a>
-                        @endif
                     </div>
                 </div>
-
             </div>
+
+            @if($compagniaId || $plotoneId || $ufficioId)
+                <div class="filter-actions">
+                    <a href="{{ route('ruolini.index', ['data' => $dataSelezionata]) }}" class="btn btn-filter btn-filter-reset">
+                        <i class="fas fa-times me-1"></i>Reset filtri
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -253,55 +278,19 @@
 }
 
 
-.ruolini-toolbar {
-    border-radius: 14px;
-    border: 1px solid var(--border-color);
-    background: #fff;
-    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04);
-}
-
-.ruolini-toolbar-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    align-items: end;
-}
-
-.ruolini-toolbar-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.ruolini-toolbar-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--gray-600);
-    font-weight: 600;
-}
-
-.ruolini-date-controls,
-.ruolini-filter-controls {
-    display: grid;
-    gap: 10px;
-    align-items: center;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
 .ruolini-date-controls {
-    grid-template-columns: auto 180px auto auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
 }
 
-.ruolini-date-controls .form-control,
-.ruolini-filter-controls .form-select {
-    width: 100%;
+.ruolini-date-controls .form-control {
+    width: 180px;
     border-radius: 8px;
 }
 
-.ruolini-date-controls .btn,
-.ruolini-filter-controls .btn,
-.ruolini-toolbar-actions .btn {
+.ruolini-date-controls .btn {
     border-radius: 8px;
 }
 
@@ -538,12 +527,6 @@
     background: var(--gray-500);
 }
 
-@media (max-width: 992px) {
-    .ruolini-toolbar-grid {
-        align-items: stretch;
-    }
-}
-
 @media (max-width: 768px) {
     .ruolini-accordion-header {
         flex-direction: column;
@@ -559,8 +542,8 @@
         border-bottom: 1px solid var(--border-color);
     }
 
-    .ruolini-date-controls {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    .ruolini-date-controls .form-control {
+        width: 100%;
     }
 }
 </style>
@@ -581,9 +564,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+function getCompagniaId() {
+    const select = document.getElementById('compagniaSelect');
+    const hidden = document.getElementById('compagniaIdHidden');
+    if (select && !select.disabled) {
+        return select.value;
+    }
+    return hidden ? hidden.value : '';
+}
+
 function cambiaData() {
     const data = document.getElementById('dataSelect').value;
-    const compagnia = document.getElementById('compagniaSelect').value;
+    const compagnia = getCompagniaId();
     const plotone = document.getElementById('plotoneSelect').value;
     const ufficio = document.getElementById('ufficioSelect').value;
     
@@ -598,13 +590,30 @@ function cambiaData() {
     window.location.href = q ? url + '?' + q : url;
 }
 
+function cambiaCompagnia() {
+    // Quando cambia la compagnia, resetta il plotone e ricarica la pagina
+    const data = document.getElementById('dataSelect').value;
+    const compagnia = document.getElementById('compagniaSelect').value;
+    const ufficio = document.getElementById('ufficioSelect').value;
+    
+    let url = '{{ route("ruolini.index") }}';
+    const params = new URLSearchParams();
+    if (data) params.append('data', data);
+    if (compagnia) params.append('compagnia_id', compagnia);
+    // Non includere plotone perché deve essere resettato
+    if (ufficio) params.append('ufficio_id', ufficio);
+    
+    const q = params.toString();
+    window.location.href = q ? url + '?' + q : url;
+}
+
 function applicaFiltri() {
     cambiaData();
 }
 
 function exportRuoliniExcel() {
     const data = document.getElementById('dataSelect').value;
-    const compagnia = document.getElementById('compagniaSelect').value;
+    const compagnia = getCompagniaId();
     const plotone = document.getElementById('plotoneSelect').value;
     const ufficio = document.getElementById('ufficioSelect').value;
     

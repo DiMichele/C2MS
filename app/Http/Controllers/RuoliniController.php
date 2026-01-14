@@ -9,7 +9,7 @@ use App\Models\PianificazioneGiornaliera;
 use App\Models\BoardActivity;
 use App\Models\ConfigurazioneRuolino;
 use App\Services\CompagniaSettingsService;
-use App\Models\Ufficio;
+use App\Models\Polo;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -22,23 +22,29 @@ use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
  * Gestisce la visualizzazione del personale presente e assente
  * per una data selezionata, diviso per categorie (Ufficiali, Sottufficiali, Graduati, Volontari).
  * 
- * NOTA: Le regole di presenza/assenza sono configurate PER COMPAGNIA
- * tramite CompagniaSettingsService.
+ * SICUREZZA: Gli utenti possono vedere solo i ruolini della propria compagnia.
+ * Solo gli admin possono vedere tutte le compagnie.
  */
 class RuoliniController extends Controller
 {
     /**
-     * Ottiene il service per la compagnia dell'utente corrente
+     * Ottiene il service per la compagnia specificata o dell'utente corrente
      */
-    private function getSettingsService(): CompagniaSettingsService
+    private function getSettingsService(?int $compagniaId = null): CompagniaSettingsService
     {
+        if ($compagniaId && auth()->user()->canAccessCompagnia($compagniaId)) {
+            return CompagniaSettingsService::forCompagnia($compagniaId);
+        }
         return CompagniaSettingsService::forCurrentUser();
     }
+
     /**
      * Mostra la pagina dei ruolini con il personale diviso per categorie
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+        
         // Gestione data - default oggi
         $dataSelezionata = $request->get('data', Carbon::today()->format('Y-m-d'));
         $dataObj = Carbon::parse($dataSelezionata);
@@ -48,10 +54,36 @@ class RuoliniController extends Controller
         $plotoneId = $request->get('plotone_id');
         $ufficioId = $request->get('ufficio_id');
         
-        // Recupera tutte le compagnie e plotoni per i filtri
-        $compagnie = Compagnia::with('plotoni')->orderBy('nome')->get();
-        $plotoni = Plotone::with('compagnia')->orderBy('nome')->get();
-        $uffici = Ufficio::orderBy('nome')->get();
+        // SICUREZZA: Recupera solo le compagnie visibili all'utente
+        $compagnie = $user->getVisibleCompagnie();
+        
+        // Se l'utente non è admin e non ha selezionato una compagnia, usa la sua
+        if (!$user->hasGlobalVisibility() && empty($compagniaId)) {
+            $compagniaId = $user->compagnia_id;
+        }
+        
+        // SICUREZZA: Verifica che l'utente possa accedere alla compagnia selezionata
+        if ($compagniaId && !$user->canAccessCompagnia((int)$compagniaId)) {
+            // Se non può accedere, redirect alla sua compagnia o senza filtro
+            if ($user->compagnia_id) {
+                return redirect()->route('ruolini.index', [
+                    'data' => $dataSelezionata,
+                    'compagnia_id' => $user->compagnia_id
+                ])->with('error', 'Non hai i permessi per visualizzare i ruolini di quella compagnia.');
+            }
+            $compagniaId = null;
+        }
+        
+        // Plotoni - filtrati per compagnia se selezionata
+        $plotoni = collect();
+        if ($compagniaId) {
+            $plotoni = Plotone::where('compagnia_id', $compagniaId)
+                ->orderBy('nome')
+                ->get();
+        }
+
+        // Uffici (Poli) - non filtrati per compagnia perché la tabella non ha quella colonna
+        $uffici = Polo::orderBy('nome')->get();
         
         // Query base per i militari
         $query = Militare::with([
@@ -67,6 +99,14 @@ class RuoliniController extends Controller
                     $subq->where('compagnia_id', $compagniaId);
                 })
                 ->orWhere('compagnia_id', $compagniaId);
+            });
+        } elseif (!$user->hasGlobalVisibility() && $user->compagnia_id) {
+            // Se non è admin e non ha selezionato compagnia, filtra per la sua
+            $query->where(function($q) use ($user) {
+                $q->whereHas('plotone', function($subq) use ($user) {
+                    $subq->where('compagnia_id', $user->compagnia_id);
+                })
+                ->orWhere('compagnia_id', $user->compagnia_id);
             });
         }
         
@@ -114,6 +154,9 @@ class RuoliniController extends Controller
             ];
         }
         
+        // Flag per indicare se l'utente può cambiare compagnia
+        $canChangeCompagnia = $user->hasGlobalVisibility();
+        
         return view('ruolini.index', compact(
             'categorie',
             'totali',
@@ -124,7 +167,8 @@ class RuoliniController extends Controller
             'plotoneId',
             'ufficioId',
             'dataSelezionata',
-            'dataObj'
+            'dataObj',
+            'canChangeCompagnia'
         ));
     }
     
@@ -201,22 +245,7 @@ class RuoliniController extends Controller
             ];
         }
         
-        // 2. Controlla Turni Settimanali - DISABILITATO (tabella assegnazioni_turno non esiste)
-        // $turno = AssegnazioneTurno::where('militare_id', $militare->id)
-        //     ->where('data_servizio', $data)
-        //     ->with('servizioTurno')
-        //     ->first();
-        // 
-        // if ($turno && $turno->servizioTurno) {
-        //     $impegni[] = [
-        //         'tipo' => 'Turno',
-        //         'descrizione' => $turno->servizioTurno->nome,
-        //         'codice' => $turno->servizioTurno->sigla ?? 'TRN',
-        //         'colore' => '#0d6efd',
-        //     ];
-        // }
-        
-        // 3. Controlla Board Attività
+        // 2. Controlla Board Attività
         $attivita = BoardActivity::whereHas('militari', function($q) use ($militare) {
                 $q->where('militari.id', $militare->id);
             })
@@ -287,6 +316,8 @@ class RuoliniController extends Controller
      */
     public function exportExcel(Request $request)
     {
+        $user = auth()->user();
+        
         // Gestione data - default oggi
         $dataSelezionata = $request->get('data', Carbon::today()->format('Y-m-d'));
         $dataObj = Carbon::parse($dataSelezionata);
@@ -295,6 +326,16 @@ class RuoliniController extends Controller
         $compagniaId = $request->get('compagnia_id');
         $plotoneId = $request->get('plotone_id');
         $ufficioId = $request->get('ufficio_id');
+        
+        // SICUREZZA: Se l'utente non è admin e non ha selezionato una compagnia, usa la sua
+        if (!$user->hasGlobalVisibility() && empty($compagniaId)) {
+            $compagniaId = $user->compagnia_id;
+        }
+        
+        // SICUREZZA: Verifica che l'utente possa accedere alla compagnia selezionata
+        if ($compagniaId && !$user->canAccessCompagnia((int)$compagniaId)) {
+            abort(403, 'Non hai i permessi per esportare i ruolini di quella compagnia.');
+        }
         
         // Query base per i militari
         $query = Militare::with([
@@ -310,6 +351,13 @@ class RuoliniController extends Controller
                     $subq->where('compagnia_id', $compagniaId);
                 })
                 ->orWhere('compagnia_id', $compagniaId);
+            });
+        } elseif (!$user->hasGlobalVisibility() && $user->compagnia_id) {
+            $query->where(function($q) use ($user) {
+                $q->whereHas('plotone', function($subq) use ($user) {
+                    $subq->where('compagnia_id', $user->compagnia_id);
+                })
+                ->orWhere('compagnia_id', $user->compagnia_id);
             });
         }
         

@@ -67,9 +67,30 @@ class BoardController extends Controller
      */
     public function calendar()
     {
-        $activities = BoardActivity::with(['militari', 'column'])
+        $activities = BoardActivity::with([
+                'militari.grado',
+                'militari.compagnia',
+                'militari.plotone',
+                'column',
+                'compagniaMounting'
+            ])
             ->orderBy('start_date')
-            ->get();
+            ->get()
+            ->map(function (BoardActivity $activity) {
+                $activity->militari_payload = $activity->militari->map(function ($militare) {
+                    $grado = optional($militare->grado)->abbreviazione ?? optional($militare->grado)->nome ?? '';
+                    $nomeCompleto = trim($grado . ' ' . $militare->cognome . ' ' . $militare->nome);
+
+                    return [
+                        'id' => $militare->id,
+                        'nome' => $nomeCompleto,
+                        'compagnia' => optional($militare->compagnia)->nome,
+                        'plotone' => optional($militare->plotone)->nome,
+                    ];
+                })->values();
+
+                return $activity;
+            });
             
         return view('board.calendar', compact('activities'));
     }

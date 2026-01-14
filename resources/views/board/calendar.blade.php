@@ -1,21 +1,24 @@
 @extends('layouts.app')
 
-@section('title', 'Calendario AttivitÃ ')
+@section('title', 'Calendario Attivita')
 
 @section('content')
 <div class="container-fluid">
-    <!-- Header Minimal Solo Titolo -->
-<div class="text-center mb-4">
-    <h1 class="page-title">Calendario AttivitÃ </h1>
-</div>
-    
-    <div class="text-end mb-3">
-        <a href="{{ route('board.index') }}" class="btn btn-outline-primary me-2">
-            <i class="fas fa-columns"></i> Vista Board
-        </a>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createActivityModal">
-            <i class="fas fa-plus"></i> Nuova AttivitÃ 
-        </button>
+    <div class="page-header mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h1 class="page-title mb-1">Calendario Attivita</h1>
+                <p class="text-muted mb-0">Panoramica operativa degli impegni e delle attivita programmate.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{{ route('board.index') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-columns"></i> Vista Board
+                </a>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createActivityModal">
+                    <i class="fas fa-plus"></i> Nuova Attivita
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">
@@ -51,6 +54,30 @@
                     </span>
                 </div>
             </div>
+            <div class="calendar-filters mt-3">
+                <div class="row g-2 align-items-center">
+                    <div class="col-12 col-md-6">
+                        <div class="input-group input-group-sm calendar-search">
+                            <span class="input-group-text bg-white">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="search" id="calendarSearch" class="form-control" placeholder="Cerca per titolo o descrizione">
+                            <button class="btn btn-outline-secondary" type="button" id="calendarSearchClear" aria-label="Pulisci ricerca">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 d-flex flex-wrap justify-content-md-end align-items-center gap-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="filterAssigned">
+                            <label class="form-check-label" for="filterAssigned">Solo con militari</label>
+                        </div>
+                        <div class="small text-muted">
+                            Mostrati <span id="calendarVisibleCount">0</span> / <span id="calendarTotalCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card-body p-0">
             <!-- Container per il calendario con altezza fissa -->
@@ -71,7 +98,7 @@
     </div>
 </div>
 
-<!-- Modal per la creazione di nuove attivitÃ  -->
+<!-- Modal per la creazione di nuove attivita -->
 <div class="modal fade" id="createActivityModal" tabindex="-1" aria-labelledby="createActivityModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -79,7 +106,7 @@
                 @csrf
                 <div class="modal-header bg-light">
                     <h5 class="modal-title" id="createActivityModalLabel">
-                        <i class="fas fa-plus-circle text-primary me-2"></i>Nuova AttivitÃ 
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attivita
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -92,17 +119,17 @@
                             <option value="{{ $compagnia->id }}">{{ $compagnia->nome }}</option>
                             @endforeach
                         </select>
-                        <small class="form-text text-muted">Indica quale compagnia organizza l'attivitÃ </small>
+                        <small class="form-text text-muted">Indica quale compagnia organizza l'attivita</small>
                     </div>
                     
                     <div class="mb-3">
                         <label for="title" class="form-label fw-bold">Titolo *</label>
-                        <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'attivitÃ " required>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="Inserisci il titolo dell'attivita" required>
                     </div>
                     
                     <div class="mb-3">
                         <label for="description" class="form-label fw-bold">Descrizione</label>
-                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrivi l'attivitÃ  (opzionale)"></textarea>
+                        <textarea class="form-control" id="description" name="description" rows="3" placeholder="Descrivi l'attivita (opzionale)"></textarea>
                     </div>
                     
                     <div class="row">
@@ -113,7 +140,7 @@
                         <div class="col-md-6 mb-3">
                             <label for="end_date" class="form-label fw-bold">Data Fine</label>
                             <input type="date" class="form-control" id="end_date" name="end_date">
-                            <small class="form-text text-muted">Se non specificata, sarÃ  considerata la stessa data di inizio</small>
+                            <small class="form-text text-muted">Se non specificata, sara considerata la stessa data di inizio</small>
                         </div>
                     </div>
                     
@@ -150,7 +177,7 @@
                             </option>
                             @endforeach
                         </select>
-                        <small class="form-text text-muted">Seleziona uno o più militari coinvolti nell'attività</small>
+                        <small class="form-text text-muted">Seleziona uno o piu militari coinvolti nell'attivita</small>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -190,12 +217,29 @@
                                 <span id="eventStatus" class="badge mt-1"></span>
                             </div>
                         </div>
+
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-flag text-primary me-2 fs-5"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Compagnia organizzatrice</h6>
+                                <p id="eventCompagnia" class="mb-0 text-muted"></p>
+                            </div>
+                        </div>
                         
-                        <div class="d-flex mb-2">
+                        <div class="d-flex mb-3">
                             <i class="far fa-file-alt text-primary me-2 mt-1 fs-5"></i>
                             <div>
                                 <h6 class="mb-1 fw-bold">Descrizione</h6>
                                 <p id="eventDescription" class="mb-0 text-muted"></p>
+                            </div>
+                        </div>
+
+                        <div class="d-flex mb-2">
+                            <i class="fas fa-users text-primary me-2 mt-1 fs-5"></i>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1 fw-bold">Militari coinvolti</h6>
+                                <p id="eventMilitariCount" class="mb-2 text-muted"></p>
+                                <div id="eventMilitariList" class="event-militari-list"></div>
                             </div>
                         </div>
                     </div>
@@ -235,6 +279,16 @@
 <link href="{{ asset('vendor/css/select2.min.css') }}" rel="stylesheet" />
 <link href="{{ asset('vendor/css/select2-bootstrap-5-theme.min.css') }}" rel="stylesheet" />
 <style>
+    .page-header .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: #1f2328;
+    }
+
+    .page-header p {
+        font-size: 0.95rem;
+    }
+
     /* Stili migliorati per il calendario */
     #calendar-container {
         width: 100%;
@@ -246,6 +300,23 @@
         width: 100%;
         height: 100%;
         font-family: 'Roboto', sans-serif;
+    }
+
+    .calendar-filters {
+        border-top: 1px solid #eaeef2;
+        padding-top: 0.75rem;
+    }
+
+    .calendar-search .form-control {
+        border-left: 0;
+    }
+
+    .calendar-search .input-group-text {
+        border-right: 0;
+    }
+
+    .calendar-search .btn {
+        border-left: 0;
     }
     
     /* Stili delle celle del calendario piÃ¹ professionali */
@@ -529,6 +600,25 @@
         font-size: 0.9rem;
         color: #333;
     }
+
+    .event-militari-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-height: 140px;
+        overflow: auto;
+        padding-right: 4px;
+    }
+
+    .militare-chip {
+        background: #f6f8fa;
+        border: 1px solid #d0d7de;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 0.78rem;
+        color: #24292f;
+        white-space: nowrap;
+    }
     
     @keyframes tooltipFadeIn {
         from { opacity: 0; transform: translateY(5px); }
@@ -621,6 +711,66 @@ document.addEventListener('DOMContentLoaded', function() {
     function showSuccess(message) {
         showToast(`Operazione completata: ${message}`, 'success');
     }
+
+    let calendarInstance = null;
+
+    function updateVisibleCount() {
+        if (!calendarInstance) return;
+        const total = calendarInstance.getEvents().length;
+        const visible = calendarInstance.getEvents().filter(event => event.display !== 'none').length;
+        const totalEl = document.getElementById('calendarTotalCount');
+        const visibleEl = document.getElementById('calendarVisibleCount');
+        if (totalEl) totalEl.textContent = total;
+        if (visibleEl) visibleEl.textContent = visible;
+    }
+
+    function applyFilters() {
+        if (!calendarInstance) return;
+        const searchInput = document.getElementById('calendarSearch');
+        const onlyAssigned = document.getElementById('filterAssigned');
+        const term = (searchInput?.value || '').trim().toLowerCase();
+        const mustHaveMilitari = !!onlyAssigned?.checked;
+
+        calendarInstance.getEvents().forEach(event => {
+            const title = (event.title || '').toLowerCase();
+            const description = (event.extendedProps.description || '').toLowerCase();
+            const militariCount = event.extendedProps.militariCount || 0;
+
+            const matchesTerm = !term || title.includes(term) || description.includes(term);
+            const matchesMilitari = !mustHaveMilitari || militariCount > 0;
+            const shouldShow = matchesTerm && matchesMilitari;
+
+            event.setProp('display', shouldShow ? 'auto' : 'none');
+        });
+
+        updateVisibleCount();
+    }
+
+    function bindFilterEvents() {
+        const searchInput = document.getElementById('calendarSearch');
+        const clearButton = document.getElementById('calendarSearchClear');
+        const onlyAssigned = document.getElementById('filterAssigned');
+        let searchTimer = null;
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                if (searchTimer) clearTimeout(searchTimer);
+                searchTimer = setTimeout(applyFilters, 150);
+            });
+        }
+
+        if (onlyAssigned) {
+            onlyAssigned.addEventListener('change', applyFilters);
+        }
+
+        if (clearButton && searchInput) {
+            clearButton.addEventListener('click', function() {
+                searchInput.value = '';
+                applyFilters();
+                searchInput.focus();
+            });
+        }
+    }
     
     // Inizializza Select2
     function initSelect2() {
@@ -701,21 +851,24 @@ document.addEventListener('DOMContentLoaded', function() {
         @foreach($activities as $activity)
         events.push({
             id: {{ $activity->id }},
-            title: '{{ addslashes($activity->title) }}',
+            title: @json($activity->title),
             start: '{{ $activity->start_date->format('Y-m-d') }}',
-            end: '{{ $activity->end_date ? $activity->end_date->addDay()->format('Y-m-d') : $activity->start_date->format('Y-m-d') }}',
+            end: '{{ $activity->end_date ? $activity->end_date->copy()->addDay()->format('Y-m-d') : $activity->start_date->format('Y-m-d') }}',
             allDay: true,
             className: 'event-{{ $activity->column->slug }}',
-            description: '{{ addslashes($activity->description) }}',
-            column: '{{ $activity->column->name }}',
+            description: @json($activity->description ?? ''),
+            column: @json($activity->column->name),
             columnSlug: '{{ $activity->column->slug }}',
+            compagniaMounting: @json(optional($activity->compagniaMounting)->nome ?? ''),
+            militariCount: {{ $activity->militari_payload->count() }},
+            militari: @json($activity->militari_payload),
             detailUrl: '{{ route('board.activities.show', $activity) }}'
         });
         @endforeach
         
         try {
             // Inizializza calendario
-            const calendar = new FullCalendar.Calendar(calendarEl, {
+            calendarInstance = new FullCalendar.Calendar(calendarEl, {
                 height: '100%',
                 initialView: 'dayGridMonth',
                 locale: 'it',
@@ -895,12 +1048,52 @@ document.addEventListener('DOMContentLoaded', function() {
                     const eventDates = document.getElementById('eventDates');
                     const eventDescription = document.getElementById('eventDescription');
                     const eventStatus = document.getElementById('eventStatus');
+                    const eventCompagnia = document.getElementById('eventCompagnia');
+                    const eventMilitariCount = document.getElementById('eventMilitariCount');
+                    const eventMilitariList = document.getElementById('eventMilitariList');
                     const viewDetailsBtn = document.getElementById('viewDetailsBtn');
                     
                     if (modalTitle) modalTitle.textContent = info.event.title;
                     
                     if (eventDescription) {
                         eventDescription.textContent = info.event.extendedProps.description || 'Nessuna descrizione';
+                    }
+
+                    if (eventCompagnia) {
+                        eventCompagnia.textContent = info.event.extendedProps.compagniaMounting || 'Non specificata';
+                    }
+
+                    if (eventMilitariCount || eventMilitariList) {
+                        const militari = info.event.extendedProps.militari || [];
+                        if (eventMilitariCount) {
+                            eventMilitariCount.textContent = militari.length
+                                ? `Totale militari: ${militari.length}`
+                                : 'Nessun militare assegnato';
+                        }
+
+                        if (eventMilitariList) {
+                            eventMilitariList.innerHTML = '';
+                            if (!militari.length) {
+                                const emptyEl = document.createElement('div');
+                                emptyEl.className = 'text-muted small';
+                                emptyEl.textContent = 'Nessun militare associato a questa attivita.';
+                                eventMilitariList.appendChild(emptyEl);
+                            } else {
+                                militari.forEach(militare => {
+                                    const chip = document.createElement('span');
+                                    chip.className = 'militare-chip';
+                                    let label = militare.nome || '';
+                                    if (militare.compagnia) {
+                                        label = `[${militare.compagnia}] ${label}`;
+                                    }
+                                    if (militare.plotone) {
+                                        label += ` · ${militare.plotone}`;
+                                    }
+                                    chip.textContent = label.trim();
+                                    eventMilitariList.appendChild(chip);
+                                });
+                            }
+                        }
                     }
                     
                     // Formatta le date in modo elegante
@@ -996,10 +1189,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Renderizza il calendario
-            calendar.render();
+            calendarInstance.render();
             
             // Nascondi loader
             if (calendarLoading) calendarLoading.classList.add('d-none');
+            bindFilterEvents();
+            applyFilters();
             
 
             

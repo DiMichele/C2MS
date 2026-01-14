@@ -95,7 +95,6 @@ window.SUGECO.Toast = {
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <div class="sugeco-toast__progress"></div>
         `;
 
         // Add to container

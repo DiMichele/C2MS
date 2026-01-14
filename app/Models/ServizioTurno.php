@@ -15,6 +15,7 @@ class ServizioTurno extends Model
         'nome',
         'codice',
         'sigla_cpt',
+        'smontante_cpt',
         'descrizione',
         'num_posti',
         'tipo',
@@ -26,6 +27,7 @@ class ServizioTurno extends Model
 
     protected $casts = [
         'attivo' => 'boolean',
+        'smontante_cpt' => 'boolean',
         'num_posti' => 'integer',
         'ordine' => 'integer',
         'orario_inizio' => 'datetime:H:i',

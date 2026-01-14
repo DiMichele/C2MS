@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class TurniService
 {
+    private const SMONTANTE_CODICE = 'SMO';
     /**
      * Ottieni o crea il turno per una settimana specifica
      * 
@@ -158,6 +159,9 @@ class TurniService
                 // Se forziamo, rimuoviamo le altre assegnazioni per questa data
                 foreach ($altreAssegnazioni as $vecchiaAssegnazione) {
                     $this->rimuoviDaCPT($vecchiaAssegnazione);
+                    if ($vecchiaAssegnazione->servizioTurno?->smontante_cpt) {
+                        $this->rimuoviSmontanteDaCPT($vecchiaAssegnazione);
+                    }
                     $vecchiaAssegnazione->delete();
                 }
             }
@@ -209,6 +213,15 @@ class TurniService
                 $warningMessage = $warningMessage ? $warningMessage . ' - CPT non sincronizzato.' : 'CPT non sincronizzato automaticamente.';
             }
 
+            if ($servizio->smontante_cpt) {
+                $smontanteOk = $this->sincronizzaSmontante($assegnazione);
+                if (!$smontanteOk) {
+                    $warningMessage = $warningMessage
+                        ? $warningMessage . ' - Smontante non sincronizzato.'
+                        : 'Smontante non sincronizzato.';
+                }
+            }
+
             DB::commit();
 
             return [
@@ -245,11 +258,15 @@ class TurniService
         DB::beginTransaction();
         
         try {
-            $assegnazione = AssegnazioneTurno::findOrFail($assegnazioneId);
+            $assegnazione = AssegnazioneTurno::with('servizioTurno')->findOrFail($assegnazioneId);
 
             // Rimuovi anche dal CPT se era sincronizzato
             if ($assegnazione->sincronizzato_cpt) {
                 $this->rimuoviDaCPT($assegnazione);
+            }
+
+            if ($assegnazione->servizioTurno?->smontante_cpt) {
+                $this->rimuoviSmontanteDaCPT($assegnazione);
             }
 
             $assegnazione->delete();
@@ -459,6 +476,91 @@ class TurniService
 
         } catch (\Exception $e) {
             Log::error('Errore rimozione da CPT', [
+                'error' => $e->getMessage(),
+                'assegnazione_id' => $assegnazione->id
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Sincronizza lo smontante nel CPT (giorno successivo)
+     */
+    protected function sincronizzaSmontante(AssegnazioneTurno $assegnazione): bool
+    {
+        try {
+            $tipoSmontante = TipoServizio::where('codice', self::SMONTANTE_CODICE)->first();
+            if (!$tipoSmontante) {
+                Log::warning('Codice smontante CPT non trovato', [
+                    'codice' => self::SMONTANTE_CODICE,
+                    'assegnazione_id' => $assegnazione->id
+                ]);
+                return false;
+            }
+
+            $dataSmontante = Carbon::parse($assegnazione->data_servizio)->addDay();
+            $pianificazioneMensile = PianificazioneMensile::firstOrCreate(
+                [
+                    'mese' => $dataSmontante->month,
+                    'anno' => $dataSmontante->year,
+                ],
+                [
+                    'nome' => $dataSmontante->format('F Y'),
+                    'stato' => 'attiva',
+                    'data_creazione' => $dataSmontante->format('Y-m-d'),
+                ]
+            );
+
+            PianificazioneGiornaliera::updateOrCreate(
+                [
+                    'pianificazione_mensile_id' => $pianificazioneMensile->id,
+                    'militare_id' => $assegnazione->militare_id,
+                    'giorno' => $dataSmontante->day,
+                ],
+                [
+                    'tipo_servizio_id' => $tipoSmontante->id,
+                ]
+            );
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Errore sincronizzazione smontante CPT', [
+                'error' => $e->getMessage(),
+                'assegnazione_id' => $assegnazione->id
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Rimuovi lo smontante dal CPT (giorno successivo)
+     */
+    protected function rimuoviSmontanteDaCPT(AssegnazioneTurno $assegnazione): bool
+    {
+        try {
+            $tipoSmontante = TipoServizio::where('codice', self::SMONTANTE_CODICE)->first();
+            if (!$tipoSmontante) {
+                return false;
+            }
+
+            $dataSmontante = Carbon::parse($assegnazione->data_servizio)->addDay();
+            $pianificazioneMensile = PianificazioneMensile::where('mese', $dataSmontante->month)
+                ->where('anno', $dataSmontante->year)
+                ->first();
+
+            if (!$pianificazioneMensile) {
+                return false;
+            }
+
+            PianificazioneGiornaliera::where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                ->where('militare_id', $assegnazione->militare_id)
+                ->where('giorno', $dataSmontante->day)
+                ->where('tipo_servizio_id', $tipoSmontante->id)
+                ->delete();
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Errore rimozione smontante CPT', [
                 'error' => $e->getMessage(),
                 'assegnazione_id' => $assegnazione->id
             ]);
