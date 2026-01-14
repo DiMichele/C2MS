@@ -12,37 +12,67 @@ window.SUGECO = window.SUGECO || {};
 // Toast system module
 window.SUGECO.Toast = {
     container: null,
-    
+
     /**
      * Initialize toast system
      */
     init: function() {
         this.createContainer();
         this.setupGlobalToastFunction();
-        window.SUGECO.Core.log('Toast System initialized');
+        window.SUGECO.Core?.log('Toast System initialized');
     },
-    
+
     /**
      * Create toast container
      */
     createContainer: function() {
         if (!this.container) {
+            this.container = document.querySelector('.toast-container');
+        }
+
+        if (!this.container) {
             this.container = document.createElement('div');
-            this.container.id = 'toast-container';
             this.container.className = 'toast-container';
             document.body.appendChild(this.container);
         }
     },
-    
+
     /**
      * Setup global toast function
      */
     setupGlobalToastFunction: function() {
-        window.showToast = (message, type = 'info', duration = 3000) => {
-            this.show(message, type, duration);
+        window.showToast = (...args) => {
+            const normalized = this.normalizeArgs(args);
+            this.show(normalized.message, normalized.type, normalized.duration);
         };
     },
-    
+
+    /**
+     * Normalize arguments to support legacy signatures
+     */
+    normalizeArgs: function(args) {
+        const types = ['success', 'error', 'warning', 'info'];
+        const [arg1, arg2, arg3] = args;
+
+        // showToast('success', 'Messaggio')
+        if (types.includes(arg1) && typeof arg2 === 'string') {
+            return { message: arg2, type: arg1, duration: arg3 || 3000 };
+        }
+
+        // showToast('Titolo', 'Messaggio', 'error')
+        if (typeof arg1 === 'string' && typeof arg2 === 'string' && types.includes(arg3)) {
+            return { message: `${arg1}: ${arg2}`, type: arg3, duration: 3000 };
+        }
+
+        // showToast('Messaggio', 'success')
+        if (typeof arg1 === 'string' && types.includes(arg2)) {
+            return { message: arg1, type: arg2, duration: arg3 || 3000 };
+        }
+
+        // showToast('Messaggio')
+        return { message: String(arg1 ?? ''), type: 'info', duration: 3000 };
+    },
+
     /**
      * Show a toast notification
      * @param {string} message - Toast message
@@ -51,61 +81,62 @@ window.SUGECO.Toast = {
      */
     show: function(message, type = 'info', duration = 3000) {
         this.createContainer();
-        
+
         const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        
+        toast.className = `sugeco-toast sugeco-toast--${type}`;
+
         // Create toast content
         const icon = this.getIcon(type);
         toast.innerHTML = `
-            <div class="toast-content">
-                ${icon}
-                <span class="toast-message">${message}</span>
+            <div class="sugeco-toast__content">
+                <div class="sugeco-toast__icon">${icon}</div>
+                <div class="sugeco-toast__message">${message}</div>
+                <button class="sugeco-toast__close" type="button" aria-label="Chiudi">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <button class="toast-close" type="button">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="sugeco-toast__progress"></div>
         `;
-        
+
         // Add to container
         this.container.appendChild(toast);
-        
+
         // Show toast with animation
-        setTimeout(() => {
-            toast.classList.add('show');
-        }, 10);
-        
+        requestAnimationFrame(() => {
+            toast.classList.add('is-visible');
+        });
+
         // Setup close button
-        const closeButton = toast.querySelector('.toast-close');
+        const closeButton = toast.querySelector('.sugeco-toast__close');
         closeButton.addEventListener('click', () => {
             this.hide(toast);
         });
-        
+
         // Auto-hide after duration
         setTimeout(() => {
             this.hide(toast);
         }, duration);
-        
+
         return toast;
     },
-    
+
     /**
      * Hide a toast
      * @param {Element} toast - Toast element to hide
      */
     hide: function(toast) {
         if (!toast || !toast.parentNode) return;
-        
-        toast.classList.remove('show');
-        toast.classList.add('hiding');
-        
+
+        toast.classList.remove('is-visible');
+        toast.classList.add('is-hiding');
+
         setTimeout(() => {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
-        }, 300);
+        }, 250);
     },
-    
+
     /**
      * Get icon for toast type
      * @param {string} type - Toast type
@@ -118,7 +149,7 @@ window.SUGECO.Toast = {
             warning: '<i class="fas fa-exclamation-triangle"></i>',
             info: '<i class="fas fa-info-circle"></i>'
         };
-        
+
         return icons[type] || icons.info;
     },
     
@@ -186,4 +217,5 @@ window.showInfo = function(message) {
 
 // Auto-inizializzazione quando il DOM è pronto
 document.addEventListener('DOMContentLoaded', function() {
-}); 
+    window.SUGECO.Toast.init();
+});

@@ -9,6 +9,7 @@ use App\Models\PianificazioneGiornaliera;
 use App\Models\BoardActivity;
 use App\Models\ConfigurazioneRuolino;
 use App\Services\CompagniaSettingsService;
+use App\Models\Ufficio;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -45,10 +46,12 @@ class RuoliniController extends Controller
         // Recupera filtri dalla richiesta
         $compagniaId = $request->get('compagnia_id');
         $plotoneId = $request->get('plotone_id');
+        $ufficioId = $request->get('ufficio_id');
         
         // Recupera tutte le compagnie e plotoni per i filtri
         $compagnie = Compagnia::with('plotoni')->orderBy('nome')->get();
         $plotoni = Plotone::with('compagnia')->orderBy('nome')->get();
+        $uffici = Ufficio::orderBy('nome')->get();
         
         // Query base per i militari
         $query = Militare::with([
@@ -69,6 +72,10 @@ class RuoliniController extends Controller
         
         if ($plotoneId) {
             $query->where('plotone_id', $plotoneId);
+        }
+
+        if ($ufficioId) {
+            $query->where('polo_id', $ufficioId);
         }
         
         $militari = $query->get();
@@ -112,8 +119,10 @@ class RuoliniController extends Controller
             'totali',
             'compagnie',
             'plotoni',
+            'uffici',
             'compagniaId',
             'plotoneId',
+            'ufficioId',
             'dataSelezionata',
             'dataObj'
         ));
@@ -285,6 +294,7 @@ class RuoliniController extends Controller
         // Recupera filtri dalla richiesta
         $compagniaId = $request->get('compagnia_id');
         $plotoneId = $request->get('plotone_id');
+        $ufficioId = $request->get('ufficio_id');
         
         // Query base per i militari
         $query = Militare::with([
@@ -305,6 +315,10 @@ class RuoliniController extends Controller
         
         if ($plotoneId) {
             $query->where('plotone_id', $plotoneId);
+        }
+
+        if ($ufficioId) {
+            $query->where('polo_id', $ufficioId);
         }
         
         $militari = $query->get();

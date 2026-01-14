@@ -388,6 +388,17 @@ table.table td,
                     </select>
                 </div>
                 <div class="col-md-2">
+                    <label class="form-label">Idoneità T.O.:</label>
+                    <select class="form-select filter-select filter-stato" data-campo="idoneita_to">
+                        <option value="">Tutti</option>
+                        <option value="valido">Valido</option>
+                        <option value="in_scadenza">In Scadenza</option>
+                        <option value="scaduto">Scaduto</option>
+                        <option value="prenotato">Prenotato</option>
+                        <option value="mancante">Mancante</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">ECG:</label>
                     <select class="form-select filter-select filter-stato" data-campo="ecg">
                         <option value="">Tutti</option>
@@ -440,6 +451,7 @@ table.table td,
                 <th style="min-width: 200px;">Teatro Operativo</th>
                 <th style="min-width: 150px;">Idoneità Mansione</th>
                 <th style="min-width: 130px;">Idoneità SMI</th>
+                <th style="min-width: 130px;">Idoneità T.O.</th>
                 <th style="min-width: 130px;">ECG</th>
                 <th style="min-width: 130px;">Prelievi</th>
             </tr>
@@ -478,7 +490,7 @@ table.table td,
                     @endif
                 </td>
                 
-                @foreach(['idoneita_mansione', 'idoneita_smi', 'ecg', 'prelievi'] as $campo)
+                @foreach(['idoneita_mansione', 'idoneita_smi', 'idoneita_to', 'ecg', 'prelievi'] as $campo)
                 @php
                     $scadenza = $item[$campo];
                     
@@ -503,6 +515,7 @@ table.table td,
                     $campoDB = match($campo) {
                         'idoneita_mansione' => 'idoneita_mans_data_conseguimento',
                         'idoneita_smi' => 'idoneita_smi_data_conseguimento',
+                        'idoneita_to' => 'idoneita_to_data_conseguimento',
                         'ecg' => 'ecg_data_conseguimento',
                         'prelievi' => 'prelievi_data_conseguimento',
                         default => $campo . '_data_conseguimento'

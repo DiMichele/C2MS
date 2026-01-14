@@ -15,7 +15,6 @@ class ScadenzaApprontamento extends Model
     protected $fillable = [
         'militare_id',
         'teatro_operativo',
-        'bls',
         'ultimo_poligono_approntamento',
         'poligono',
         'tipo_poligono_da_effettuare',
@@ -30,46 +29,51 @@ class ScadenzaApprontamento extends Model
         'rapporto_media',
         'abuso_alcol_droga',
         'training_covid',
-        'rspp_4h',
-        'rspp_8h',
-        'rspp_preposti',
         'passaporti',
     ];
 
     /**
      * Configurazione delle colonne per la visualizzazione
+     * Le colonne marcate come 'fonte' => 'scadenze_militari' leggono dalla tabella condivisa
      */
     public const COLONNE = [
-        'teatro_operativo' => 'Teatro Operativo',
-        'bls' => 'BLS',
-        'ultimo_poligono_approntamento' => 'Ultimo Poligono Approntamento',
-        'poligono' => 'POLIGONO',
-        'tipo_poligono_da_effettuare' => 'Tipo Poligono da Effettuare',
-        'bam' => 'B.A.M.',
-        'awareness_cied' => 'AWARENESS C-IED',
-        'cied_pratico' => 'C-IED PRATICO',
-        'stress_management' => 'STRESS MANAGEMENT',
-        'elitrasporto' => 'ELITRASPORTO',
-        'mcm' => 'MCM',
-        'uas' => 'UAS',
-        'ict' => 'ICT',
-        'rapporto_media' => 'RAPPORTO CON I MEDIA',
-        'abuso_alcol_droga' => 'ABUSO ALCOL e DROGA',
-        'training_covid' => 'TRAINING ON COVID (A cura DSS)',
-        'rspp_4h' => 'RSPP 4H (5 anni)',
-        'rspp_8h' => 'RSPP 8H (5 anni)',
-        'rspp_preposti' => 'RSPP PREPOSTI (2 anni)',
-        'passaporti' => 'PASSAPORTI',
+        'teatro_operativo' => ['label' => 'Teatro Operativo', 'fonte' => 'approntamenti'],
+        // Colonne condivise con SPP (Corsi di Formazione)
+        'idoneita_to' => ['label' => 'Idoneità T.O.', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'idoneita_to'],
+        'bls' => ['label' => 'BLS', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'blsd'],
+        'ultimo_poligono_approntamento' => ['label' => 'Ultimo Poligono Approntamento', 'fonte' => 'approntamenti'],
+        'poligono' => ['label' => 'POLIGONO', 'fonte' => 'approntamenti'],
+        'tipo_poligono_da_effettuare' => ['label' => 'Tipo Poligono da Effettuare', 'fonte' => 'approntamenti'],
+        'bam' => ['label' => 'B.A.M.', 'fonte' => 'approntamenti'],
+        'awareness_cied' => ['label' => 'AWARENESS C-IED', 'fonte' => 'approntamenti'],
+        'cied_pratico' => ['label' => 'C-IED PRATICO', 'fonte' => 'approntamenti'],
+        'stress_management' => ['label' => 'STRESS MANAGEMENT', 'fonte' => 'approntamenti'],
+        'elitrasporto' => ['label' => 'ELITRASPORTO', 'fonte' => 'approntamenti'],
+        'mcm' => ['label' => 'MCM', 'fonte' => 'approntamenti'],
+        'uas' => ['label' => 'UAS', 'fonte' => 'approntamenti'],
+        'ict' => ['label' => 'ICT', 'fonte' => 'approntamenti'],
+        'rapporto_media' => ['label' => 'RAPPORTO CON I MEDIA', 'fonte' => 'approntamenti'],
+        'abuso_alcol_droga' => ['label' => 'ABUSO ALCOL e DROGA', 'fonte' => 'approntamenti'],
+        'training_covid' => ['label' => 'TRAINING ON COVID (A cura DSS)', 'fonte' => 'approntamenti'],
+        // Colonne condivise con SPP
+        'lavoratore_4h' => ['label' => 'Lavoratore 4H (5 anni)', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'lavoratore_4h'],
+        'lavoratore_8h' => ['label' => 'Lavoratore 8H (5 anni)', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'lavoratore_8h'],
+        'preposto' => ['label' => 'Preposto (2 anni)', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'preposto'],
+        'passaporti' => ['label' => 'PASSAPORTI', 'fonte' => 'approntamenti'],
     ];
 
     /**
-     * Durate in mesi per le scadenze (se applicabile)
+     * Colonne che provengono da scadenze_militari
+     */
+    public const COLONNE_DA_SCADENZE_MILITARI = [
+        'idoneita_to', 'bls', 'lavoratore_4h', 'lavoratore_8h', 'preposto'
+    ];
+
+    /**
+     * Durate in mesi per le scadenze proprie (se applicabile)
      */
     private const DURATE = [
-        'rspp_4h' => 60,        // 5 anni
-        'rspp_8h' => 60,        // 5 anni
-        'rspp_preposti' => 24,  // 2 anni
-        'bls' => 24,            // 2 anni tipicamente
+        // Le durate per colonne condivise sono gestite da ScadenzaMilitare
     ];
 
     // Relazione con Militare
@@ -79,11 +83,28 @@ class ScadenzaApprontamento extends Model
     }
 
     /**
+     * Verifica se una colonna è condivisa con scadenze_militari
+     */
+    public static function isColonnaCondivisa(string $campo): bool
+    {
+        return in_array($campo, self::COLONNE_DA_SCADENZE_MILITARI);
+    }
+
+    /**
+     * Ottiene il nome del campo sorgente per colonne condivise
+     */
+    public static function getCampoSorgente(string $campo): string
+    {
+        $config = self::COLONNE[$campo] ?? null;
+        return $config['campo_sorgente'] ?? $campo;
+    }
+
+    /**
      * Verifica se un valore è "Non Richiesto"
      */
     public function isNonRichiesto(string $campo): bool
     {
-        $valore = $this->$campo;
+        $valore = $this->$campo ?? null;
         return $valore === 'NR' || $valore === 'Non richiesto';
     }
 
@@ -92,7 +113,7 @@ class ScadenzaApprontamento extends Model
      */
     public function getValoreFormattato(string $campo): string
     {
-        $valore = $this->$campo;
+        $valore = $this->$campo ?? null;
         
         if (empty($valore)) {
             return '-';
@@ -116,7 +137,7 @@ class ScadenzaApprontamento extends Model
      */
     public function calcolaScadenza(string $campo): ?Carbon
     {
-        $valore = $this->$campo;
+        $valore = $this->$campo ?? null;
         
         if (empty($valore) || $this->isNonRichiesto($campo)) {
             return null;
@@ -142,7 +163,7 @@ class ScadenzaApprontamento extends Model
      */
     public function verificaStato(string $campo): string
     {
-        $valore = $this->$campo;
+        $valore = $this->$campo ?? null;
         
         if (empty($valore)) {
             return 'non_presente';
@@ -208,22 +229,14 @@ class ScadenzaApprontamento extends Model
     }
 
     /**
-     * Ottiene tutti i dati formattati per la visualizzazione
+     * Ottiene le label semplificate per la view
      */
-    public function getTuttiDati(): array
+    public static function getLabels(): array
     {
-        $risultati = [];
-        
-        foreach (self::COLONNE as $campo => $label) {
-            $risultati[$campo] = [
-                'label' => $label,
-                'valore' => $this->getValoreFormattato($campo),
-                'stato' => $this->verificaStato($campo),
-                'colore' => $this->getColore($campo),
-                'scadenza' => $this->formatScadenza($campo),
-            ];
+        $labels = [];
+        foreach (self::COLONNE as $campo => $config) {
+            $labels[$campo] = $config['label'];
         }
-
-        return $risultati;
+        return $labels;
     }
 }

@@ -60,6 +60,15 @@ table.table td,
     opacity: 0.8;
 }
 
+.scadenza-cell.readonly {
+    cursor: default;
+    opacity: 0.9;
+}
+
+.scadenza-cell.readonly:hover {
+    opacity: 0.9;
+}
+
 .link-name {
     color: #0a2342;
     text-decoration: none;
@@ -94,12 +103,25 @@ table.table td,
 
 /* Stili tabella larga */
 .table-wide {
-    width: 4400px;
-    min-width: 4400px;
+    width: 4800px;
+    min-width: 4800px;
+}
+
+/* Badge per campi condivisi */
+.shared-badge {
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    background: #0a2342;
+    color: white;
+    border-radius: 3px;
+    margin-left: 4px;
 }
 </style>
 
 @php
+    use App\Http\Controllers\ApprontamentiController;
+    use App\Models\ScadenzaApprontamento;
+    
     $activeFilters = [];
     foreach($colonne as $campo => $label) {
         if(request()->filled($campo) && request($campo) != 'tutti') $activeFilters[] = $campo;
@@ -145,6 +167,13 @@ table.table td,
     </div>
 </div>
 
+<!-- Info colonne condivise -->
+<div class="alert alert-info py-2 mb-3" style="font-size: 0.85rem;">
+    <i class="fas fa-info-circle me-1"></i>
+    Le colonne <strong>Idoneità T.O.</strong>, <strong>BLS</strong>, <strong>Lavoratore 4H</strong>, <strong>Lavoratore 8H</strong> e <strong>Preposto</strong> 
+    sono sincronizzate con la pagina <a href="{{ route('spp.corsi-di-formazione') }}">SPP</a> / <a href="{{ route('idoneita.index') }}">Idoneità</a>. Per modificarle, vai nelle rispettive pagine.
+</div>
+
 <!-- Filtri -->
 <div id="filtersContainer" class="filter-section {{ $hasActiveFilters ? 'visible' : '' }}">
     <div class="filter-card mb-4">
@@ -155,32 +184,16 @@ table.table td,
         </div>
         <div class="card-body p-3">
             <form id="filtroForm" action="{{ route('approntamenti.index') }}" method="GET">
-                {{-- Prima riga filtri --}}
-                <div class="row mb-3">
-                    @foreach(array_slice($colonne, 0, 4, true) as $campo => $label)
-                    <div class="col-md-3">
-                        <label for="{{ $campo }}" class="form-label">{{ $label }}</label>
-                        <div class="select-wrapper">
-                            <select name="{{ $campo }}" id="{{ $campo }}" class="form-select filter-select {{ (request($campo) && request($campo) != 'tutti') ? 'applied' : '' }}">
-                                <option value="tutti" {{ (request($campo, 'tutti') == 'tutti') ? 'selected' : '' }}>Tutti</option>
-                                <option value="validi" {{ request($campo) == 'validi' ? 'selected' : '' }}>Validi</option>
-                                <option value="in_scadenza" {{ request($campo) == 'in_scadenza' ? 'selected' : '' }}>In Scadenza</option>
-                                <option value="scaduti" {{ request($campo) == 'scaduti' ? 'selected' : '' }}>Scaduti / Non presenti</option>
-                                <option value="non_richiesti" {{ request($campo) == 'non_richiesti' ? 'selected' : '' }}>Non richiesti</option>
-                            </select>
-                            @if(request($campo) && request($campo) != 'tutti')
-                                <span class="clear-filter" data-filter="{{ $campo }}" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
+                @php
+                    $colonneArray = array_keys($colonne);
+                    $chunks = array_chunk($colonneArray, 4);
+                @endphp
                 
-                {{-- Seconda riga filtri --}}
+                @foreach($chunks as $chunk)
                 <div class="row mb-3">
-                    @foreach(array_slice($colonne, 4, 4, true) as $campo => $label)
+                    @foreach($chunk as $campo)
                     <div class="col-md-3">
-                        <label for="{{ $campo }}" class="form-label">{{ $label }}</label>
+                        <label for="{{ $campo }}" class="form-label">{{ $colonne[$campo] }}</label>
                         <div class="select-wrapper">
                             <select name="{{ $campo }}" id="{{ $campo }}" class="form-select filter-select {{ (request($campo) && request($campo) != 'tutti') ? 'applied' : '' }}">
                                 <option value="tutti" {{ (request($campo, 'tutti') == 'tutti') ? 'selected' : '' }}>Tutti</option>
@@ -196,69 +209,7 @@ table.table td,
                     </div>
                     @endforeach
                 </div>
-                
-                {{-- Terza riga filtri --}}
-                <div class="row mb-3">
-                    @foreach(array_slice($colonne, 8, 4, true) as $campo => $label)
-                    <div class="col-md-3">
-                        <label for="{{ $campo }}" class="form-label">{{ $label }}</label>
-                        <div class="select-wrapper">
-                            <select name="{{ $campo }}" id="{{ $campo }}" class="form-select filter-select {{ (request($campo) && request($campo) != 'tutti') ? 'applied' : '' }}">
-                                <option value="tutti" {{ (request($campo, 'tutti') == 'tutti') ? 'selected' : '' }}>Tutti</option>
-                                <option value="validi" {{ request($campo) == 'validi' ? 'selected' : '' }}>Validi</option>
-                                <option value="in_scadenza" {{ request($campo) == 'in_scadenza' ? 'selected' : '' }}>In Scadenza</option>
-                                <option value="scaduti" {{ request($campo) == 'scaduti' ? 'selected' : '' }}>Scaduti / Non presenti</option>
-                                <option value="non_richiesti" {{ request($campo) == 'non_richiesti' ? 'selected' : '' }}>Non richiesti</option>
-                            </select>
-                            @if(request($campo) && request($campo) != 'tutti')
-                                <span class="clear-filter" data-filter="{{ $campo }}" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-                
-                {{-- Quarta riga filtri --}}
-                <div class="row mb-3">
-                    @foreach(array_slice($colonne, 12, 4, true) as $campo => $label)
-                    <div class="col-md-3">
-                        <label for="{{ $campo }}" class="form-label">{{ $label }}</label>
-                        <div class="select-wrapper">
-                            <select name="{{ $campo }}" id="{{ $campo }}" class="form-select filter-select {{ (request($campo) && request($campo) != 'tutti') ? 'applied' : '' }}">
-                                <option value="tutti" {{ (request($campo, 'tutti') == 'tutti') ? 'selected' : '' }}>Tutti</option>
-                                <option value="validi" {{ request($campo) == 'validi' ? 'selected' : '' }}>Validi</option>
-                                <option value="in_scadenza" {{ request($campo) == 'in_scadenza' ? 'selected' : '' }}>In Scadenza</option>
-                                <option value="scaduti" {{ request($campo) == 'scaduti' ? 'selected' : '' }}>Scaduti / Non presenti</option>
-                                <option value="non_richiesti" {{ request($campo) == 'non_richiesti' ? 'selected' : '' }}>Non richiesti</option>
-                            </select>
-                            @if(request($campo) && request($campo) != 'tutti')
-                                <span class="clear-filter" data-filter="{{ $campo }}" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-                
-                {{-- Quinta riga filtri --}}
-                <div class="row mb-3">
-                    @foreach(array_slice($colonne, 16, 4, true) as $campo => $label)
-                    <div class="col-md-3">
-                        <label for="{{ $campo }}" class="form-label">{{ $label }}</label>
-                        <div class="select-wrapper">
-                            <select name="{{ $campo }}" id="{{ $campo }}" class="form-select filter-select {{ (request($campo) && request($campo) != 'tutti') ? 'applied' : '' }}">
-                                <option value="tutti" {{ (request($campo, 'tutti') == 'tutti') ? 'selected' : '' }}>Tutti</option>
-                                <option value="validi" {{ request($campo) == 'validi' ? 'selected' : '' }}>Validi</option>
-                                <option value="in_scadenza" {{ request($campo) == 'in_scadenza' ? 'selected' : '' }}>In Scadenza</option>
-                                <option value="scaduti" {{ request($campo) == 'scaduti' ? 'selected' : '' }}>Scaduti / Non presenti</option>
-                                <option value="non_richiesti" {{ request($campo) == 'non_richiesti' ? 'selected' : '' }}>Non richiesti</option>
-                            </select>
-                            @if(request($campo) && request($campo) != 'tutti')
-                                <span class="clear-filter" data-filter="{{ $campo }}" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
+                @endforeach
                 
                 <div class="d-flex justify-content-center mt-3">
                     @if($hasActiveFilters)
@@ -273,7 +224,7 @@ table.table td,
 </div>
 
 <!-- Tabella -->
-<div class="table-container" style="position: relative; max-height: calc(100vh - 300px); overflow: auto;">
+<div class="table-container" style="position: relative; max-height: calc(100vh - 350px); overflow: auto;">
     <!-- Intestazione fissa -->
     <div class="table-header-fixed" style="position: sticky; top: 0; z-index: 10; background: white;">
         <table class="table table-sm table-bordered mb-0 table-wide">
@@ -282,7 +233,7 @@ table.table td,
                 <col style="width:150px"> <!-- Cognome -->
                 <col style="width:120px"> <!-- Nome -->
                 @foreach($colonne as $campo => $label)
-                <col style="width:{{ $campo == 'tipo_poligono_da_effettuare' ? '160px' : ($campo == 'training_covid' ? '180px' : '140px') }}">
+                <col style="width:{{ strlen($label) > 20 ? '180px' : '140px' }}">
                 @endforeach
             </colgroup>
             <thead class="table-dark" style="user-select:none;">
@@ -291,7 +242,12 @@ table.table td,
                     <th class="text-center">Cognome</th>
                     <th class="text-center">Nome</th>
                     @foreach($colonne as $campo => $label)
-                    <th class="text-center" style="font-size: 0.75rem;">{{ $label }}</th>
+                    <th class="text-center" style="font-size: 0.75rem;">
+                        {{ $label }}
+                        @if(ScadenzaApprontamento::isColonnaCondivisa($campo))
+                        <span class="shared-badge" title="Dati condivisi con SPP/Idoneità">SYNC</span>
+                        @endif
+                    </th>
                     @endforeach
                 </tr>
             </thead>
@@ -306,14 +262,11 @@ table.table td,
                 <col style="width:150px"> <!-- Cognome -->
                 <col style="width:120px"> <!-- Nome -->
                 @foreach($colonne as $campo => $label)
-                <col style="width:{{ $campo == 'tipo_poligono_da_effettuare' ? '160px' : ($campo == 'training_covid' ? '180px' : '140px') }}">
+                <col style="width:{{ strlen($label) > 20 ? '180px' : '140px' }}">
                 @endforeach
             </colgroup>
             <tbody id="militariTableBody">
             @forelse($militari as $m)
-                @php
-                    $scadenza = $m->scadenzaApprontamento;
-                @endphp
                 <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}">
                     <td class="text-center">{{ $m->grado->sigla ?? '-' }}</td>
                     <td>
@@ -325,19 +278,20 @@ table.table td,
                     
                     @foreach($colonne as $campo => $label)
                     @php
-                        $valore = $scadenza ? $scadenza->getValoreFormattato($campo) : '-';
-                        $stato = $scadenza ? $scadenza->verificaStato($campo) : 'non_presente';
-                        $colore = $scadenza ? $scadenza->getColore($campo) : '';
-                        $valoreCampo = $scadenza ? $scadenza->$campo : '';
+                        $datiCampo = ApprontamentiController::getValoreCampo($m, $campo);
+                        $isReadonly = $datiCampo['readonly'];
                     @endphp
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        style="{{ $colore }}"
-                        @if($canEdit)
+                    <td class="text-center scadenza-cell {{ $isReadonly ? 'readonly' : '' }}" 
+                        style="{{ $datiCampo['colore'] }}"
+                        @if($canEdit && !$isReadonly)
                         data-militare-id="{{ $m->id }}"
                         data-campo="{{ $campo }}"
-                        onclick="apriModalData({{ $m->id }}, '{{ $campo }}', '{{ $valoreCampo }}')"
+                        onclick="apriModalData({{ $m->id }}, '{{ $campo }}', '{{ $datiCampo['valore_raw'] }}')"
+                        @endif
+                        @if($isReadonly)
+                        title="Modificabile dalla pagina SPP/Idoneità"
                         @endif>
-                        {{ $valore }}
+                        {{ $datiCampo['valore'] }}
                     </td>
                     @endforeach
                 </tr>

@@ -22,145 +22,143 @@
    TOAST CONTAINER
    ========================================== */
 
-/* Container per i toast */
 .toast-container {
-    position: fixed !important;
-    top: 20px !important;
-    right: 20px !important;
-    z-index: 1055 !important;
-    max-width: 350px !important;
+    position: fixed;
+    top: calc(var(--header-height, 70px) + 12px);
+    right: 18px;
+    z-index: 1060;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 420px;
 }
 
-/* Stili base per i toast */
-.toast {
-    border-radius: 12px !important;
-    border: none !important;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
-    backdrop-filter: blur(10px) !important;
-    margin-bottom: 10px !important;
-    min-width: 300px !important;
+/* ==========================================
+   SUGECO TOAST
+   ========================================== */
+
+.sugeco-toast {
+    background: #0a2342;
+    color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(10, 35, 66, 0.18);
+    overflow: hidden;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    min-width: 300px;
 }
 
-/* Toast di successo */
-.toast.bg-success {
-    background: linear-gradient(135deg, #28a745, #20c997) !important;
-    color: white !important;
+.sugeco-toast.is-visible {
+    transform: translateX(0);
+    opacity: 1;
 }
 
-/* Toast di errore */
-.toast.bg-danger {
-    background: linear-gradient(135deg, #dc3545, #e74c3c) !important;
-    color: white !important;
+.sugeco-toast.is-hiding {
+    transform: translateX(120%);
+    opacity: 0;
 }
 
-/* Toast di warning */
-.toast.bg-warning {
-    background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
-    color: #212529 !important;
+.sugeco-toast__content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    line-height: 1.4;
 }
 
-/* Toast di info */
-.toast.bg-info {
-    background: linear-gradient(135deg, #17a2b8, #6f42c1) !important;
-    color: white !important;
+.sugeco-toast__icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.18);
+    font-size: 20px;
+    flex-shrink: 0;
 }
 
-/* Body del toast */
-.toast-body {
-    padding: 15px 20px !important;
-    font-weight: 500 !important;
-    font-size: 0.95rem !important;
-    line-height: 1.4 !important;
+.sugeco-toast__message {
+    flex: 1;
 }
 
-/* Pulsante di chiusura */
-.toast .btn-close {
-    filter: brightness(0) invert(1) !important;
-    opacity: 0.8 !important;
-    margin: 8px !important;
-    background-size: 0.7em !important;
+.sugeco-toast__close {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.toast .btn-close:hover {
-    opacity: 1 !important;
+.sugeco-toast__close:hover {
+    opacity: 1;
 }
 
-/* Barra di progresso */
-.toast-progress-bar {
-    height: 4px !important;
-    width: 100% !important;
-    background: rgba(255,255,255,0.2) !important;
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    border-radius: 0 0 12px 12px !important;
-    overflow: hidden !important;
+.sugeco-toast__progress {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
 }
 
-.toast-progress-bar::after {
-    content: '' !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    height: 100% !important;
-    width: 100% !important;
-    background: rgba(255,255,255,0.4) !important;
-    border-radius: 0 0 12px 12px !important;
-    animation: progressCountdown 3s linear forwards !important;
+.sugeco-toast__progress::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.55);
+    animation: sugecoToastProgress 3s linear forwards;
 }
 
-@keyframes progressCountdown {
+.sugeco-toast--success {
+    background: linear-gradient(135deg, #1d8f4b, #20c997);
+}
+
+.sugeco-toast--error {
+    background: linear-gradient(135deg, #b3122e, #dc3545);
+}
+
+.sugeco-toast--warning {
+    background: linear-gradient(135deg, #f0a600, #ff7a18);
+    color: #1f1f1f;
+}
+
+.sugeco-toast--warning .sugeco-toast__icon,
+.sugeco-toast--warning .sugeco-toast__progress::after {
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.sugeco-toast--info {
+    background: linear-gradient(135deg, #1c6dd0, #5c7cfa);
+}
+
+@keyframes sugecoToastProgress {
     from { width: 100%; }
     to { width: 0%; }
-}
-
-/* Animazioni di entrata e uscita */
-.toast.showing {
-    animation: toastSlideIn 0.3s ease-out forwards !important;
-}
-
-.toast.hide {
-    animation: toastSlideOut 0.3s ease-in forwards !important;
-}
-
-@keyframes toastSlideIn {
-    from {
-        transform: translateX(100%) !important;
-        opacity: 0 !important;
-    }
-    to {
-        transform: translateX(0) !important;
-        opacity: 1 !important;
-    }
-}
-
-@keyframes toastSlideOut {
-    from {
-        transform: translateX(0) !important;
-        opacity: 1 !important;
-    }
-    to {
-        transform: translateX(100%) !important;
-        opacity: 0 !important;
-    }
 }
 
 /* Responsive */
 @media (max-width: 576px) {
     .toast-container {
-        top: 10px !important;
-        right: 10px !important;
-        left: 10px !important;
-        max-width: none !important;
+        left: 12px;
+        right: 12px;
+        max-width: none;
     }
-    
-    .toast {
-        min-width: auto !important;
-        margin-bottom: 8px !important;
+
+    .sugeco-toast {
+        min-width: auto;
     }
-    
-    .toast-body {
-        padding: 12px 15px !important;
-        font-size: 0.9rem !important;
+
+    .sugeco-toast__content {
+        padding: 14px 16px;
+        font-size: 0.9rem;
     }
-} 
+}

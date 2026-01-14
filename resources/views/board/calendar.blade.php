@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Calendario AttivitÃ ')
 
@@ -614,73 +614,12 @@
 <!-- Inizializzazione calendario in IIFE isolata -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Utility per le notifiche moderne
-    function showToast(message, title = 'Notifica', icon = 'fa-info-circle', iconClass = 'text-primary', type = 'info') {
-        const toast = document.getElementById('calendarToast');
-        if (!toast) return;
-        
-        const toastBootstrap = bootstrap.Toast.getOrCreateInstance(toast);
-        
-        document.getElementById('toastMessage').textContent = message;
-        document.getElementById('toastTitle').textContent = title;
-        
-        const iconElement = document.getElementById('toastIcon');
-        iconElement.className = `fas ${icon} ${iconClass}`;
-        
-        // Rimuovi classi precedenti
-        toast.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'text-white', 'text-dark');
-        
-        // Rimuovi eventuali progress bar precedenti
-        const oldProgressBar = toast.querySelector('.toast-progress-bar');
-        if (oldProgressBar) {
-            oldProgressBar.remove();
-        }
-        
-        // Aggiungi nuova progress bar
-        const progressBar = document.createElement('div');
-        progressBar.className = 'toast-progress-bar';
-        toast.appendChild(progressBar);
-        
-        // Imposta colori in base al tipo
-        if (type === 'success') {
-            toast.classList.add('bg-success', 'text-white');
-            progressBar.style.backgroundColor = '#23a94e';
-        } else if (type === 'error') {
-            toast.classList.add('bg-danger', 'text-white');
-            progressBar.style.backgroundColor = '#eb5a46';
-        } else if (type === 'warning') {
-            toast.classList.add('bg-warning', 'text-dark');
-            progressBar.style.backgroundColor = '#c97b0d';
-        } else {
-            toast.classList.add('bg-info', 'text-white');
-            progressBar.style.backgroundColor = '#0d85d1';
-        }
-        
-        // Imposta animazione progress bar
-        progressBar.style.animation = 'progress 5s linear forwards';
-        
-        // Reset dell'animazione e stile al toast
-        toast.style.animation = '';
-        void toast.offsetWidth; // Trigger reflow
-        toast.style.animation = 'slideIn 0.3s ease-out forwards';
-        
-        toastBootstrap.show();
-        
-        // Auto-hide dopo 5 secondi
-        setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease-in forwards';
-            setTimeout(() => {
-                toastBootstrap.hide();
-            }, 300);
-        }, 5000);
-    }
-    
     function showError(message) {
-        showToast(message, 'Errore', 'fa-exclamation-circle', 'text-white', 'error');
+        showToast(`Errore: ${message}`, 'error');
     }
     
     function showSuccess(message) {
-        showToast(message, 'Operazione completata', 'fa-check-circle', 'text-white', 'success');
+        showToast(`Operazione completata: ${message}`, 'success');
     }
     
     // Inizializza Select2

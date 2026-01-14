@@ -206,6 +206,39 @@
         </div>
     </div>
 
+    <!-- Navigazione Giornaliera + Comandante + Gestione servizi -->
+    <div class="row mb-3">
+        <div class="col-lg-6 mb-2 mb-lg-0">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <a href="{{ route('servizi.turni.index', ['data' => $dataRiferimento->copy()->subDay()->format('Y-m-d')]) }}" 
+                   class="btn btn-outline-secondary btn-sm" style="border-radius: 6px !important;">
+                    <i class="fas fa-chevron-left"></i> Giorno precedente
+                </a>
+                <input type="date" id="dataRiferimento" class="form-control form-control-sm" 
+                       style="max-width: 170px;" value="{{ $dataRiferimento->format('Y-m-d') }}">
+                <a href="{{ route('servizi.turni.index', ['data' => $dataRiferimento->copy()->addDay()->format('Y-m-d')]) }}" 
+                   class="btn btn-outline-secondary btn-sm" style="border-radius: 6px !important;">
+                    Giorno successivo <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="d-flex align-items-center justify-content-lg-end flex-wrap gap-2">
+                <div class="input-group input-group-sm" style="max-width: 440px;">
+                    <span class="input-group-text"><i class="fas fa-user-tie"></i></span>
+                    <input type="text" id="comandanteCompagnia" class="form-control"
+                           value="{{ $comandanteCompagnia }}" placeholder="Comandante di compagnia">
+                    <button class="btn btn-outline-success" type="button" onclick="salvaComandante()">
+                        Salva
+                    </button>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalGestioneServizi">
+                    <i class="fas fa-cog"></i> Gestione servizi
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Export button removed - now using floating button -->
 
     <!-- Tabella Turni -->
@@ -272,6 +305,103 @@
     </div>
 </div>
 
+<!-- Modal Gestione Servizi -->
+<div class="modal fade" id="modalGestioneServizi" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gestione Servizi Turni</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <strong>Codice servizio:</strong> identificativo interno stabile (non sincronizza con CPT).<br>
+                    <strong>Sigla CPT:</strong> codice presente nel CPT (tabella “Codici CPT”) usato per la sincronizzazione.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Codice (interno)</th>
+                                <th>Sigla CPT</th>
+                                <th>Posti</th>
+                                <th class="text-end">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($serviziTurno as $servizio)
+                                <tr>
+                                    <td style="min-width: 220px;">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               id="servizio-nome-{{ $servizio->id }}" 
+                                               value="{{ $servizio->nome }}">
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ $servizio->codice }}</span>
+                                    </td>
+                                    <td style="max-width: 140px;">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               id="servizio-sigla-{{ $servizio->id }}" 
+                                               value="{{ $servizio->sigla_cpt }}">
+                                    </td>
+                                    <td style="max-width: 90px;">
+                                        <input type="number" min="1" class="form-control form-control-sm" 
+                                               id="servizio-posti-{{ $servizio->id }}" 
+                                               value="{{ $servizio->num_posti }}">
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-primary" onclick="aggiornaServizio({{ $servizio->id }})">
+                                            Salva
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="rimuoviServizio({{ $servizio->id }}, '{{ addslashes($servizio->nome) }}')">
+                                            Rimuovi
+                                        </button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr>
+
+                <h6 class="mb-2">Aggiungi nuovo servizio</h6>
+                <small class="text-muted d-block mb-2">
+                    Se non vuoi sincronizzare col CPT, lascia vuota la sigla CPT.
+                </small>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control form-control-sm" id="nuovoServizioNome" 
+                               placeholder="Nome servizio">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" class="form-control form-control-sm" id="nuovoServizioCodice" 
+                               placeholder="Codice interno (es. G3)">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" class="form-control form-control-sm" id="nuovoServizioSigla" 
+                               placeholder="Sigla CPT (es. G1)">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" min="1" class="form-control form-control-sm" id="nuovoServizioPosti" 
+                               placeholder="Posti" value="1">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-success btn-sm w-100" onclick="creaServizio()">
+                            <i class="fas fa-plus"></i> Aggiungi
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted d-block mt-2">
+                    I servizi rimossi vengono disattivati e non saranno più mostrati nella tabella.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Assegnazione Militare -->
 <div class="modal fade" id="modalAssegnazione" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -287,7 +417,7 @@
                     <br>
                     <label class="form-label"><strong>Data:</strong> <span id="dataServizio"></span></label>
                     <br>
-                    <label class="form-label"><strong>Posizione:</strong> <span id="posizioneServizio"></span></label>
+                    <label class="form-label"><strong>Posti:</strong> <span id="posizioneServizio"></span></label>
                 </div>
 
                 <div class="mb-3">
@@ -427,6 +557,7 @@ let hasConflict = false;
 
 const turnoId = {{ $turno->id }};
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const baseTurniUrl = "{{ route('servizi.turni.index') }}";
 
 // Mostra/nascondi spinner
 function showSpinner() {
@@ -437,40 +568,65 @@ function hideSpinner() {
     document.getElementById('loadingSpinner').classList.add('d-none');
 }
 
-// Toast notifications con CSS esterno
-function showToast(message, type = 'success') {
-    const icons = {
-        'success': 'fa-check-circle',
-        'warning': 'fa-exclamation-triangle',
-        'error': 'fa-times-circle',
-        'info': 'fa-info-circle'
-    };
-    
-    const icon = icons[type] || icons['info'];
-    
-    const toast = document.createElement('div');
-    toast.className = `custom-toast toast-${type}`;
-    
-    toast.innerHTML = `
-        <div class="toast-content">
-            <div class="toast-icon">
-                <i class="fas ${icon}"></i>
-            </div>
-            <div class="toast-message">${message}</div>
-            <button class="toast-close" onclick="this.closest('.custom-toast').remove()">×</button>
-        </div>
-        <div class="toast-progress"></div>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.add('toast-out');
-        setTimeout(() => toast.remove(), 500);
-    }, 3000);
+// Toast globali: gestiti da toast-system.js
+
+function getPostiDisponibili() {
+    if (currentMaxPosti === null || currentNumAssegnati === null) {
+        return 0;
+    }
+    return Math.max(currentMaxPosti - currentNumAssegnati, 0);
 }
 
-// Gli stili sono caricati da turni-custom.css
+function enforceMaxPosti(checkbox) {
+    if (!checkbox) {
+        return true;
+    }
+
+    const postiDisponibili = getPostiDisponibili();
+    const selezionati = document.querySelectorAll('.militare-checkbox:checked').length;
+
+    if (postiDisponibili === 0) {
+        checkbox.checked = false;
+        showToast('Posti esauriti per questa data', 'warning');
+        return false;
+    }
+
+    if (selezionati > postiDisponibili) {
+        checkbox.checked = false;
+        showToast(`Puoi selezionare al massimo ${postiDisponibili} militare/i`, 'warning');
+        return false;
+    }
+
+    return true;
+}
+
+function extractErrorMessage(result) {
+    if (!result) {
+        return 'Errore imprevisto';
+    }
+    if (result.message) {
+        return result.message;
+    }
+    if (result.errors) {
+        const first = Object.values(result.errors)[0];
+        if (Array.isArray(first) && first.length > 0) {
+            return first[0];
+        }
+    }
+    return 'Errore imprevisto';
+}
+
+// Navigazione giornaliera: cambia data di riferimento
+document.addEventListener('DOMContentLoaded', () => {
+    const dateInput = document.getElementById('dataRiferimento');
+    if (dateInput) {
+        dateInput.addEventListener('change', () => {
+            if (dateInput.value) {
+                window.location.href = `${baseTurniUrl}?data=${dateInput.value}`;
+            }
+        });
+    }
+});
 
 // Apri modal per assegnazione
 function apriModalAssegnazione(servizioId, data, giornoSettimana, nomeServizio, maxPosti, numAssegnati) {
@@ -486,6 +642,7 @@ function apriModalAssegnazione(servizioId, data, giornoSettimana, nomeServizio, 
     document.querySelectorAll('.militare-checkbox').forEach(cb => {
         cb.checked = false;
         delete cb.dataset.forza;
+        cb.disabled = false;
     });
     document.getElementById('risultatoVerifica').classList.add('d-none');
     document.getElementById('erroriAssegnazione').classList.add('d-none');
@@ -495,11 +652,23 @@ function apriModalAssegnazione(servizioId, data, giornoSettimana, nomeServizio, 
     // Popola info servizio
     document.getElementById('nomeServizio').textContent = nomeServizio;
     document.getElementById('dataServizio').textContent = giornoSettimana + ' ' + data;
-    document.getElementById('posizioneServizio').textContent = 'Militari assegnati: ' + numAssegnati;
+    document.getElementById('posizioneServizio').textContent = `${numAssegnati} assegnati su ${maxPosti} (disponibili: ${getPostiDisponibili()})`;
+
+    const postiDisponibili = getPostiDisponibili();
+    if (postiDisponibili === 0) {
+        document.querySelectorAll('.militare-checkbox').forEach(cb => {
+            cb.disabled = true;
+        });
+    }
 
     // Aggiungi listener per abilitare/disabilitare pulsante Verifica
     document.querySelectorAll('.militare-checkbox').forEach(cb => {
-        cb.addEventListener('change', aggiornaStatoPulsantiModal);
+        cb.onchange = () => {
+            if (!enforceMaxPosti(cb)) {
+                return;
+            }
+            aggiornaStatoPulsantiModal();
+        };
     });
 
     // Mostra modal
@@ -523,7 +692,16 @@ function aggiornaStatoPulsantiModal() {
 
 // Seleziona/Deseleziona tutti
 function selezionaTutti() {
-    document.querySelectorAll('.militare-checkbox').forEach(cb => cb.checked = true);
+    const maxSelezionabili = getPostiDisponibili();
+    let selezionati = 0;
+    document.querySelectorAll('.militare-checkbox').forEach(cb => {
+        if (selezionati < maxSelezionabili) {
+            cb.checked = true;
+            selezionati++;
+        } else {
+            cb.checked = false;
+        }
+    });
     aggiornaStatoPulsantiModal();
 }
 
@@ -764,6 +942,11 @@ async function confermaAssegnazione() {
         return;
     }
 
+    if (checkboxes.length > getPostiDisponibili()) {
+        showToast('Hai selezionato più militari dei posti disponibili', 'error');
+        return;
+    }
+
     showSpinner();
 
     let successCount = 0;
@@ -956,6 +1139,159 @@ async function confermaRimozione(assegnazioneId) {
 
 // Sincronizzazione automatica: non serve più pulsante manuale
 // La sincronizzazione avviene automaticamente ad ogni assegnazione tramite TurniService->sincronizzaConCPT()
+
+// Salva comandante di compagnia (per export Excel)
+async function salvaComandante() {
+    const input = document.getElementById('comandanteCompagnia');
+    if (!input) {
+        return;
+    }
+    const nome = input.value.trim();
+    if (!nome) {
+        showToast('Inserisci il nome del comandante', 'error');
+        return;
+    }
+
+    showSpinner();
+    try {
+        const response = await fetch('{{ route("servizi.turni.comandante.update") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ nome })
+        });
+        const result = await response.json();
+        hideSpinner();
+
+        if (response.ok && result.success) {
+            showToast('Comandante aggiornato', 'success');
+        } else {
+            showToast(extractErrorMessage(result), 'error');
+        }
+    } catch (error) {
+        hideSpinner();
+        console.error('Errore aggiornamento comandante:', error);
+        showToast('Errore di rete', 'error');
+    }
+}
+
+// Gestione servizi (crea/aggiorna/rimuovi)
+async function creaServizio() {
+    const nome = document.getElementById('nuovoServizioNome')?.value.trim();
+    const codice = document.getElementById('nuovoServizioCodice')?.value.trim();
+    const sigla = document.getElementById('nuovoServizioSigla')?.value.trim();
+    const numPosti = parseInt(document.getElementById('nuovoServizioPosti')?.value, 10);
+
+    if (!nome || !codice || !numPosti || numPosti < 1) {
+        showToast('Compila nome, codice e posti validi', 'error');
+        return;
+    }
+
+    showSpinner();
+    try {
+        const response = await fetch('{{ route("servizi.turni.servizi.store") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                nome,
+                codice,
+                sigla_cpt: sigla || null,
+                num_posti: numPosti
+            })
+        });
+        const result = await response.json();
+        hideSpinner();
+
+        if (response.ok && result.success) {
+            showToast(result.message || 'Servizio creato', 'success');
+            location.reload();
+        } else {
+            showToast(extractErrorMessage(result), 'error');
+        }
+    } catch (error) {
+        hideSpinner();
+        console.error('Errore creazione servizio:', error);
+        showToast('Errore di rete', 'error');
+    }
+}
+
+async function aggiornaServizio(servizioId) {
+    const nome = document.getElementById(`servizio-nome-${servizioId}`)?.value.trim();
+    const sigla = document.getElementById(`servizio-sigla-${servizioId}`)?.value.trim();
+    const numPosti = parseInt(document.getElementById(`servizio-posti-${servizioId}`)?.value, 10);
+
+    if (!nome || !numPosti || numPosti < 1) {
+        showToast('Nome e posti devono essere validi', 'error');
+        return;
+    }
+
+    showSpinner();
+    try {
+        const response = await fetch(`{{ url('/servizi/turni/servizi') }}/${servizioId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                nome,
+                sigla_cpt: sigla || null,
+                num_posti: numPosti
+            })
+        });
+        const result = await response.json();
+        hideSpinner();
+
+        if (response.ok && result.success) {
+            showToast(result.message || 'Servizio aggiornato', 'success');
+            location.reload();
+        } else {
+            showToast(extractErrorMessage(result), 'error');
+        }
+    } catch (error) {
+        hideSpinner();
+        console.error('Errore aggiornamento servizio:', error);
+        showToast('Errore di rete', 'error');
+    }
+}
+
+async function rimuoviServizio(servizioId, nomeServizio) {
+    if (!confirm(`Confermi la rimozione del servizio "${nomeServizio}"?`)) {
+        return;
+    }
+
+    showSpinner();
+    try {
+        const response = await fetch(`{{ url('/servizi/turni/servizi') }}/${servizioId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        });
+        const result = await response.json();
+        hideSpinner();
+
+        if (response.ok && result.success) {
+            showToast(result.message || 'Servizio rimosso', 'success');
+            location.reload();
+        } else {
+            showToast(extractErrorMessage(result), 'error');
+        }
+    } catch (error) {
+        hideSpinner();
+        console.error('Errore rimozione servizio:', error);
+        showToast('Errore di rete', 'error');
+    }
+}
 </script>
 
 <!-- Floating Button Export Excel -->

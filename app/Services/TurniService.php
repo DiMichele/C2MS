@@ -162,11 +162,22 @@ class TurniService
                 }
             }
 
-            // Calcola posizione
+            // Calcola posizione e verifica limite posti
             $assegnazioniEsistenti = AssegnazioneTurno::where('turno_settimanale_id', $turnoId)
                 ->where('servizio_turno_id', $servizioId)
                 ->where('data_servizio', $data)
                 ->count();
+
+            $maxPosti = max((int) $servizio->num_posti, 1);
+            if ($assegnazioniEsistenti >= $maxPosti) {
+                DB::rollBack();
+                return [
+                    'success' => false,
+                    'message' => "Posti esauriti per il servizio \"{$servizio->nome}\" in questa data.",
+                    'warning' => null,
+                    'assegnazione' => null
+                ];
+            }
 
             // Determina il giorno della settimana
             $giorniSettimana = ['GIOVEDI', 'VENERDI', 'SABATO', 'DOMENICA', 'LUNEDI', 'MARTEDI', 'MERCOLEDI'];

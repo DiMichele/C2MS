@@ -321,6 +321,16 @@ class Militare extends Model
     }
 
     /**
+     * Relazione con l'ufficio del militare (alias di polo per compatibilità)
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function ufficio()
+    {
+        return $this->belongsTo(Ufficio::class, 'polo_id');
+    }
+
+    /**
      * Relazione con la compagnia del militare
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

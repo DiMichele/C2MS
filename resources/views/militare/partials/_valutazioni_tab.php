@@ -328,26 +328,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Funzione per mostrare toast notifications
-    function showToast(message, type = 'info') {
-        // Crea un toast semplice se non esiste già un sistema
-        const toast = document.createElement('div');
-        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
-        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        toast.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
-        `;
-        
-        document.body.appendChild(toast);
-        
-        // Rimuovi automaticamente dopo 5 secondi
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.remove();
-            }
-        }, 5000);
-    }
 });
 </script> 

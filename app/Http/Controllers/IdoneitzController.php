@@ -78,6 +78,7 @@ class IdoneitzController extends Controller
                 'militare' => $militare,
                 'idoneita_mansione' => $this->calcolaScadenza($scadenza?->idoneita_mans_data_conseguimento, 1), // 1 anno
                 'idoneita_smi' => $this->calcolaScadenza($scadenza?->idoneita_smi_data_conseguimento, 1), // 1 anno
+                'idoneita_to' => $this->calcolaScadenza($scadenza?->idoneita_to_data_conseguimento, 1), // 1 anno - Idoneità T.O.
                 'ecg' => $this->calcolaScadenza($scadenza?->ecg_data_conseguimento, 1), // 1 anno
                 'prelievi' => $this->calcolaScadenza($scadenza?->prelievi_data_conseguimento, 1), // 1 anno
                 'teatro_operativo' => $militariTO[$militare->id] ?? [],

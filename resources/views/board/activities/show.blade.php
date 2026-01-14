@@ -566,43 +566,7 @@ $(document).ready(function() {
     });
 });
 
-// Toast Helper migliorato
-function showToast(title, message, type = 'info') {
-    const toast = document.getElementById('toast');
-    const toastTitle = document.getElementById('toastTitle');
-    const toastBody = document.getElementById('toastBody');
-    const toastIcon = document.getElementById('toastIcon');
-    
-    // Rimuovi classi vecchie
-    toast.classList.remove('toast-success', 'toast-error', 'toast-warning', 'toast-info');
-    
-    // Aggiungi nuova classe
-    toast.classList.add(`toast-${type}`);
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-    
-    const colors = {
-        success: 'text-success',
-        error: 'text-danger',
-        warning: 'text-warning',
-        info: 'text-info'
-    };
-    
-    toastIcon.className = `fas ${icons[type] || icons.info} ${colors[type] || colors.info} me-2`;
-    toastTitle.textContent = title;
-    toastBody.textContent = message;
-    
-    const bsToast = new bootstrap.Toast(toast, {
-        autohide: true,
-        delay: type === 'error' ? 5000 : 3000 // Errori restano più tempo
-    });
-    bsToast.show();
-}
+// Toast globali: gestiti da toast-system.js
 
 // Verifica disponibilità per tutti i militari selezionati
 document.getElementById('verificaBtn').addEventListener('click', async function() {

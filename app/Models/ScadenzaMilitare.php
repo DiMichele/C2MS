@@ -17,6 +17,7 @@ class ScadenzaMilitare extends Model
         'pefo_data_conseguimento',
         'idoneita_mans_data_conseguimento',
         'idoneita_smi_data_conseguimento',
+        'idoneita_to_data_conseguimento',
         'lavoratore_4h_data_conseguimento',
         'lavoratore_8h_data_conseguimento',
         'preposto_data_conseguimento',
@@ -45,6 +46,7 @@ class ScadenzaMilitare extends Model
         'pefo_data_conseguimento' => 'date',
         'idoneita_mans_data_conseguimento' => 'date',
         'idoneita_smi_data_conseguimento' => 'date',
+        'idoneita_to_data_conseguimento' => 'date',
         'lavoratore_4h_data_conseguimento' => 'date',
         'lavoratore_8h_data_conseguimento' => 'date',
         'preposto_data_conseguimento' => 'date',
@@ -82,6 +84,7 @@ class ScadenzaMilitare extends Model
         'pefo' => 12,
         'idoneita_mans' => 12,
         'idoneita_smi' => 12,
+        'idoneita_to' => 12,       // Idoneità Teatro Operativo - 1 anno
         'lavoratore_4h' => 60,
         'lavoratore_8h' => 60,
         'preposto' => 24,

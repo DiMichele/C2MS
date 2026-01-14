@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Militare;
 use App\Models\ScadenzaApprontamento;
+use App\Models\ScadenzaMilitare;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -21,7 +22,7 @@ class ApprontamentiController extends Controller
     {
         // Il Global Scope filtra già automaticamente i militari visibili
         $query = Militare::withVisibilityFlags()
-            ->with(['scadenzaApprontamento', 'grado', 'polo', 'compagnia'])
+            ->with(['scadenzaApprontamento', 'scadenza', 'grado', 'ufficio', 'compagnia'])
             ->orderBy('cognome')
             ->orderBy('nome');
 
@@ -38,7 +39,7 @@ class ApprontamentiController extends Controller
         $canEdit = auth()->user()->hasPermission('approntamenti.edit') 
                 || auth()->user()->hasPermission('admin.access');
 
-        $colonne = ScadenzaApprontamento::COLONNE;
+        $colonne = ScadenzaApprontamento::getLabels();
 
         return view('approntamenti.index', compact('militari', 'filtri', 'canEdit', 'colonne'));
     }
@@ -49,21 +50,13 @@ class ApprontamentiController extends Controller
     private function applicaFiltri($militari, array $filtri)
     {
         return $militari->filter(function ($militare) use ($filtri) {
-            $scadenza = $militare->scadenzaApprontamento;
-
             foreach ($filtri as $campo => $valore) {
                 if (empty($valore) || $valore === 'tutti') {
                     continue;
                 }
 
-                if (!$scadenza) {
-                    if ($valore === 'scaduti' || $valore === 'non_presenti') {
-                        continue; // Include i militari senza record
-                    }
-                    return false;
-                }
-
-                $stato = $scadenza->verificaStato($campo);
+                // Determina la fonte dei dati
+                $stato = $this->getStatoCampo($militare, $campo);
 
                 switch ($valore) {
                     case 'validi':
@@ -86,6 +79,89 @@ class ApprontamentiController extends Controller
     }
 
     /**
+     * Ottiene lo stato di un campo considerando la fonte corretta
+     */
+    private function getStatoCampo($militare, string $campo): string
+    {
+        if (ScadenzaApprontamento::isColonnaCondivisa($campo)) {
+            // Legge da scadenze_militari
+            $scadenza = $militare->scadenza;
+            if (!$scadenza) return 'non_presente';
+            
+            $campoSorgente = ScadenzaApprontamento::getCampoSorgente($campo);
+            return $scadenza->verificaStato($campoSorgente);
+        } else {
+            // Legge da scadenze_approntamenti
+            $scadenza = $militare->scadenzaApprontamento;
+            if (!$scadenza) return 'non_presente';
+            
+            return $scadenza->verificaStato($campo);
+        }
+    }
+
+    /**
+     * Ottiene il valore formattato di un campo
+     */
+    public static function getValoreCampo($militare, string $campo): array
+    {
+        if (ScadenzaApprontamento::isColonnaCondivisa($campo)) {
+            // Legge da scadenze_militari
+            $scadenza = $militare->scadenza;
+            $campoSorgente = ScadenzaApprontamento::getCampoSorgente($campo);
+            
+            if (!$scadenza) {
+                return [
+                    'valore' => '-',
+                    'valore_raw' => '',
+                    'stato' => 'non_presente',
+                    'colore' => 'background-color: #f8f9fa; color: #6c757d;',
+                    'scadenza' => '-',
+                    'fonte' => 'scadenze_militari',
+                    'readonly' => true, // Non modificabile da qui
+                ];
+            }
+            
+            $campoData = $campoSorgente . '_data_conseguimento';
+            $dataConseguimento = $scadenza->$campoData;
+            
+            return [
+                'valore' => $dataConseguimento ? Carbon::parse($dataConseguimento)->format('d/m/Y') : '-',
+                'valore_raw' => $dataConseguimento ? Carbon::parse($dataConseguimento)->format('Y-m-d') : '',
+                'stato' => $scadenza->verificaStato($campoSorgente),
+                'colore' => $scadenza->getColore($campoSorgente),
+                'scadenza' => $scadenza->formatScadenza($campoSorgente),
+                'fonte' => 'scadenze_militari',
+                'readonly' => true,
+            ];
+        } else {
+            // Legge da scadenze_approntamenti
+            $scadenza = $militare->scadenzaApprontamento;
+            
+            if (!$scadenza) {
+                return [
+                    'valore' => '-',
+                    'valore_raw' => '',
+                    'stato' => 'non_presente',
+                    'colore' => 'background-color: #f8f9fa; color: #6c757d;',
+                    'scadenza' => '-',
+                    'fonte' => 'approntamenti',
+                    'readonly' => false,
+                ];
+            }
+            
+            return [
+                'valore' => $scadenza->getValoreFormattato($campo),
+                'valore_raw' => $scadenza->$campo ?? '',
+                'stato' => $scadenza->verificaStato($campo),
+                'colore' => $scadenza->getColore($campo),
+                'scadenza' => $scadenza->formatScadenza($campo),
+                'fonte' => 'approntamenti',
+                'readonly' => false,
+            ];
+        }
+    }
+
+    /**
      * Aggiorna una singola cella
      */
     public function updateSingola(Request $request, $militareId)
@@ -103,11 +179,19 @@ class ApprontamentiController extends Controller
             $campo = $request->input('campo');
             $valore = $request->input('valore');
 
-            // Valida il campo
+            // Verifica che il campo esista
             if (!array_key_exists($campo, ScadenzaApprontamento::COLONNE)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Campo non valido'
+                ], 400);
+            }
+
+            // Verifica se è una colonna condivisa (readonly)
+            if (ScadenzaApprontamento::isColonnaCondivisa($campo)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Questo campo è gestito dalla pagina SPP/Idoneità. Modificalo da lì.'
                 ], 400);
             }
 
@@ -183,7 +267,7 @@ class ApprontamentiController extends Controller
     public function exportExcel(Request $request)
     {
         $query = Militare::withVisibilityFlags()
-            ->with(['scadenzaApprontamento', 'grado', 'polo', 'compagnia'])
+            ->with(['scadenzaApprontamento', 'scadenza', 'grado', 'ufficio', 'compagnia'])
             ->orderBy('cognome')
             ->orderBy('nome');
 
@@ -201,7 +285,7 @@ class ApprontamentiController extends Controller
 
         // Header
         $headers = ['Grado', 'Cognome', 'Nome'];
-        foreach (ScadenzaApprontamento::COLONNE as $label) {
+        foreach (ScadenzaApprontamento::getLabels() as $label) {
             $headers[] = $label;
         }
 
@@ -229,7 +313,6 @@ class ApprontamentiController extends Controller
         $row = 2;
         foreach ($militari as $militare) {
             $col = 'A';
-            $scadenza = $militare->scadenzaApprontamento;
 
             // Grado, Cognome, Nome
             $sheet->setCellValue($col++ . $row, $militare->grado->sigla ?? '-');
@@ -238,22 +321,20 @@ class ApprontamentiController extends Controller
 
             // Colonne approntamento
             foreach (array_keys(ScadenzaApprontamento::COLONNE) as $campo) {
-                $valore = $scadenza ? $scadenza->getValoreFormattato($campo) : '-';
-                $sheet->setCellValue($col . $row, $valore);
+                $datiCampo = self::getValoreCampo($militare, $campo);
+                $sheet->setCellValue($col . $row, $datiCampo['valore']);
                 
-                if ($scadenza) {
-                    $stato = $scadenza->verificaStato($campo);
-                    $bgColor = match($stato) {
-                        'scaduto' => 'FFCCCC',
-                        'in_scadenza' => 'FFF3CD',
-                        'valido' => 'D4EDDA',
-                        'non_richiesto' => 'E2E3E5',
-                        default => 'F8F9FA'
-                    };
-                    $sheet->getStyle($col . $row)->getFill()
-                        ->setFillType(Fill::FILL_SOLID)
-                        ->getStartColor()->setRGB($bgColor);
-                }
+                $bgColor = match($datiCampo['stato']) {
+                    'scaduto' => 'FFCCCC',
+                    'in_scadenza' => 'FFF3CD',
+                    'valido' => 'D4EDDA',
+                    'non_richiesto' => 'E2E3E5',
+                    default => 'F8F9FA'
+                };
+                $sheet->getStyle($col . $row)->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB($bgColor);
+                
                 $col++;
             }
             $row++;

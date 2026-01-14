@@ -287,6 +287,18 @@ Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view'
             ->middleware('permission:turni.edit')
             ->name('sincronizza');
         Route::get('/export-excel', [\App\Http\Controllers\TurniController::class, 'exportExcel'])->name('export-excel');
+        Route::post('/comandante', [\App\Http\Controllers\TurniController::class, 'aggiornaComandante'])
+            ->middleware('permission:turni.edit')
+            ->name('comandante.update');
+        Route::post('/servizi', [\App\Http\Controllers\TurniController::class, 'creaServizio'])
+            ->middleware('permission:turni.edit')
+            ->name('servizi.store');
+        Route::put('/servizi/{servizio}', [\App\Http\Controllers\TurniController::class, 'aggiornaServizio'])
+            ->middleware('permission:turni.edit')
+            ->name('servizi.update');
+        Route::delete('/servizi/{servizio}', [\App\Http\Controllers\TurniController::class, 'rimuoviServizio'])
+            ->middleware('permission:turni.edit')
+            ->name('servizi.destroy');
     });
 });
 

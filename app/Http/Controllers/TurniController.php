@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Services\TurniService;
 use App\Models\Militare;
+use App\Models\ServizioTurno;
+use App\Models\CompagniaSetting;
+use App\Models\TipoServizio;
+use App\Models\AssegnazioneTurno;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -35,7 +39,10 @@ class TurniController extends Controller
         // Ottieni tutti i dati per la settimana
         $dati = $this->turniService->getDatiSettimana($data);
 
-        return view('servizi.turni.index', $dati);
+        return view('servizi.turni.index', array_merge($dati, [
+            'dataRiferimento' => $data->copy(),
+            'comandanteCompagnia' => $this->getComandanteCompagniaName(),
+        ]));
     }
 
     /**
@@ -122,6 +129,173 @@ class TurniController extends Controller
             'success' => true,
             'message' => "Sincronizzate {$risultato['sincronizzate']} assegnazioni. Fallite: {$risultato['fallite']}",
             'data' => $risultato
+        ]);
+    }
+
+    /**
+     * Aggiorna il nome del comandante di compagnia per l'export
+     */
+    public function aggiornaComandante(Request $request)
+    {
+        $request->validate([
+            'nome' => 'required|string|max:120',
+        ]);
+
+        $settings = CompagniaSetting::getForCurrentUser();
+
+        if (!$settings) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Compagnia non trovata per l\'utente corrente.',
+            ], 422);
+        }
+
+        $settings->setSetting('turni.comandante_compagnia', trim($request->nome));
+        $settings->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Comandante aggiornato con successo.',
+        ]);
+    }
+
+    /**
+     * Crea un nuovo servizio per i turni
+     */
+    public function creaServizio(Request $request)
+    {
+        $request->validate([
+            'nome' => 'required|string|max:100',
+            'codice' => 'required|string|max:20|regex:/^[A-Za-z0-9-]+$/',
+            'sigla_cpt' => 'nullable|string|max:10|regex:/^[A-Za-z0-9-]+$/',
+            'num_posti' => 'required|integer|min:1|max:20',
+        ]);
+
+        $ordine = (int) ServizioTurno::max('ordine') + 1;
+        $numPosti = (int) $request->num_posti;
+        $codice = strtoupper(trim($request->codice));
+        $siglaCpt = $request->sigla_cpt ? strtoupper(trim($request->sigla_cpt)) : null;
+
+        if ($siglaCpt && !TipoServizio::where('codice', $siglaCpt)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sigla CPT non valida: il codice non esiste nel CPT.',
+            ], 422);
+        }
+
+        if ($siglaCpt && ServizioTurno::where('sigla_cpt', $siglaCpt)->where('attivo', true)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sigla CPT già associata a un altro servizio attivo.',
+            ], 422);
+        }
+
+        $esistente = ServizioTurno::where('codice', $codice)->first();
+        if ($esistente) {
+            if ($esistente->attivo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Codice già utilizzato da un servizio attivo.',
+                ], 422);
+            }
+
+            $esistente->update([
+                'nome' => trim($request->nome),
+                'sigla_cpt' => $siglaCpt,
+                'num_posti' => $numPosti,
+                'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
+                'ordine' => $ordine,
+                'attivo' => true,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Servizio riattivato con successo.',
+                'servizio' => $esistente,
+            ]);
+        }
+
+        $servizio = ServizioTurno::create([
+            'nome' => trim($request->nome),
+            'codice' => $codice,
+            'sigla_cpt' => $siglaCpt,
+            'num_posti' => $numPosti,
+            'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
+            'ordine' => $ordine,
+            'attivo' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Servizio creato con successo.',
+            'servizio' => $servizio,
+        ]);
+    }
+
+    /**
+     * Aggiorna un servizio esistente (rename + posti)
+     */
+    public function aggiornaServizio(Request $request, ServizioTurno $servizio)
+    {
+        $request->validate([
+            'nome' => 'required|string|max:100',
+            'sigla_cpt' => 'nullable|string|max:10|regex:/^[A-Za-z0-9-]+$/',
+            'num_posti' => 'required|integer|min:1|max:20',
+        ]);
+
+        $numPosti = (int) $request->num_posti;
+        $siglaCpt = $request->sigla_cpt ? strtoupper(trim($request->sigla_cpt)) : null;
+
+        if ($siglaCpt && !TipoServizio::where('codice', $siglaCpt)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sigla CPT non valida: il codice non esiste nel CPT.',
+            ], 422);
+        }
+
+        if ($siglaCpt && ServizioTurno::where('sigla_cpt', $siglaCpt)->where('id', '!=', $servizio->id)->where('attivo', true)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sigla CPT già associata a un altro servizio attivo.',
+            ], 422);
+        }
+
+        $maxAssegnazioni = AssegnazioneTurno::where('servizio_turno_id', $servizio->id)
+            ->selectRaw('COUNT(*) as tot')
+            ->groupBy('data_servizio')
+            ->orderByDesc('tot')
+            ->first();
+
+        if ($maxAssegnazioni && $maxAssegnazioni->tot > $numPosti) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non puoi ridurre i posti sotto il numero di assegnazioni già presenti.',
+            ], 422);
+        }
+
+        $servizio->update([
+            'nome' => trim($request->nome),
+            'sigla_cpt' => $siglaCpt,
+            'num_posti' => $numPosti,
+            'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Servizio aggiornato con successo.',
+        ]);
+    }
+
+    /**
+     * Disattiva un servizio (rimozione dall'elenco)
+     */
+    public function rimuoviServizio(ServizioTurno $servizio)
+    {
+        $servizio->update(['attivo' => false]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Servizio rimosso con successo.',
         ]);
     }
 
@@ -270,7 +444,7 @@ class TurniController extends Controller
         $sheet->getStyle('F' . $row)->getFont()->setBold(true)->setSize(10);
         
         $row++;
-        $sheet->setCellValue('F' . $row, "Cap. t.(tlm.) RN Mattia CACCAMO");
+        $sheet->setCellValue('F' . $row, $this->getComandanteCompagniaName());
         $sheet->mergeCells('F' . $row . ':H' . $row);
         $sheet->getStyle('F' . $row)->getAlignment()
             ->setHorizontal(Alignment::HORIZONTAL_CENTER)
@@ -323,6 +497,22 @@ class TurniController extends Controller
         $sheet->setShowGridlines(false);
 
         return $spreadsheet;
+    }
+
+    /**
+     * Nome del comandante di compagnia (fallback default)
+     */
+    private function getComandanteCompagniaName(): string
+    {
+        $default = 'Cap. t.(tlm.) RN Mattia CACCAMO';
+        $settings = CompagniaSetting::getForCurrentUser();
+        $nome = $settings?->getSetting('turni.comandante_compagnia');
+
+        if (is_string($nome) && trim($nome) !== '') {
+            return trim($nome);
+        }
+
+        return $default;
     }
 
     /**

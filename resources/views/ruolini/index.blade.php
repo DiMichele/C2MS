@@ -5,14 +5,11 @@
 @section('content')
 <div class="container-fluid ruolini-page">
     <!-- Header -->
-    <div class="ruolini-hero card mb-4">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
-            <div>
-                <h1 class="ruolini-title mb-1">Ruolini</h1>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="page-header text-center">
+                <h1 class="page-title">Ruolini</h1>
                 <p class="text-muted mb-0">{{ ucfirst($dataObj->locale('it')->isoFormat('dddd D MMMM YYYY')) }}</p>
-            </div>
-            <div class="ruolini-hero-note text-muted">
-                Report presenze giornaliere
             </div>
         </div>
     </div>
@@ -24,7 +21,7 @@
                 <div class="ruolini-toolbar-group">
                     <div class="ruolini-toolbar-label">Data</div>
                     <div class="ruolini-date-controls">
-                        <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->subDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId])) }}"
+                        <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->subDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
                            class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-chevron-left"></i>
                         </a>
@@ -32,13 +29,13 @@
                         <input type="date" id="dataSelect" class="form-control form-control-sm"
                                value="{{ $dataSelezionata }}" onchange="cambiaData()">
 
-                        <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->addDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId])) }}"
+                        <a href="{{ route('ruolini.index', array_filter(['data' => $dataObj->copy()->addDay()->format('Y-m-d'), 'compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
                            class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-chevron-right"></i>
                         </a>
 
                         @if(!$dataObj->isToday())
-                            <a href="{{ route('ruolini.index', array_filter(['compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId])) }}"
+                            <a href="{{ route('ruolini.index', array_filter(['compagnia_id' => $compagniaId, 'plotone_id' => $plotoneId, 'ufficio_id' => $ufficioId])) }}"
                                class="btn btn-primary btn-sm">
                                 Oggi
                             </a>
@@ -67,7 +64,16 @@
                             @endforeach
                         </select>
 
-                        @if($compagniaId || $plotoneId)
+                        <select id="ufficioSelect" class="form-select form-select-sm" onchange="applicaFiltri()">
+                            <option value="">Tutti gli uffici</option>
+                            @foreach($uffici as $ufficio)
+                                <option value="{{ $ufficio->id }}" {{ $ufficioId == $ufficio->id ? 'selected' : '' }}>
+                                    {{ $ufficio->nome }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        @if($compagniaId || $plotoneId || $ufficioId)
                             <a href="{{ route('ruolini.index', ['data' => $dataSelezionata]) }}"
                                class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-times me-1"></i>Reset
@@ -76,11 +82,6 @@
                     </div>
                 </div>
 
-                <div class="ruolini-toolbar-group ruolini-toolbar-actions">
-                    <button onclick="exportRuoliniExcel()" class="btn btn-success btn-sm">
-                        <i class="fas fa-file-excel me-2"></i>Esporta Excel
-                    </button>
-                </div>
             </div>
         </div>
     </div>
@@ -93,69 +94,41 @@
     @endphp
 
     <!-- Statistiche principali -->
-    <div class="row mb-4">
-        <div class="col-lg-8">
-            <div class="row">
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <div class="card ruolini-kpi-card h-100">
-                        <div class="card-body">
-                            <div class="ruolini-kpi-label">Forza effettiva</div>
-                            <div class="ruolini-kpi-value text-navy">{{ $forzaEffettiva }}</div>
-                            <div class="ruolini-kpi-sub">Totale personale in forza</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3 mb-md-0">
-                    <div class="card ruolini-kpi-card ruolini-kpi-success h-100">
-                        <div class="card-body">
-                            <div class="ruolini-kpi-label">Presenti</div>
-                            <div class="ruolini-kpi-value text-success">{{ $totalePresenti }}</div>
-                            <div class="ruolini-kpi-sub">{{ $percentualePresenti }}% del totale</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card ruolini-kpi-card ruolini-kpi-danger h-100">
-                        <div class="card-body">
-                            <div class="ruolini-kpi-label">Assenti</div>
-                            <div class="ruolini-kpi-value text-danger">{{ $totaleAssenti }}</div>
-                            <div class="ruolini-kpi-sub">{{ 100 - $percentualePresenti }}% del totale</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="ruolini-stats mb-4">
+        <div class="ruolini-stat-card">
+            <div class="ruolini-stat-label">Forza effettiva</div>
+            <div class="ruolini-stat-value">{{ $forzaEffettiva }}</div>
+            <div class="ruolini-stat-sub">Totale personale in forza</div>
         </div>
-
-        <!-- Breakdown categorie -->
-        <div class="col-lg-4">
-            <div class="card h-100 ruolini-summary-card">
-                <div class="card-header">
-                    <h6 class="mb-0">Riepilogo per categoria</h6>
+        <div class="ruolini-stat-card ruolini-stat-card-success">
+            <div class="ruolini-stat-label">Presenti</div>
+            <div class="ruolini-stat-value text-success">{{ $totalePresenti }}</div>
+            <div class="ruolini-stat-sub">{{ $percentualePresenti }}% del totale</div>
+        </div>
+        <div class="ruolini-stat-card ruolini-stat-card-danger">
+            <div class="ruolini-stat-label">Assenti</div>
+            <div class="ruolini-stat-value text-danger">{{ $totaleAssenti }}</div>
+            <div class="ruolini-stat-sub">{{ 100 - $percentualePresenti }}% del totale</div>
+        </div>
+        <div class="ruolini-stat-card ruolini-stat-summary">
+            <div class="ruolini-stat-label">Riepilogo per categoria</div>
+            <div class="ruolini-mini-table">
+                <div class="ruolini-mini-row ruolini-mini-head">
+                    <span>Categoria</span>
+                    <span class="text-center">Tot</span>
+                    <span class="text-center text-success">Pres</span>
+                    <span class="text-center text-danger">Ass</span>
                 </div>
-                <div class="card-body p-0">
-                    <table class="table table-sm mb-0 ruolini-summary-table">
-                        <thead>
-                            <tr>
-                                <th class="ps-3">Categoria</th>
-                                <th class="text-center">Tot</th>
-                                <th class="text-center">Pres</th>
-                                <th class="text-center">Ass</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach(['Ufficiali', 'Sottufficiali', 'Graduati', 'Volontari'] as $cat)
-                                @if($totali[$cat]['totale'] > 0)
-                                <tr>
-                                    <td class="ps-3">{{ $cat }}</td>
-                                    <td class="text-center fw-bold">{{ $totali[$cat]['totale'] }}</td>
-                                    <td class="text-center fw-bold text-success">{{ $totali[$cat]['presenti'] }}</td>
-                                    <td class="text-center fw-bold text-danger">{{ $totali[$cat]['assenti'] }}</td>
-                                </tr>
-                                @endif
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                @foreach(['Ufficiali', 'Sottufficiali', 'Graduati', 'Volontari'] as $cat)
+                    @if($totali[$cat]['totale'] > 0)
+                    <div class="ruolini-mini-row">
+                        <span>{{ $cat }}</span>
+                        <span class="text-center fw-bold">{{ $totali[$cat]['totale'] }}</span>
+                        <span class="text-center fw-bold text-success">{{ $totali[$cat]['presenti'] }}</span>
+                        <span class="text-center fw-bold text-danger">{{ $totali[$cat]['assenti'] }}</span>
+                    </div>
+                    @endif
+                @endforeach
             </div>
         </div>
     </div>
@@ -163,104 +136,103 @@
     <!-- Dettaglio per categoria -->
     @foreach(['Ufficiali', 'Sottufficiali', 'Graduati', 'Volontari'] as $categoria)
         @if($totali[$categoria]['totale'] > 0)
-        <div class="card mb-4 ruolini-category-card">
-            <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="ruolini-accordion card mb-3">
+            <button class="ruolini-accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ruolini-{{ Str::slug($categoria) }}" aria-expanded="false" aria-controls="ruolini-{{ Str::slug($categoria) }}">
                 <div>
-                    <h5 class="mb-0">{{ $categoria }}</h5>
+                    <h5 class="mb-1">{{ $categoria }}</h5>
                     <small class="text-muted">Totale: {{ $totali[$categoria]['totale'] }}</small>
                 </div>
-                <div class="ruolini-category-badges">
-                    <span class="badge badge-success">
-                        {{ $totali[$categoria]['presenti'] }} presenti
-                    </span>
-                    <span class="badge badge-danger">
-                        {{ $totali[$categoria]['assenti'] }} assenti
-                    </span>
+                <div class="ruolini-accordion-meta">
+                    <span class="ruolini-pill ruolini-pill-success">{{ $totali[$categoria]['presenti'] }} presenti</span>
+                    <span class="ruolini-pill ruolini-pill-danger">{{ $totali[$categoria]['assenti'] }} assenti</span>
+                    <i class="fas fa-chevron-down ruolini-accordion-icon"></i>
                 </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="row g-0">
-                    <!-- Colonna Presenti -->
-                    <div class="col-md-6 ruolini-column-divider">
-                        <div class="ruolini-column-header ruolini-column-header-success">
-                            <small class="fw-bold text-success">Presenti</small>
+            </button>
+            <div id="ruolini-{{ Str::slug($categoria) }}" class="collapse">
+                <div class="card-body p-0">
+                    <div class="row no-gutters">
+                        <!-- Colonna Presenti -->
+                        <div class="col-lg-6 ruolini-column-divider">
+                            <div class="ruolini-column-header ruolini-column-header-success">
+                                <small class="fw-bold text-success">Presenti</small>
+                            </div>
+                            @if(count($categorie[$categoria]['presenti']) > 0)
+                            <div class="table-responsive ruolini-table-scroll">
+                                <table class="table table-sm table-hover mb-0 ruolini-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center ruolini-col-num">#</th>
+                                            <th class="ruolini-col-grade">Grado</th>
+                                            <th>Militare</th>
+                                            <th class="ruolini-col-plotone">Plotone</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($categorie[$categoria]['presenti'] as $i => $item)
+                                        <tr>
+                                            <td class="text-center text-muted">{{ $i + 1 }}</td>
+                                            <td class="fw-bold">{{ $item['militare']->grado->sigla ?? '' }}</td>
+                                            <td>
+                                                <a href="{{ route('anagrafica.show', $item['militare']->id) }}" 
+                                                   class="ruolini-link">
+                                                    {{ $item['militare']->cognome }} {{ $item['militare']->nome }}
+                                                </a>
+                                            </td>
+                                            <td class="text-muted">{{ $item['militare']->plotone->nome ?? '-' }}</td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @else
+                            <div class="ruolini-empty">Nessun presente</div>
+                            @endif
                         </div>
-                        @if(count($categorie[$categoria]['presenti']) > 0)
-                        <div class="table-responsive ruolini-table-scroll">
-                            <table class="table table-sm table-hover mb-0 ruolini-table">
-                                <thead>
-                                    <tr>
-                                        <th class="text-center ruolini-col-num">#</th>
-                                        <th class="ruolini-col-grade">Grado</th>
-                                        <th>Militare</th>
-                                        <th class="ruolini-col-plotone">Plotone</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($categorie[$categoria]['presenti'] as $i => $item)
-                                    <tr>
-                                        <td class="text-center text-muted">{{ $i + 1 }}</td>
-                                        <td class="fw-bold">{{ $item['militare']->grado->sigla ?? '' }}</td>
-                                        <td>
-                                            <a href="{{ route('anagrafica.show', $item['militare']->id) }}" 
-                                               class="ruolini-link">
-                                                {{ $item['militare']->cognome }} {{ $item['militare']->nome }}
-                                            </a>
-                                        </td>
-                                        <td class="text-muted">{{ $item['militare']->plotone->nome ?? '-' }}</td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        
+                        <!-- Colonna Assenti -->
+                        <div class="col-lg-6">
+                            <div class="ruolini-column-header ruolini-column-header-danger">
+                                <small class="fw-bold text-danger">Assenti</small>
+                            </div>
+                            @if(count($categorie[$categoria]['assenti']) > 0)
+                            <div class="table-responsive ruolini-table-scroll">
+                                <table class="table table-sm table-hover mb-0 ruolini-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center ruolini-col-num">#</th>
+                                            <th class="ruolini-col-grade">Grado</th>
+                                            <th>Militare</th>
+                                            <th class="ruolini-col-motivo">Motivazione</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($categorie[$categoria]['assenti'] as $i => $item)
+                                        <tr>
+                                            <td class="text-center text-muted">{{ $i + 1 }}</td>
+                                            <td class="fw-bold">{{ $item['militare']->grado->sigla ?? '' }}</td>
+                                            <td>
+                                                <a href="{{ route('anagrafica.show', $item['militare']->id) }}" 
+                                                   class="ruolini-link">
+                                                    {{ $item['militare']->cognome }} {{ $item['militare']->nome }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                @foreach($item['impegni'] as $impegno)
+                                                <span class="badge ruolini-impegno-badge" style="background: {{ $impegno['colore'] }};" 
+                                                      data-bs-toggle="tooltip" title="{{ $impegno['descrizione'] }}">
+                                                    {{ $impegno['codice'] }}
+                                                </span>
+                                                @endforeach
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @else
+                            <div class="ruolini-empty">Nessun assente</div>
+                            @endif
                         </div>
-                        @else
-                        <div class="ruolini-empty">Nessun presente</div>
-                        @endif
-                    </div>
-                    
-                    <!-- Colonna Assenti -->
-                    <div class="col-md-6">
-                        <div class="ruolini-column-header ruolini-column-header-danger">
-                            <small class="fw-bold text-danger">Assenti</small>
-                        </div>
-                        @if(count($categorie[$categoria]['assenti']) > 0)
-                        <div class="table-responsive ruolini-table-scroll">
-                            <table class="table table-sm table-hover mb-0 ruolini-table">
-                                <thead>
-                                    <tr>
-                                        <th class="text-center ruolini-col-num">#</th>
-                                        <th class="ruolini-col-grade">Grado</th>
-                                        <th>Militare</th>
-                                        <th class="ruolini-col-motivo">Motivazione</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($categorie[$categoria]['assenti'] as $i => $item)
-                                    <tr>
-                                        <td class="text-center text-muted">{{ $i + 1 }}</td>
-                                        <td class="fw-bold">{{ $item['militare']->grado->sigla ?? '' }}</td>
-                                        <td>
-                                            <a href="{{ route('anagrafica.show', $item['militare']->id) }}" 
-                                               class="ruolini-link">
-                                                {{ $item['militare']->cognome }} {{ $item['militare']->nome }}
-                                            </a>
-                                        </td>
-                                        <td>
-                                            @foreach($item['impegni'] as $impegno)
-                                            <span class="badge ruolini-impegno-badge" style="background: {{ $impegno['colore'] }};" 
-                                                  data-bs-toggle="tooltip" title="{{ $impegno['descrizione'] }}">
-                                                {{ $impegno['codice'] }}
-                                            </span>
-                                            @endforeach
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        @else
-                        <div class="ruolini-empty">Nessun assente</div>
-                        @endif
                     </div>
                 </div>
             </div>
@@ -269,39 +241,30 @@
     @endforeach
 </div>
 
+<!-- Floating export button -->
+<button type="button" class="fab fab-excel" id="exportExcel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</button>
+
 <style>
 .ruolini-page {
     position: relative;
     z-index: 1;
 }
 
-.ruolini-hero {
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    background: linear-gradient(135deg, rgba(25, 42, 68, 0.06), rgba(25, 42, 68, 0.02));
-}
-
-.ruolini-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--navy);
-}
-
-.ruolini-hero-note {
-    font-size: 0.95rem;
-}
 
 .ruolini-toolbar {
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--border-color);
+    background: #fff;
+    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04);
 }
 
 .ruolini-toolbar-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    align-items: end;
 }
 
 .ruolini-toolbar-group {
@@ -320,15 +283,19 @@
 
 .ruolini-date-controls,
 .ruolini-filter-controls {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
     gap: 10px;
     align-items: center;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.ruolini-date-controls {
+    grid-template-columns: auto 180px auto auto;
 }
 
 .ruolini-date-controls .form-control,
 .ruolini-filter-controls .form-select {
-    width: 180px;
+    width: 100%;
     border-radius: 8px;
 }
 
@@ -338,21 +305,29 @@
     border-radius: 8px;
 }
 
-.ruolini-kpi-card {
-    border-radius: 12px;
+.ruolini-stats {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.ruolini-stat-card {
+    border-radius: 14px;
     border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+    background: #fff;
+    padding: 16px 18px;
+    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04);
 }
 
-.ruolini-kpi-success {
-    background: rgba(52, 103, 81, 0.06);
+.ruolini-stat-card-success {
+    background: rgba(52, 103, 81, 0.05);
 }
 
-.ruolini-kpi-danger {
-    background: rgba(220, 53, 69, 0.06);
+.ruolini-stat-card-danger {
+    background: rgba(220, 53, 69, 0.05);
 }
 
-.ruolini-kpi-label {
+.ruolini-stat-label {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -360,54 +335,100 @@
     margin-bottom: 6px;
 }
 
-.ruolini-kpi-value {
-    font-size: 2.2rem;
+.ruolini-stat-value {
+    font-size: 2rem;
     font-weight: 700;
     margin-bottom: 4px;
 }
 
-.ruolini-kpi-sub {
+.ruolini-stat-sub {
     font-size: 0.85rem;
     color: var(--gray-600);
 }
 
-.ruolini-summary-card {
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
+.ruolini-stat-summary {
+    padding: 12px 14px;
 }
 
-.ruolini-summary-card .card-header {
-    background: var(--navy);
-    color: #fff;
-    border-radius: 12px 12px 0 0;
-    padding: 12px 16px;
+.ruolini-mini-table {
+    display: grid;
+    gap: 6px;
+    margin-top: 10px;
 }
 
-.ruolini-summary-table thead {
-    background: var(--gray-100);
-}
-
-.ruolini-summary-table th,
-.ruolini-summary-table td {
+.ruolini-mini-row {
+    display: grid;
+    grid-template-columns: 1.3fr repeat(3, 0.6fr);
+    gap: 8px;
+    align-items: center;
     font-size: 0.82rem;
-    padding: 10px 12px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: rgba(148, 163, 184, 0.08);
 }
 
-.ruolini-category-card {
-    border-radius: 12px;
+.ruolini-mini-head {
+    background: transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.68rem;
+    color: var(--gray-600);
+    padding: 0 4px 4px;
+}
+
+.ruolini-accordion {
+    border-radius: 14px;
     border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04);
 }
 
-.ruolini-category-card .card-header {
-    background: var(--navy);
-    color: #fff;
-    border-radius: 12px 12px 0 0;
-    padding: 14px 18px;
+.ruolini-accordion-header {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: #fff;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
-.ruolini-category-badges .badge {
-    font-size: 0.78rem;
+.ruolini-accordion-header:focus {
+    outline: none;
+}
+
+.ruolini-accordion-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ruolini-accordion-icon {
+    color: var(--gray-500);
+    transition: transform 0.2s ease;
+}
+
+.ruolini-accordion-header[aria-expanded="true"] .ruolini-accordion-icon {
+    transform: rotate(180deg);
+}
+
+.ruolini-pill {
     padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.ruolini-pill-success {
+    background: rgba(52, 103, 81, 0.1);
+    color: var(--success);
+}
+
+.ruolini-pill-danger {
+    background: rgba(220, 53, 69, 0.1);
+    color: var(--danger);
 }
 
 .ruolini-column-divider {
@@ -454,8 +475,8 @@
 }
 
 .ruolini-table-scroll {
-    max-height: 350px;
-    overflow-y: auto;
+    max-height: none;
+    overflow-y: visible;
 }
 
 .ruolini-col-num {
@@ -521,21 +542,25 @@
     .ruolini-toolbar-grid {
         align-items: stretch;
     }
-
-    .ruolini-toolbar-actions {
-        width: 100%;
-    }
 }
 
 @media (max-width: 768px) {
+    .ruolini-accordion-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .ruolini-accordion-meta {
+        flex-wrap: wrap;
+    }
+
     .ruolini-column-divider {
         border-right: none;
         border-bottom: 1px solid var(--border-color);
     }
 
-    .ruolini-date-controls .form-control,
-    .ruolini-filter-controls .form-select {
-        width: 100%;
+    .ruolini-date-controls {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     }
 }
 </style>
@@ -547,18 +572,27 @@ document.addEventListener('DOMContentLoaded', function() {
     tooltipTriggerList.forEach(function(tooltipTriggerEl) {
         new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            exportRuoliniExcel();
+        });
+    }
 });
 
 function cambiaData() {
     const data = document.getElementById('dataSelect').value;
     const compagnia = document.getElementById('compagniaSelect').value;
     const plotone = document.getElementById('plotoneSelect').value;
+    const ufficio = document.getElementById('ufficioSelect').value;
     
     let url = '{{ route("ruolini.index") }}';
     const params = new URLSearchParams();
     if (data) params.append('data', data);
     if (compagnia) params.append('compagnia_id', compagnia);
     if (plotone) params.append('plotone_id', plotone);
+    if (ufficio) params.append('ufficio_id', ufficio);
     
     const q = params.toString();
     window.location.href = q ? url + '?' + q : url;
@@ -572,11 +606,13 @@ function exportRuoliniExcel() {
     const data = document.getElementById('dataSelect').value;
     const compagnia = document.getElementById('compagniaSelect').value;
     const plotone = document.getElementById('plotoneSelect').value;
+    const ufficio = document.getElementById('ufficioSelect').value;
     
     const params = new URLSearchParams();
     if (data) params.append('data', data);
     if (compagnia) params.append('compagnia_id', compagnia);
     if (plotone) params.append('plotone_id', plotone);
+    if (ufficio) params.append('ufficio_id', ufficio);
     
     const q = params.toString();
     window.location.href = '{{ route("ruolini.export-excel") }}' + (q ? '?' + q : '');

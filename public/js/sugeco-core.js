@@ -71,41 +71,7 @@ window.SUGECO.Core = {
      * Initialize toast notification system
      */
     initToasts: function() {
-        // Define toast function in global namespace
-        window.showToast = function(message, type = 'info') {
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.innerHTML = `
-                <div class="toast-content">
-                    ${type === 'success' ? '<i class="fas fa-check-circle"></i>' : ''}
-                    ${type === 'error' ? '<i class="fas fa-exclamation-circle"></i>' : ''}
-                    ${type === 'info' ? '<i class="fas fa-info-circle"></i>' : ''}
-                    <span>${message}</span>
-                </div>
-                <span class="toast-close">&times;</span>
-            `;
-            
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-            
-            const close = toast.querySelector('.toast-close');
-            close.addEventListener('click', () => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
-            });
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
-            }, window.SUGECO.Core.config.toastDuration);
-        };
+        // Gestito da toast-system.js per uniformità globale
     },
     
     /**
