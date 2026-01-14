@@ -21,7 +21,7 @@ class ApprontamentiController extends Controller
     {
         // Il Global Scope filtra già automaticamente i militari visibili
         $query = Militare::withVisibilityFlags()
-            ->with(['scadenzaApprontamento', 'grado', 'ufficio', 'compagnia'])
+            ->with(['scadenzaApprontamento', 'grado', 'polo', 'compagnia'])
             ->orderBy('cognome')
             ->orderBy('nome');
 
@@ -183,7 +183,7 @@ class ApprontamentiController extends Controller
     public function exportExcel(Request $request)
     {
         $query = Militare::withVisibilityFlags()
-            ->with(['scadenzaApprontamento', 'grado', 'ufficio', 'compagnia'])
+            ->with(['scadenzaApprontamento', 'grado', 'polo', 'compagnia'])
             ->orderBy('cognome')
             ->orderBy('nome');
 
