@@ -400,6 +400,15 @@ class Militare extends Model
     }
 
     /**
+     * Relazione con le scadenze approntamenti
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function scadenzaApprontamento()
+    {
+        return $this->hasOne(ScadenzaApprontamento::class, 'militare_id');
+    }
+
+    /**
      * Relazione con le scadenze idoneità sanitarie
      */
     public function scadenzeIdoneita()

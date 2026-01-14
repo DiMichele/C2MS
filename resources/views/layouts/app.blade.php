@@ -129,6 +129,12 @@
                         Idoneità
                     </a>
                 </li>
+                
+                <li class="nav-menu-item {{ request()->is('approntamenti*') ? 'active' : '' }}">
+                    <a href="{{ route('approntamenti.index') }}">
+                        Approntamenti
+                    </a>
+                </li>
                 @endif
                 @endauth
                 
@@ -166,7 +172,7 @@
                 @endif
                 
                 @if(Auth::check() && Auth::user()->hasPermission('admin.access'))
-                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') || request()->is('gestione-ruolini*') || request()->is('gestione-spp*') || request()->is('gestione-poligoni*') || request()->is('gestione-idoneita*') || request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
+                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') || request()->is('gestione-ruolini*') || request()->is('gestione-spp*') || request()->is('gestione-poligoni*') || request()->is('gestione-idoneita*') || request()->is('gestione-approntamenti*') || request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
                     <a href="#">
                         Admin
                     </a>
@@ -191,6 +197,9 @@
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('gestione-idoneita*') ? 'active' : '' }}">
                             <a href="{{ route('gestione-idoneita.index') }}">Gestione Idoneità</a>
+                        </li>
+                        <li class="nav-dropdown-item {{ request()->is('gestione-approntamenti*') ? 'active' : '' }}">
+                            <a href="{{ route('gestione-approntamenti.index') }}">Gestione Approntamenti</a>
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
                             <a href="{{ route('gestione-anagrafica-config.index') }}">Gestione Anagrafica</a>
@@ -235,7 +244,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p class="mb-0">SUGECO - Sistema Unico di Gestione e Controllo &copy; {{ date('Y') }}</p>
+            <p class="mb-0">SUGECO - Sistema Unico di Gestione e Controllo</p>
         </div>
     </footer>
     

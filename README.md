@@ -387,6 +387,6 @@ Questo progetto è sviluppato per uso interno e proprietario. Tutti i diritti ri
 
 ---
 
-**SUGECO v2.1.0** - *Sistema Unico di Gestione e Controllo*
+**SUGECO v1.0** - *Sistema Unico di Gestione e Controllo*
 
 *Sviluppato con ❤️ per l'efficienza operativa*

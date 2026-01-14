@@ -8,6 +8,7 @@
     
     <!-- Bootstrap 5 CSS -->
     <link href="{{ asset('vendor/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         * {
@@ -16,8 +17,19 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary: #0a2342;
+            --primary-strong: #081b33;
+            --accent: #c9a227;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --surface: #ffffff;
+            --surface-muted: #f8fafc;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -25,11 +37,13 @@
             padding: 20px;
             position: relative;
             
-            /* Background con immagine e overlay */
+            /* Background con maggiore contrasto */
             background: 
-                linear-gradient(135deg, rgba(10, 35, 66, 0.92) 0%, rgba(22, 58, 95, 0.88) 100%),
-                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="%230a2342"/><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            background-size: cover, 100px 100px;
+                radial-gradient(900px 420px at 15% 5%, rgba(10, 35, 66, 0.18), transparent 60%),
+                radial-gradient(800px 380px at 85% 20%, rgba(10, 35, 66, 0.14), transparent 55%),
+                linear-gradient(180deg, #eef3f9 0%, #dfe7f2 100%),
+                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs><pattern id="microdots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="1.4" cy="1.4" r="0.8" fill="rgba(10,35,66,0.28)"/></pattern></defs><rect width="120" height="120" fill="url(%23microdots)"/></svg>');
+            background-size: auto, auto, cover, 100px 100px;
             background-position: center;
         }
 
@@ -37,22 +51,22 @@
         body::before {
             content: '';
             position: fixed;
-            top: -50%;
-            right: -20%;
-            width: 80%;
-            height: 150%;
-            background: radial-gradient(ellipse, rgba(201, 162, 39, 0.08) 0%, transparent 70%);
+            top: -40%;
+            right: -10%;
+            width: 70%;
+            height: 120%;
+            background: radial-gradient(ellipse, rgba(10, 35, 66, 0.14) 0%, transparent 68%);
             pointer-events: none;
         }
 
         body::after {
             content: '';
             position: fixed;
-            bottom: -30%;
-            left: -20%;
-            width: 60%;
-            height: 100%;
-            background: radial-gradient(ellipse, rgba(201, 162, 39, 0.05) 0%, transparent 70%);
+            bottom: -35%;
+            left: -15%;
+            width: 55%;
+            height: 90%;
+            background: radial-gradient(ellipse, rgba(10, 35, 66, 0.10) 0%, transparent 68%);
             pointer-events: none;
         }
 
@@ -60,22 +74,23 @@
             position: relative;
             z-index: 1;
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
         }
 
         .login-card {
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 12px;
+            background: var(--surface);
+            border-radius: 14px;
+            border: 1px solid var(--border);
             box-shadow: 
-                0 20px 60px rgba(0, 0, 0, 0.3),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
+                0 20px 40px rgba(15, 23, 42, 0.12),
+                0 2px 8px rgba(15, 23, 42, 0.06);
             overflow: hidden;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(6px);
         }
 
         .login-header {
-            background: linear-gradient(135deg, #0a2342 0%, #163a5f 100%);
-            padding: 36px 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, #143152 100%);
+            padding: 32px 40px;
             text-align: center;
             position: relative;
         }
@@ -86,16 +101,16 @@
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 60px;
+            width: 48px;
             height: 3px;
-            background: #c9a227;
+            background: rgba(255, 255, 255, 0.6);
             border-radius: 2px;
         }
 
         .login-title {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
-            letter-spacing: 8px;
+            letter-spacing: 4px;
             color: #fff;
             margin: 0;
             text-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -103,8 +118,8 @@
 
         .login-subtitle {
             font-size: 11px;
-            color: #c9a227;
-            letter-spacing: 3px;
+            color: rgba(255, 255, 255, 0.75);
+            letter-spacing: 2px;
             text-transform: uppercase;
             margin-top: 10px;
             font-weight: 500;
@@ -122,7 +137,7 @@
             display: block;
             font-size: 13px;
             font-weight: 600;
-            color: #0a2342;
+            color: var(--text);
             margin-bottom: 8px;
         }
 
@@ -130,21 +145,21 @@
             width: 100%;
             padding: 14px 16px;
             font-size: 15px;
-            border: 2px solid #e5e7eb;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             transition: all 0.2s ease;
-            background: #f9fafb;
+            background: #fff;
         }
 
         .form-control:focus {
             outline: none;
-            border-color: #0a2342;
+            border-color: var(--primary);
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.1);
+            box-shadow: 0 0 0 4px rgba(10, 35, 66, 0.08);
         }
 
         .form-control::placeholder {
-            color: #9ca3af;
+            color: #9aa3af;
         }
 
         .form-control.is-invalid {
@@ -154,7 +169,7 @@
 
         .form-hint {
             font-size: 12px;
-            color: #9ca3af;
+            color: var(--muted);
             margin-top: 6px;
         }
 
@@ -177,12 +192,12 @@
             border: 2px solid #d1d5db;
             border-radius: 4px;
             cursor: pointer;
-            accent-color: #0a2342;
+            accent-color: var(--primary);
         }
 
         .form-check-label {
             font-size: 14px;
-            color: #6b7280;
+            color: var(--muted);
             cursor: pointer;
         }
 
@@ -192,7 +207,7 @@
             font-size: 15px;
             font-weight: 600;
             color: #fff;
-            background: linear-gradient(135deg, #0a2342 0%, #163a5f 100%);
+            background: var(--primary);
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -203,7 +218,8 @@
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(10, 35, 66, 0.35);
+            background: var(--primary-strong);
+            box-shadow: 0 10px 22px rgba(10, 35, 66, 0.25);
         }
 
         .btn-login:active {
@@ -237,8 +253,8 @@
 
         .login-footer {
             padding: 18px 40px;
-            background: #f8fafc;
-            border-top: 1px solid #e5e7eb;
+            background: var(--surface-muted);
+            border-top: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -246,13 +262,14 @@
 
         .footer-text {
             font-size: 12px;
-            color: #9ca3af;
+            color: var(--muted);
         }
 
         .footer-version {
             font-size: 12px;
-            color: #9ca3af;
-            background: #e5e7eb;
+            color: var(--muted);
+            background: #eef2f7;
+            border: 1px solid var(--border);
             padding: 4px 10px;
             border-radius: 12px;
         }
@@ -260,24 +277,24 @@
         /* Decorazione angolare */
         .corner-decoration {
             position: fixed;
-            width: 200px;
-            height: 200px;
+            width: 180px;
+            height: 180px;
             pointer-events: none;
-            opacity: 0.5;
+            opacity: 0.25;
         }
 
         .corner-top-left {
             top: 0;
             left: 0;
-            border-top: 3px solid rgba(201, 162, 39, 0.3);
-            border-left: 3px solid rgba(201, 162, 39, 0.3);
+            border-top: 2px solid rgba(10, 35, 66, 0.25);
+            border-left: 2px solid rgba(10, 35, 66, 0.25);
         }
 
         .corner-bottom-right {
             bottom: 0;
             right: 0;
-            border-bottom: 3px solid rgba(201, 162, 39, 0.3);
-            border-right: 3px solid rgba(201, 162, 39, 0.3);
+            border-bottom: 2px solid rgba(10, 35, 66, 0.2);
+            border-right: 2px solid rgba(10, 35, 66, 0.2);
         }
 
         @media (max-width: 480px) {
@@ -291,12 +308,12 @@
                 padding: 16px 24px;
             }
             .login-title {
-                font-size: 26px;
-                letter-spacing: 6px;
+                font-size: 24px;
+                letter-spacing: 3px;
             }
             .corner-decoration {
-                width: 100px;
-                height: 100px;
+                width: 90px;
+                height: 90px;
             }
         }
     </style>
@@ -310,7 +327,7 @@
         <div class="login-card">
             <div class="login-header">
                 <h1 class="login-title">SUGECO</h1>
-                <p class="login-subtitle">Sistema di Gestione e Controllo</p>
+                <p class="login-subtitle">Sistema Unico di Gestione e Controllo</p>
             </div>
 
             <div class="login-body">
@@ -373,7 +390,7 @@
 
             <div class="login-footer">
                 <span class="footer-text">Accesso riservato al personale autorizzato</span>
-                <span class="footer-version">v2.1</span>
+                <span class="footer-version">v1.0</span>
             </div>
         </div>
     </div>

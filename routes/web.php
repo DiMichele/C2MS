@@ -369,6 +369,24 @@ Route::prefix('poligoni')->name('poligoni.')->middleware('permission:scadenze.vi
 
 /*
 |-------------------------------------------------
+|| Rotte per gli Approntamenti
+|-------------------------------------------------
+*/
+Route::prefix('approntamenti')->name('approntamenti.')->middleware('permission:scadenze.view')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ApprontamentiController::class, 'index'])->name('index');
+    Route::post('/{militare}/update-singola', [\App\Http\Controllers\ApprontamentiController::class, 'updateSingola'])
+        ->middleware('permission:scadenze.edit')
+        ->name('update-singola');
+    Route::get('/export-excel', [\App\Http\Controllers\ApprontamentiController::class, 'exportExcel'])->name('export-excel');
+});
+
+// Gestione Approntamenti (Admin)
+Route::prefix('gestione-approntamenti')->name('gestione-approntamenti.')->middleware('permission:admin.access')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ApprontamentiController::class, 'gestione'])->name('index');
+});
+
+/*
+|-------------------------------------------------
 || Rotte per i Ruolini
 |-------------------------------------------------
 */
