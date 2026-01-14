@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Militare;
 use App\Models\ScadenzaApprontamento;
-use App\Models\ScadenzaMilitare;
+use App\Models\BoardActivity;
+use App\Models\BoardColumn;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -20,18 +21,47 @@ class ApprontamentiController extends Controller
      */
     public function index(Request $request)
     {
-        // Il Global Scope filtra già automaticamente i militari visibili
-        $query = Militare::withVisibilityFlags()
-            ->with(['scadenzaApprontamento', 'scadenza', 'grado', 'ufficio', 'compagnia'])
-            ->orderBy('cognome')
-            ->orderBy('nome');
+        // Ottieni la colonna "operazioni" (Teatro Operativo) dalla board
+        $colonnaTO = BoardColumn::where('slug', 'operazioni')->first();
+        
+        // Ottieni tutte le attività T.O. attive o future
+        $approntamentiAttivi = collect();
+        if ($colonnaTO) {
+            $approntamentiAttivi = BoardActivity::where('column_id', $colonnaTO->id)
+                ->where(function($q) {
+                    $q->whereNull('end_date')
+                      ->orWhere('end_date', '>=', Carbon::today());
+                })
+                ->with('militari')
+                ->orderBy('start_date')
+                ->get();
+        }
+        
+        // Approntamento selezionato
+        $approntamentoSelezionato = null;
+        $militari = collect();
+        
+        if ($request->filled('approntamento_id')) {
+            $approntamentoSelezionato = $approntamentiAttivi->firstWhere('id', $request->approntamento_id);
+            
+            if ($approntamentoSelezionato) {
+                // Ottieni i militari assegnati a questo approntamento
+                $militariIds = $approntamentoSelezionato->militari->pluck('id')->toArray();
+                
+                if (!empty($militariIds)) {
+                    $militari = Militare::withVisibilityFlags()
+                        ->with(['scadenzaApprontamento', 'scadenza', 'grado', 'polo', 'compagnia'])
+                        ->whereIn('id', $militariIds)
+                        ->orderBy('cognome')
+                        ->orderBy('nome')
+                        ->get();
+                }
+            }
+        }
 
-        $militari = $query->get();
-
-        // Applica i filtri se presenti
+        // Applica i filtri stato se presenti
         $filtri = $request->only(array_keys(ScadenzaApprontamento::COLONNE));
-
-        if (!empty(array_filter($filtri))) {
+        if (!empty(array_filter($filtri)) && $militari->isNotEmpty()) {
             $militari = $this->applicaFiltri($militari, $filtri);
         }
 
@@ -39,64 +69,16 @@ class ApprontamentiController extends Controller
         $canEdit = auth()->user()->hasPermission('approntamenti.edit') 
                 || auth()->user()->hasPermission('admin.access');
 
-        $colonne = ScadenzaApprontamento::getLabels();
+        $colonne = ScadenzaApprontamento::COLONNE;
 
-        return view('approntamenti.index', compact('militari', 'filtri', 'canEdit', 'colonne'));
-    }
-
-    /**
-     * Applica i filtri alla collection di militari
-     */
-    private function applicaFiltri($militari, array $filtri)
-    {
-        return $militari->filter(function ($militare) use ($filtri) {
-            foreach ($filtri as $campo => $valore) {
-                if (empty($valore) || $valore === 'tutti') {
-                    continue;
-                }
-
-                // Determina la fonte dei dati
-                $stato = $this->getStatoCampo($militare, $campo);
-
-                switch ($valore) {
-                    case 'validi':
-                        if ($stato !== 'valido') return false;
-                        break;
-                    case 'in_scadenza':
-                        if ($stato !== 'in_scadenza') return false;
-                        break;
-                    case 'scaduti':
-                        if ($stato !== 'scaduto' && $stato !== 'non_presente') return false;
-                        break;
-                    case 'non_richiesti':
-                        if ($stato !== 'non_richiesto') return false;
-                        break;
-                }
-            }
-
-            return true;
-        });
-    }
-
-    /**
-     * Ottiene lo stato di un campo considerando la fonte corretta
-     */
-    private function getStatoCampo($militare, string $campo): string
-    {
-        if (ScadenzaApprontamento::isColonnaCondivisa($campo)) {
-            // Legge da scadenze_militari
-            $scadenza = $militare->scadenza;
-            if (!$scadenza) return 'non_presente';
-            
-            $campoSorgente = ScadenzaApprontamento::getCampoSorgente($campo);
-            return $scadenza->verificaStato($campoSorgente);
-        } else {
-            // Legge da scadenze_approntamenti
-            $scadenza = $militare->scadenzaApprontamento;
-            if (!$scadenza) return 'non_presente';
-            
-            return $scadenza->verificaStato($campo);
-        }
+        return view('approntamenti.index', compact(
+            'approntamentiAttivi', 
+            'approntamentoSelezionato', 
+            'militari', 
+            'filtri', 
+            'canEdit', 
+            'colonne'
+        ));
     }
 
     /**
@@ -117,7 +99,7 @@ class ApprontamentiController extends Controller
                     'colore' => 'background-color: #f8f9fa; color: #6c757d;',
                     'scadenza' => '-',
                     'fonte' => 'scadenze_militari',
-                    'readonly' => true, // Non modificabile da qui
+                    'readonly' => true,
                 ];
             }
             
@@ -162,6 +144,40 @@ class ApprontamentiController extends Controller
     }
 
     /**
+     * Applica i filtri alla collection di militari
+     */
+    private function applicaFiltri($militari, array $filtri)
+    {
+        return $militari->filter(function ($militare) use ($filtri) {
+            foreach ($filtri as $campo => $valore) {
+                if (empty($valore) || $valore === 'tutti') {
+                    continue;
+                }
+
+                $datiCampo = self::getValoreCampo($militare, $campo);
+                $stato = $datiCampo['stato'];
+
+                switch ($valore) {
+                    case 'validi':
+                        if ($stato !== 'valido') return false;
+                        break;
+                    case 'in_scadenza':
+                        if ($stato !== 'in_scadenza') return false;
+                        break;
+                    case 'scaduti':
+                        if ($stato !== 'scaduto' && $stato !== 'non_presente') return false;
+                        break;
+                    case 'non_richiesti':
+                        if ($stato !== 'non_richiesto') return false;
+                        break;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    /**
      * Aggiorna una singola cella
      */
     public function updateSingola(Request $request, $militareId)
@@ -179,19 +195,11 @@ class ApprontamentiController extends Controller
             $campo = $request->input('campo');
             $valore = $request->input('valore');
 
-            // Verifica che il campo esista
+            // Valida il campo
             if (!array_key_exists($campo, ScadenzaApprontamento::COLONNE)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Campo non valido'
-                ], 400);
-            }
-
-            // Verifica se è una colonna condivisa (readonly)
-            if (ScadenzaApprontamento::isColonnaCondivisa($campo)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Questo campo è gestito dalla pagina SPP/Idoneità. Modificalo da lì.'
                 ], 400);
             }
 
@@ -206,7 +214,6 @@ class ApprontamentiController extends Controller
                         $data = Carbon::createFromFormat('d/m/Y', $valore);
                         $valoreDaSalvare = $data->format('Y-m-d');
                     } catch (\Exception $e) {
-                        // Prova altri formati
                         try {
                             $data = Carbon::parse($valore);
                             $valoreDaSalvare = $data->format('Y-m-d');
@@ -266,26 +273,46 @@ class ApprontamentiController extends Controller
      */
     public function exportExcel(Request $request)
     {
-        $query = Militare::withVisibilityFlags()
-            ->with(['scadenzaApprontamento', 'scadenza', 'grado', 'ufficio', 'compagnia'])
-            ->orderBy('cognome')
-            ->orderBy('nome');
-
-        $militari = $query->get();
+        // Ottieni la colonna "operazioni" (Teatro Operativo) dalla board
+        $colonnaTO = BoardColumn::where('slug', 'operazioni')->first();
+        
+        $militari = collect();
+        $approntamentoSelezionato = null;
+        
+        if ($request->filled('approntamento_id') && $colonnaTO) {
+            $approntamentoSelezionato = BoardActivity::where('column_id', $colonnaTO->id)
+                ->where('id', $request->approntamento_id)
+                ->with('militari')
+                ->first();
+            
+            if ($approntamentoSelezionato) {
+                $militariIds = $approntamentoSelezionato->militari->pluck('id')->toArray();
+                
+                if (!empty($militariIds)) {
+                    $militari = Militare::withVisibilityFlags()
+                        ->with(['scadenzaApprontamento', 'scadenza', 'grado', 'polo', 'compagnia'])
+                        ->whereIn('id', $militariIds)
+                        ->orderBy('cognome')
+                        ->orderBy('nome')
+                        ->get();
+                }
+            }
+        }
 
         // Applica filtri se presenti
         $filtri = $request->only(array_keys(ScadenzaApprontamento::COLONNE));
-        if (!empty(array_filter($filtri))) {
+        if (!empty(array_filter($filtri)) && $militari->isNotEmpty()) {
             $militari = $this->applicaFiltri($militari, $filtri);
         }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Approntamenti');
+        $nomeApprontamento = $approntamentoSelezionato ? $approntamentoSelezionato->title : 'Nessun Approntamento';
+        $sheet->setTitle(substr($nomeApprontamento, 0, 30));
 
         // Header
         $headers = ['Grado', 'Cognome', 'Nome'];
-        foreach (ScadenzaApprontamento::getLabels() as $label) {
+        foreach (ScadenzaApprontamento::COLONNE as $label) {
             $headers[] = $label;
         }
 
@@ -334,7 +361,7 @@ class ApprontamentiController extends Controller
                 $sheet->getStyle($col . $row)->getFill()
                     ->setFillType(Fill::FILL_SOLID)
                     ->getStartColor()->setRGB($bgColor);
-                
+                    
                 $col++;
             }
             $row++;
@@ -347,7 +374,7 @@ class ApprontamentiController extends Controller
 
         // Output
         $writer = new Xlsx($spreadsheet);
-        $filename = 'Approntamenti_' . date('Y-m-d_His') . '.xlsx';
+        $filename = 'Approntamento_' . preg_replace('/[^a-zA-Z0-9]/', '_', $nomeApprontamento) . '_' . date('Y-m-d') . '.xlsx';
         
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $filename . '"');

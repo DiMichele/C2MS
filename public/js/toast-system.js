@@ -216,6 +216,10 @@ window.showInfo = function(message) {
 };
 
 // Auto-inizializzazione quando il DOM è pronto
-document.addEventListener('DOMContentLoaded', function() {
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        window.SUGECO.Toast.init();
+    });
+} else {
     window.SUGECO.Toast.init();
-});
+}
