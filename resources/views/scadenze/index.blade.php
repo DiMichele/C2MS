@@ -2,96 +2,6 @@
 @section('title', 'Scadenze - SUGECO')
 
 @section('content')
-<style>
-/* Effetto hover sulle righe come nel CPT */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-/* Assicura che l'hover funzioni anche con le celle inline */
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-/* Bordi squadrati per le celle come nel CPT */
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
-
-/* Uniforma gli stili dei form controls */
-.form-control, .form-select {
-    border-radius: 0 !important;
-}
-
-/* Stili per i filtri come nel CPT */
-.filter-select {
-    border-radius: 0 !important;
-}
-
-/* Assicura che la tabella abbia lo stesso comportamento del CPT */
-.table-container {
-    overflow-x: auto !important;
-    overflow-y: auto !important;
-}
-
-.table-header-fixed table,
-.table-body-scroll table {
-    table-layout: fixed !important;
-}
-
-/* Sfondo leggermente off-white per la tabella */
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-/* Bordi leggermente più scuri dell'hover */
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
-
-.scadenza-cell {
-    cursor: pointer;
-    transition: all 0.2s;
-    padding: 8px !important;
-}
-
-.scadenza-cell:hover {
-    opacity: 0.8;
-}
-
-/* Stili per i link come nel CPT */
-.link-name {
-    color: #0a2342;
-    text-decoration: none;
-    position: relative;
-}
-
-.link-name:hover {
-    color: #0a2342;
-    text-decoration: none;
-}
-
-.link-name::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: -2px;
-    left: 0;
-    background-color: #d4af37;
-    transition: width 0.3s ease;
-}
-
-.link-name:hover::after {
-    width: 100%;
-}
-</style>
 @php
     // Check if any filters are active
     $activeFilters = [];
@@ -328,40 +238,25 @@ table.table td,
 
 <!-- Table contenente i militari -->
 <!-- Tabella con intestazione fissa e scroll -->
-<div class="table-container" style="position: relative; height: 600px; overflow: auto; overflow-x: auto;">
+<div class="sugeco-table-wrapper">
     <!-- Intestazione fissa -->
-     <div class="table-header-fixed" style="position: sticky; top: 0; z-index: 10; background: white;">
-         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: 2280px; min-width: 2280px;">
-             <colgroup>
-                 <col style="width:160px">
-                 <col style="width:200px">
-                 <col style="width:230px">
-                 <col style="width:170px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-             </colgroup>
-            <thead class="table-dark" style="user-select:none;">
+     <div class="table-header-fixed">
+        <table class="sugeco-table">
+            <thead>
                 <tr>
-                    <th class="text-center">Compagnia</th>
-                    <th class="text-center">Grado</th>
-                    <th class="text-center">Cognome</th>
-                    <th class="text-center">Nome</th>
-                    <th class="text-center">PEFO</th>
-                    <th class="text-center">Idoneità Mansione</th>
-                    <th class="text-center">Idoneità SMI</th>
-                    <th class="text-center">Lavoratore 4h</th>
-                    <th class="text-center">Lavoratore 8h</th>
-                    <th class="text-center">Preposto</th>
-                    <th class="text-center">Dirigenti</th>
-                    <th class="text-center">Teatro Operativo</th>
-                    <th class="text-center">Poligono Mantenimento</th>
+                    <th>Compagnia</th>
+                    <th>Grado</th>
+                    <th>Cognome</th>
+                    <th>Nome</th>
+                    <th>PEFO</th>
+                    <th>Idoneità Mansione</th>
+                    <th>Idoneità SMI</th>
+                    <th>Lavoratore 4h</th>
+                    <th>Lavoratore 8h</th>
+                    <th>Preposto</th>
+                    <th>Dirigenti</th>
+                    <th>Teatro Operativo</th>
+                    <th>Poligono Mantenimento</th>
                 </tr>
             </thead>
         </table>
@@ -369,36 +264,21 @@ table.table td,
     
     <!-- Corpo scrollabile -->
      <div class="table-body-scroll">
-         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: 2280px; min-width: 2280px;">
-             <colgroup>
-                 <col style="width:160px">
-                 <col style="width:200px">
-                 <col style="width:230px">
-                 <col style="width:170px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-                 <col style="width:180px">
-             </colgroup>
+        <table class="sugeco-table">
             <tbody id="militariTableBody">
             @forelse($militari as $m)
                 @php
                     $scadenza = $m->scadenza;
                 @endphp
                 <tr id="militare-{{ $m->id }}" class="militare-row" data-militare-id="{{ $m->id }}">
-                    <td class="text-center">
+                    <td>
                         @if($m->compagnia)
-                            <span class="badge" style="background-color: #0a2342;">{{ $m->compagnia }}</span>
+                            <span class="badge bg-primary">{{ $m->compagnia }}</span>
                         @else
                             <span class="text-muted">-</span>
                         @endif
                     </td>
-                    <td class="text-center">
+                    <td>
                         {{ $m->grado->sigla ?? '-' }}
                     </td>
                     <td>
@@ -411,8 +291,7 @@ table.table td,
                     </td>
                     
                     <!-- PEFO -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->pefo_data_conseguimento) style="{{ $scadenza->getColore('pefo') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="pefo"
@@ -427,8 +306,7 @@ table.table td,
                     </td>
 
                     <!-- Idoneità Mansione -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->idoneita_mans_data_conseguimento) style="{{ $scadenza->getColore('idoneita_mans') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="idoneita_mans"
@@ -443,8 +321,7 @@ table.table td,
                     </td>
 
                     <!-- Idoneità SMI -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->idoneita_smi_data_conseguimento) style="{{ $scadenza->getColore('idoneita_smi') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="idoneita_smi"
@@ -459,8 +336,7 @@ table.table td,
                     </td>
 
                     <!-- Lavoratore 4h -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->lavoratore_4h_data_conseguimento) style="{{ $scadenza->getColore('lavoratore_4h') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="lavoratore_4h"
@@ -475,8 +351,7 @@ table.table td,
                     </td>
 
                     <!-- Lavoratore 8h -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->lavoratore_8h_data_conseguimento) style="{{ $scadenza->getColore('lavoratore_8h') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="lavoratore_8h"
@@ -491,8 +366,7 @@ table.table td,
                     </td>
 
                     <!-- Preposto -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->preposto_data_conseguimento) style="{{ $scadenza->getColore('preposto') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="preposto"
@@ -507,8 +381,7 @@ table.table td,
                     </td>
 
                     <!-- Dirigenti -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->dirigenti_data_conseguimento) style="{{ $scadenza->getColore('dirigenti') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="dirigenti"
@@ -523,8 +396,7 @@ table.table td,
                     </td>
 
                     <!-- Teatro Operativo -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->poligono_approntamento_data_conseguimento) style="{{ $scadenza->getColore('poligono_approntamento') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="poligono_approntamento"
@@ -539,8 +411,7 @@ table.table td,
                     </td>
 
                     <!-- Poligono Mantenimento -->
-                    <td class="text-center @if($canEdit) scadenza-cell @endif" 
-                        @if($scadenza && $scadenza->poligono_mantenimento_data_conseguimento) style="{{ $scadenza->getColore('poligono_mantenimento') }}" @endif
+                    <td class="@if($canEdit) scadenza-cell @endif"
                         @if($canEdit)
                         data-militare-id="{{ $m->id }}"
                         data-tipo="poligono_mantenimento"
@@ -555,17 +426,7 @@ table.table td,
                     </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="13" class="text-center py-5">
-                        <div class="d-flex flex-column align-items-center empty-state">
-                            <i class="fas fa-search fa-3x mb-3 text-muted"></i>
-                            <p class="lead mb-3">Nessun militare trovato.</p>
-                            <a href="{{ route('scadenze.index') }}" class="btn btn-outline-primary mt-2">
-                                <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                @include('components.no-results', ['showButton' => true, 'buttonUrl' => route('scadenze.index')])
             @endforelse
         </tbody>
     </table>

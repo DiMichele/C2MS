@@ -1,9 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * Certificate Tooltips Module - Handles certificate details modal/tooltips
- * 
- * @version 1.0
- * @author Michele Di Gennaro
+ * SUGECO Certificate Tooltips - Certificate details modal
  */
 
 // Define certificate tooltips namespace

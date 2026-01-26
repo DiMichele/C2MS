@@ -11,7 +11,7 @@
 --}}
 
 <div class="table-responsive">
-    <table class="table table-striped table-hover table-bordered align-middle">
+    <table class="sugeco-table">
         <thead>
             <tr>
                 <th scope="col">Grado</th>
@@ -405,11 +405,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr>
-                        <td colspan="8" class="text-center py-4">
-                            <p class="mb-0 text-muted">Nessun militare trovato con i filtri applicati.</p>
-                        </td>
-                    </tr>
+                    @include('components.no-results', ['colspan' => 8])
                 @endforelse
             @elseif(isset($militare))
                 @forelse($militare as $m)

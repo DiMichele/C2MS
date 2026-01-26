@@ -1,9 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * Error handler for common JavaScript errors
- * 
- * @version 1.0
- * @author Michele Di Gennaro
+ * SUGECO Error Handler - Global error management
  */
 
 // Ensure SUGECO namespace exists

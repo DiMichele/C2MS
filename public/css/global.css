@@ -1,24 +1,6 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * 
- * File CSS globale principale contenente variabili, stili base e utilità globali.
- * Definisce il sistema di design e le variabili CSS per tutto il progetto.
- * 
- * @package SUGECO
- * @subpackage Styles
- * @version 1.0
- * @since 1.0
- * @author Michele Di Gennaro
- * @copyright 2025 SUGECO
- * 
- * Sezioni:
- * - Variables: Variabili CSS globali
- * - Reset & Base: Reset CSS e stili base
- * - Typography: Tipografia e font
- * - Layout: Layout e struttura
- * - Components: Componenti riutilizzabili
- * - Utilities: Classi di utilità
- * - Responsive: Media queries
+ * SUGECO - Global CSS
+ * Variables, base styles, and reusable components
  */
 
 /* ==========================================
@@ -135,6 +117,32 @@ h1, h2, h3, h4, h5, h6, .header-title {
     min-height: calc(100vh - var(--header-height));
 }
 
+.page-container {
+    padding: 1.5rem;
+}
+
+.content-header {
+    margin-bottom: 1.5rem;
+}
+
+.content-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+}
+
+.content-subtitle {
+    color: var(--gray-600);
+    font-size: 1rem;
+}
+
+.section-divider {
+    height: 1px;
+    background: var(--gray-200);
+    margin: 1.5rem 0;
+}
+
 /* ==========================================
    TYPOGRAPHY
    ========================================== */
@@ -147,28 +155,13 @@ h1, h2, h3, h4, h5, h6, .header-title {
 
 /* Titolo pagina uniforme per tutte le pagine */
 h1.page-title {
-    font-family: 'Oswald', sans-serif !important;
-    font-size: 2.5rem !important;
-    font-weight: 300 !important;
-    color: #0A2342 !important;
-    margin-bottom: 0 !important;
-    text-align: center !important;
-}
-
-/* Override specifico per dashboard e altre pagine che potrebbero avere CSS conflittuali */
-body h1.page-title,
-.main-content h1.page-title,
-div h1.page-title,
-html body h1.page-title,
-html body .main-content h1.page-title,
-html body div.text-center h1.page-title {
-    font-family: 'Oswald', sans-serif !important;
-    font-size: 2.5rem !important;
-    font-weight: 300 !important;
-    color: #0A2342 !important;
-    margin-bottom: 0 !important;
-    text-align: center !important;
-    letter-spacing: 0.5px !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 300;
+    color: var(--navy);
+    margin-bottom: 0;
+    text-align: center;
+    letter-spacing: 0.5px;
 }
 
 .entity-text {
@@ -469,122 +462,6 @@ html body div.text-center h1.page-title {
 }
 
 /* ==========================================
-   TABLES
-   ========================================== */
-.table-responsive {
-    box-shadow: var(--shadow-sm) !important;
-    border-radius: var(--border-radius-md) !important;
-    margin-bottom: 2rem !important;
-    overflow: hidden !important;
-    background-color: white !important;
-}
-
-.table {
-    background-color: white;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    margin-bottom: 0;
-    color: #333;
-    position: relative;
-}
-
-.table thead tr {
-    background-color: var(--table-header-bg) !important;
-    color: white !important;
-}
-
-.table thead th {
-    background-color: var(--table-header-bg) !important;
-    color: white !important;
-    border: none !important;
-    text-align: center !important;
-    vertical-align: middle !important;
-    text-transform: uppercase !important;
-    font-size: 0.85rem !important;
-    letter-spacing: 0.5px !important;
-    padding: 16px !important;
-    font-weight: 600 !important;
-    border-bottom: 2px solid var(--navy-light) !important;
-}
-
-.table tbody tr {
-    transition: background-color 0.2s ease;
-    user-select: none;
-    cursor: default;
-}
-
-.table tbody td {
-    vertical-align: middle;
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--light-sand);
-    text-align: center;
-}
-
-/* Permettiamo l'interazione con elementi specifici */
-.table .notes-cell,
-.table .action-btn,
-.table a,
-.table button,
-.table [data-tooltip],
-.table .presence-circle {
-    pointer-events: auto;
-    position: relative;
-    z-index: 2;
-}
-
-/* Ripristiniamo i cursori corretti per gli elementi interattivi */
-.table .action-btn,
-.table a,
-.table button {
-    cursor: pointer !important;
-}
-
-.table .notes-cell textarea {
-    cursor: text !important;
-}
-
-/* Rimuoviamo TUTTI gli stili di focus e selezione */
-.table tbody tr,
-.table tbody tr:focus,
-.table tbody tr:active,
-.table tbody tr.selected,
-.table tbody td,
-.table tbody td:focus,
-.table tbody td:active,
-.table tbody tr:focus-visible,
-.table tbody td:focus-visible,
-.table tbody tr::-moz-focus-inner,
-.table tbody td::-moz-focus-inner {
-    outline: none !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
-}
-
-/* Righe alternate più chiare per migliore leggibilità */
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(10, 35, 66, 0.015);
-}
-
-/* Effetto hover sulle righe - più scuro per distinzione visiva */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-    cursor: default;
-}
-
-.table-striped tbody tr:nth-of-type(odd):hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table-hover tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-    cursor: default;
-}
-
-/* ==========================================
    BUTTONS
    ========================================== */
 .btn {
@@ -622,6 +499,62 @@ html body div.text-center h1.page-title {
 .btn-info {
     background-color: var(--info);
     border-color: var(--info);
+}
+
+.btn-outline-primary {
+    color: var(--navy);
+    border-color: var(--navy);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+}
+
+.btn-gold {
+    background-color: var(--gold);
+    border-color: var(--gold);
+    color: #fff;
+}
+
+.btn-gold:hover {
+    background-color: var(--gold-dark);
+    border-color: var(--gold-dark);
+    color: #fff;
+}
+
+.btn-gold-light {
+    background-color: var(--gold-light);
+    border-color: var(--gold-light);
+    color: var(--navy);
+}
+
+.btn-gold-light:hover {
+    background-color: var(--gold);
+    border-color: var(--gold);
+    color: #fff;
+}
+
+.btn-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.btn-action {
+    padding: 0.4rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Required field indicator */
+.required::after {
+    content: " *";
+    color: var(--error);
 }
 
 /* ==========================================
@@ -910,6 +843,75 @@ a.link-name:hover::after {
     border-left: 3px solid var(--warning);
 }
 
+/* Autosave indicators */
+.autosave-indicator {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 10;
+    transition: opacity 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border-color);
+}
+
+.autosave-indicator.saving {
+    color: var(--warning);
+    border-color: var(--warning);
+}
+
+.autosave-indicator.saved {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+.autosave-indicator.error {
+    color: var(--error);
+    border-color: var(--error);
+}
+
+/* Auto-save textarea states */
+textarea.autosave-saving {
+    border-color: var(--warning) !important;
+    box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25) !important;
+}
+
+textarea.autosave-saved {
+    border-color: var(--success) !important;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.25) !important;
+}
+
+textarea.autosave-error {
+    border-color: var(--error) !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Save indicator */
+.save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: var(--gray-800);
+    color: white;
+    border-radius: var(--border-radius-sm);
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.save-indicator.success {
+    background-color: var(--success);
+}
+
+.save-indicator.error {
+    background-color: var(--error);
+}
+
 /* ==========================================
    CERTIFICATE STATUS BADGES
    ========================================== */
@@ -958,16 +960,6 @@ a.link-name:hover::after {
         width: 260px;
     }
     
-    .table thead th {
-        font-size: 0.85rem;
-        padding: 12px 10px;
-    }
-    
-    .table tbody td {
-        padding: 10px;
-        font-size: 0.9rem;
-    }
-    
     .header-title {
         font-size: 1.8rem;
     }
@@ -1000,16 +992,6 @@ a.link-name:hover::after {
         padding: 6px 12px;
     }
     
-    .table thead th {
-        font-size: 0.8rem;
-        padding: 8px 5px;
-    }
-    
-    .table tbody td {
-        padding: 8px 5px;
-        font-size: 0.85rem;
-    }
-    
     .auto-save-notes {
         font-size: 13px;
         padding: 6px 8px;
@@ -1020,11 +1002,6 @@ a.link-name:hover::after {
         width: 30px;
         height: 30px;
         margin: 0 2px;
-    }
-    
-    .table th:nth-child(5),
-    .table td:nth-child(5) {
-        display: none;
     }
     
     .fab {
@@ -1059,42 +1036,7 @@ a.link-name:hover::after {
     }
 }
 
-/* ==========================================
-   FIX PER IL SISTEMA DEI FILTRI
-   ========================================== */
-
-/* Assicuriamo che il container dei filtri sia visibile quando ha la classe visible */
-#filtersContainer.visible {
-    display: block !important;
-    max-height: 2500px !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    margin-bottom: 2rem !important;
-    pointer-events: auto !important;
-    box-shadow: none !important;
-}
-
-/* Stato nascosto di default */
-#filtersContainer {
-    background-color: transparent !important;
-    overflow: hidden !important;
-    border-radius: 12px !important;
-    box-shadow: none !important;
-    border: none !important;
-    
-    /* Collapsed state */
-    max-height: 0 !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    margin: 0 !important;
-    pointer-events: none !important;
-    
-    /* Animation */
-    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), 
-                opacity 0.3s ease, 
-                visibility 0.3s ease,
-                margin 0.3s ease !important;
-}
+/* Blocco duplicato rimosso - vedi sezione FILTERS SYSTEM sopra */
 
 /* ==========================================
    NOTE TABELLE

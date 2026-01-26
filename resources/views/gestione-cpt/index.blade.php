@@ -4,32 +4,8 @@
 
 @section('content')
 <style>
-/* Stili uniformi come le altre pagine */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
-
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
 
 .form-control, .form-select {
     border-radius: 0 !important;
@@ -50,15 +26,67 @@ table.table td,
     text-align: center;
     font-family: 'Courier New', monospace;
 }
+
+/* 
+ * Colonne tabella CPT
+ * Le larghezze sono flessibili per non tagliare il testo
+ * L'ordine delle colonne è sincronizzato con COLONNE_TABELLA nel controller
+ */
+.sugeco-table th,
+.sugeco-table td {
+    white-space: normal !important;
+    word-wrap: break-word;
+}
+
+.sugeco-table th:nth-child(1),
+.sugeco-table td:nth-child(1) {
+    /* Colonna Codice */
+    width: 100px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.sugeco-table th:nth-child(2),
+.sugeco-table td:nth-child(2) {
+    /* Colonna Descrizione - si espande per contenere tutto il testo */
+    width: auto;
+    min-width: 250px;
+    text-align: left !important;
+}
+
+.sugeco-table th:nth-child(3),
+.sugeco-table td:nth-child(3) {
+    /* Colonna Tipo Impiego */
+    width: 180px;
+    min-width: 150px;
+}
+
+.sugeco-table th:nth-child(4),
+.sugeco-table td:nth-child(4) {
+    /* Colonna Stato */
+    width: 100px;
+    min-width: 80px;
+}
+
+.sugeco-table th:nth-child(5),
+.sugeco-table td:nth-child(5) {
+    /* Colonna Azioni */
+    width: 120px;
+    min-width: 110px;
+}
 </style>
 
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['macro_attivita', 'impiego', 'attivo'] as $filter) {
+    foreach(['impiego', 'attivo'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $hasActiveFilters = count($activeFilters) > 0;
+    
+    // SINGLE SOURCE OF TRUTH: Colonne tabella dal controller
+    // Se modifichi le colonne nel controller, si aggiornano automaticamente qui e nell'export Excel
+    $colonneTabella = \App\Http\Controllers\GestioneCptController::getColonneTabella();
 @endphp
 
 <!-- Header Minimal Solo Titolo -->
@@ -84,10 +112,7 @@ table.table td,
 
 <!-- Filtri e azioni su riga separata -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="d-flex gap-2">
-        <a href="{{ route('codici-cpt.export') }}" class="btn btn-outline-success" style="border-radius: 6px !important;">
-            <i class="fas fa-file-excel me-1"></i>Esporta Excel
-        </a>
+    <div>
         <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
             <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
             <span id="toggleFiltersText">
@@ -130,28 +155,8 @@ table.table td,
             <form id="filtroForm" action="{{ route('codici-cpt.index') }}" method="GET">
                 {{-- Prima riga filtri --}}
                 <div class="row mb-3">
-                    {{-- Filtro Categoria --}}
-                    <div class="col-md-4">
-                        <label for="macro_attivita" class="form-label">
-                            <i class="fas fa-folder me-1"></i> Categoria
-                        </label>
-                        <div class="select-wrapper">
-                            <select name="macro_attivita" id="macro_attivita" class="form-select filter-select {{ request()->filled('macro_attivita') ? 'applied' : '' }}">
-                                <option value="">Tutte le categorie</option>
-                                @foreach($macroAttivita as $macro)
-                                    <option value="{{ $macro }}" {{ request('macro_attivita') == $macro ? 'selected' : '' }}>
-                                        {{ $macro }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @if(request()->filled('macro_attivita'))
-                                <span class="clear-filter" data-filter="macro_attivita" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                    
                     {{-- Filtro Impiego --}}
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="impiego" class="form-label">
                             <i class="fas fa-tasks me-1"></i> Tipo Impiego
                         </label>
@@ -171,7 +176,7 @@ table.table td,
                     </div>
                     
                     {{-- Filtro Stato --}}
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label for="attivo" class="form-label">
                             <i class="fas fa-toggle-on me-1"></i> Stato
                         </label>
@@ -199,45 +204,71 @@ table.table td,
     </div>
 </div>
 
-<!-- Tabella Unica -->
+{{-- 
+    TABELLA CODICI CPT
+    Le colonne sono definite in GestioneCptController::COLONNE_TABELLA
+    per mantenere sincronizzazione automatica con l'export Excel
+--}}
 <div class="table-responsive">
-    <table class="table table-bordered table-hover align-middle">
-        <thead class="table-light">
+    <table class="sugeco-table">
+        <thead>
             <tr>
-                <th style="width: 120px;">Codice</th>
-                <th style="width: 150px;">Categoria</th>
-                <th>Descrizione</th>
-                <th style="width: 180px;">Tipo Impiego</th>
-                <th style="width: 80px;" class="text-center">Stato</th>
-                <th style="width: 140px;" class="text-center">Azioni</th>
+                {{-- Colonne da SINGLE SOURCE OF TRUTH --}}
+                @foreach($colonneTabella as $key => $config)
+                    <th>{{ $config['header'] }}</th>
+                @endforeach
+                {{-- Colonna Azioni (solo vista, non in export) --}}
+                <th>Azioni</th>
             </tr>
         </thead>
         <tbody id="codiciTableBody">
             @forelse($codici as $codice)
-                <tr class="{{ !$codice->attivo ? 'table-secondary opacity-50' : '' }}" data-searchable>
-                    <td>
-                        <span class="codice-badge" 
-                              style="background-color: {{ $codice->colore_badge }}; 
-                                     color: {{ in_array($codice->colore_badge, ['#ffff00', '#ffc000']) ? '#000' : '#fff' }};">
-                            {{ $codice->codice }}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge bg-secondary">{{ $codice->macro_attivita ?: '-' }}</span>
-                    </td>
-                    <td>{{ $codice->attivita_specifica }}</td>
-                    <td>
-                        <small class="text-muted">
-                            {{ str_replace('_', ' ', ucfirst(strtolower($codice->impiego))) }}
-                        </small>
-                    </td>
-                    <td class="text-center">
-                        @if($codice->attivo)
-                            <span class="badge bg-success">Attivo</span>
-                        @else
-                            <span class="badge bg-secondary">Inattivo</span>
-                        @endif
-                    </td>
+                <tr data-searchable>
+                    {{-- Colonne da SINGLE SOURCE OF TRUTH --}}
+                    @foreach($colonneTabella as $key => $config)
+                        @switch($config['tipo'])
+                            @case('badge_colorato')
+                                <td>
+                                    @php
+                                        // Calcola contrasto testo automatico
+                                        $hex = ltrim($codice->colore_badge, '#');
+                                        $r = hexdec(substr($hex, 0, 2));
+                                        $g = hexdec(substr($hex, 2, 2));
+                                        $b = hexdec(substr($hex, 4, 2));
+                                        $luminosita = ($r * 299 + $g * 587 + $b * 114) / 1000;
+                                        $testoColore = $luminosita > 128 ? '#000' : '#fff';
+                                    @endphp
+                                    <span class="codice-badge" 
+                                          style="background-color: {{ $codice->colore_badge }}; color: {{ $testoColore }};">
+                                        {{ $codice->{$config['campo']} }}
+                                    </span>
+                                </td>
+                                @break
+                            
+                            @case('impiego')
+                                <td>
+                                    <small class="text-muted">
+                                        {{ str_replace('_', ' ', ucfirst(strtolower($codice->{$config['campo']}))) }}
+                                    </small>
+                                </td>
+                                @break
+                            
+                            @case('stato')
+                                <td class="text-center">
+                                    @if($codice->{$config['campo']})
+                                        <span class="badge bg-success">Attivo</span>
+                                    @else
+                                        <span class="badge bg-secondary">Inattivo</span>
+                                    @endif
+                                </td>
+                                @break
+                            
+                            @default
+                                <td>{{ $codice->{$config['campo']} }}</td>
+                        @endswitch
+                    @endforeach
+                    
+                    {{-- Colonna Azioni (solo vista) --}}
                     <td class="text-center">
                         <div class="btn-group btn-group-sm" role="group">
                             <a href="{{ route('codici-cpt.edit', $codice) }}" 
@@ -295,7 +326,8 @@ table.table td,
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center py-5">
+                    {{-- colspan dinamico basato sul numero di colonne + 1 (azioni) --}}
+                    <td colspan="{{ count($colonneTabella) + 1 }}" class="text-center py-5">
                         <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                         <h5 class="text-muted">Nessun codice trovato</h5>
                         <p class="text-muted mb-3">Inizia creando il tuo primo codice CPT</p>
@@ -308,6 +340,11 @@ table.table td,
         </tbody>
     </table>
 </div>
+
+<!-- Floating Button Export Excel -->
+<a href="{{ route('codici-cpt.export') }}" class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+    <i class="fas fa-file-excel"></i>
+</a>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {

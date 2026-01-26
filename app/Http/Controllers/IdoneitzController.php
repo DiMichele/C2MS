@@ -9,9 +9,8 @@ use App\Models\BoardActivity;
 use App\Models\BoardColumn;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
+use App\Services\ExcelStyleService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
@@ -110,31 +109,55 @@ class IdoneitzController extends Controller
             ], 403);
         }
         
-        $request->validate([
-            'campo' => 'required|string',
-            'data' => 'nullable|date',
-        ]);
-        
-        // Ottieni o crea il record scadenza
-        $scadenza = $militare->scadenza;
-        if (!$scadenza) {
-            $scadenza = new ScadenzaMilitare();
-            $scadenza->militare_id = $militare->id;
-            $scadenza->save(); // Salva prima il record con solo il militare_id
+        try {
+            $request->validate([
+                'campo' => 'required|string',
+                'data' => 'nullable|date',
+            ]);
+            
+            $campo = $request->campo;
+            
+            // Usa una transazione per evitare race conditions
+            return \DB::transaction(function () use ($militare, $campo, $request) {
+                // Ottieni o crea il record scadenza con lock
+                $scadenza = ScadenzaMilitare::lockForUpdate()
+                    ->where('militare_id', $militare->id)
+                    ->first();
+                    
+                if (!$scadenza) {
+                    $scadenza = new ScadenzaMilitare();
+                    $scadenza->militare_id = $militare->id;
+                }
+                
+                $scadenza->$campo = $request->data;
+                $scadenza->save();
+                
+                // Calcola la nuova scadenza (tutte le idoneità hanno durata 1 anno)
+                $scadenzaCalcolata = $this->calcolaScadenza($scadenza->$campo, 1);
+                
+                return response()->json([
+                    'success' => true,
+                    'scadenza' => $scadenzaCalcolata,
+                ]);
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dati non validi: ' . implode(', ', $e->errors()['data'] ?? ['errore sconosciuto'])
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento scadenza idoneità', [
+                'militare_id' => $militare->id,
+                'campo' => $request->campo ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante il salvataggio. Riprova.'
+            ], 500);
         }
-        
-        $campo = $request->campo;
-        
-        $scadenza->$campo = $request->data;
-        $scadenza->save();
-        
-        // Calcola la nuova scadenza (tutte le idoneità hanno durata 1 anno)
-        $scadenzaCalcolata = $this->calcolaScadenza($scadenza->$campo, 1);
-        
-        return response()->json([
-            'success' => true,
-            'scadenza' => $scadenzaCalcolata,
-        ]);
     }
     
     /**
@@ -179,8 +202,11 @@ class IdoneitzController extends Controller
     public function exportExcel(Request $request)
     {
         try {
-            $spreadsheet = new Spreadsheet();
+            // Usa il servizio per stili Excel
+            $excelService = new ExcelStyleService();
+            $spreadsheet = $excelService->createSpreadsheet('Scadenze Idoneità Sanitarie');
             $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Idoneità Sanitarie');
             
             // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
             // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
@@ -192,6 +218,12 @@ class IdoneitzController extends Controller
             // Filtro compagnia esplicito (solo admin può filtrare per qualsiasi compagnia)
             if ($request->filled('compagnia_id') && $isAdmin) {
                 $query->where('compagnia_id', $request->compagnia_id);
+            }
+            
+            // Se sono stati passati ID specifici (export filtrato), filtra per questi
+            if ($request->filled('ids')) {
+                $ids = explode(',', $request->ids);
+                $query->whereIn('id', $ids);
             }
             
             $militari = $query->orderByGradoENome()->get();
@@ -220,37 +252,25 @@ class IdoneitzController extends Controller
                 }
             }
             
-            // Stile header
-            $headerStyle = [
-                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0a2342']],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-            ];
+            // Titolo principale
+            $excelService->applyTitleStyle($sheet, 'A1:N1', 'SCADENZE IDONEITÀ SANITARIE');
             
-            // Titolo
-            $sheet->setCellValue('A1', 'SCADENZE IDONEITÀ SANITARIE');
-            $sheet->mergeCells('A1:N1');
-            $sheet->getStyle('A1')->applyFromArray($headerStyle);
-            $sheet->getRowDimension('1')->setRowHeight(25);
-            
-            // Header colonne
-            $headers = ['N.', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'TEATRO OPERATIVO',
-                        'IDONEITÀ MANS. CONS.', 'IDONEITÀ MANS. SCAD.', 
-                        'IDONEITÀ SMI CONS.', 'IDONEITÀ SMI SCAD.', 
+            // Header colonne (riga 2)
+            $headers = ['N.', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'TEATRO OP.',
+                        'ID. MANS. CONS.', 'ID. MANS. SCAD.', 
+                        'ID. SMI CONS.', 'ID. SMI SCAD.', 
                         'ECG CONS.', 'ECG SCAD.',
                         'PRELIEVI CONS.', 'PRELIEVI SCAD.'];
             
             $col = 'A';
             foreach ($headers as $header) {
                 $sheet->setCellValue($col . '2', $header);
-                $sheet->getStyle($col . '2')->applyFromArray($headerStyle);
-                $sheet->getStyle($col . '2')->getAlignment()->setWrapText(true);
                 $col++;
             }
-            $sheet->getRowDimension('2')->setRowHeight(40);
+            $excelService->applyHeaderStyle($sheet, 'A2:N2');
+            $sheet->getRowDimension('2')->setRowHeight(35);
             
-            // Dati militari
+            // Dati militari (riga 3 in poi)
             $row = 3;
             $num = 1;
             
@@ -258,61 +278,68 @@ class IdoneitzController extends Controller
                 $scadenza = $militare->scadenza;
                 
                 $sheet->setCellValue('A' . $row, $num++);
-                $sheet->setCellValue('B' . $row, $militare->compagnia->nome ?? '');
+                $sheet->setCellValue('B' . $row, $militare->compagnia->nome ?? '-');
                 $sheet->setCellValue('C' . $row, $militare->grado->sigla ?? '');
                 $sheet->setCellValue('D' . $row, strtoupper($militare->cognome));
                 $sheet->setCellValue('E' . $row, strtoupper($militare->nome));
                 
-                // Teatro Operativo
+                // Teatro Operativo - badge rosso se presente
                 $toList = $militariTO[$militare->id] ?? [];
-                $sheet->setCellValue('F' . $row, implode("\n", $toList));
                 if (count($toList) > 0) {
-                    $sheet->getStyle('F' . $row)->applyFromArray([
-                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFCDD2']],
-                    ]);
+                    $sheet->setCellValue('F' . $row, implode("\n", $toList));
+                    $excelService->applyBadgeStyle($sheet, 'F' . $row, 'danger');
+                    $sheet->getStyle('F' . $row)->getAlignment()->setWrapText(true);
+                } else {
+                    $sheet->setCellValue('F' . $row, '-');
                 }
-                $sheet->getStyle('F' . $row)->getAlignment()->setWrapText(true);
                 
                 // Idoneità Mansione
-                $this->addScadenzaToSheet($sheet, $row, 'G', $scadenza?->idoneita_mans_data_conseguimento, 1);
+                $excelService->addScadenzaRow($sheet, $row, 'G', $scadenza?->idoneita_mans_data_conseguimento, 1);
                 
                 // Idoneità SMI
-                $this->addScadenzaToSheet($sheet, $row, 'I', $scadenza?->idoneita_smi_data_conseguimento, 1);
+                $excelService->addScadenzaRow($sheet, $row, 'I', $scadenza?->idoneita_smi_data_conseguimento, 1);
                 
                 // ECG
-                $this->addScadenzaToSheet($sheet, $row, 'K', $scadenza?->ecg_data_conseguimento, 1);
+                $excelService->addScadenzaRow($sheet, $row, 'K', $scadenza?->ecg_data_conseguimento, 1);
                 
                 // Prelievi
-                $this->addScadenzaToSheet($sheet, $row, 'M', $scadenza?->prelievi_data_conseguimento, 1);
-                
-                // Bordi
-                $sheet->getStyle('A' . $row . ':N' . $row)->applyFromArray([
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-                ]);
+                $excelService->addScadenzaRow($sheet, $row, 'M', $scadenza?->prelievi_data_conseguimento, 1);
                 
                 $row++;
             }
             
+            // Stile dati generali
+            if ($row > 3) {
+                $excelService->applyDataStyle($sheet, 'A3:F' . ($row - 1));
+            }
+            
             // Larghezze colonne
             $sheet->getColumnDimension('A')->setWidth(6);   // N.
-            $sheet->getColumnDimension('B')->setWidth(25);  // Compagnia
-            $sheet->getColumnDimension('C')->setWidth(12);  // Grado
-            $sheet->getColumnDimension('D')->setWidth(20);  // Cognome
-            $sheet->getColumnDimension('E')->setWidth(20);  // Nome
-            $sheet->getColumnDimension('F')->setWidth(35);  // Teatro Operativo
+            $sheet->getColumnDimension('B')->setWidth(18);  // Compagnia
+            $sheet->getColumnDimension('C')->setWidth(14);  // Grado
+            $sheet->getColumnDimension('D')->setWidth(18);  // Cognome
+            $sheet->getColumnDimension('E')->setWidth(16);  // Nome
+            $sheet->getColumnDimension('F')->setWidth(28);  // Teatro Operativo
+            $sheet->getColumnDimension('G')->setWidth(14);  // ID. MANS. CONS.
+            $sheet->getColumnDimension('H')->setWidth(14);  // ID. MANS. SCAD.
+            $sheet->getColumnDimension('I')->setWidth(14);  // ID. SMI CONS.
+            $sheet->getColumnDimension('J')->setWidth(14);  // ID. SMI SCAD.
+            $sheet->getColumnDimension('K')->setWidth(14);  // ECG CONS.
+            $sheet->getColumnDimension('L')->setWidth(14);  // ECG SCAD.
+            $sheet->getColumnDimension('M')->setWidth(14);  // PRELIEVI CONS.
+            $sheet->getColumnDimension('N')->setWidth(14);  // PRELIEVI SCAD.
             
-            // Date - larghezza aumentata per intestazioni lunghe
-            $sheet->getColumnDimension('G')->setWidth(25);  // IDONEITÀ MANS. CONS.
-            $sheet->getColumnDimension('H')->setWidth(25);  // IDONEITÀ MANS. SCAD.
-            $sheet->getColumnDimension('I')->setWidth(25);  // IDONEITÀ SMI CONS.
-            $sheet->getColumnDimension('J')->setWidth(25);  // IDONEITÀ SMI SCAD.
-            $sheet->getColumnDimension('K')->setWidth(18);  // ECG CONS.
-            $sheet->getColumnDimension('L')->setWidth(18);  // ECG SCAD.
-            $sheet->getColumnDimension('M')->setWidth(20);  // PRELIEVI CONS.
-            $sheet->getColumnDimension('N')->setWidth(20);  // PRELIEVI SCAD.
+            // Legenda
+            $excelService->addLegenda($sheet, $row + 1);
+            
+            // Data generazione
+            $excelService->addGenerationInfo($sheet, $row + 3);
+            
+            // Freeze header
+            $excelService->freezeHeader($sheet, 2);
             
             // Salva
-            $filename = 'Scadenze_Idoneita_' . date('Y-m-d') . '.xlsx';
+            $filename = 'Scadenze_Idoneita_' . date('Y-m-d_His') . '.xlsx';
             $tempFile = tempnam(sys_get_temp_dir(), 'idoneita_');
             $writer = new Xlsx($spreadsheet);
             $writer->save($tempFile);
@@ -324,60 +351,10 @@ class IdoneitzController extends Controller
         } catch (\Exception $e) {
             Log::error('Errore export Excel Idoneità', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->back()->with('error', 'Errore durante l\'esportazione Excel.');
         }
-    }
-    
-    /**
-     * Aggiunge una scadenza al foglio Excel con colori
-     */
-    private function addScadenzaToSheet($sheet, $row, $colCons, $dataConseguimento, $durata)
-    {
-        $colScad = chr(ord($colCons) + 1);
-        
-        if (!$dataConseguimento) {
-            $sheet->setCellValue($colCons . $row, '');
-            $sheet->setCellValue($colScad . $row, '');
-            // Sfondo grigio per mancante
-            $sheet->getStyle($colCons . $row . ':' . $colScad . $row)->applyFromArray([
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'CCCCCC']],
-            ]);
-            return;
-        }
-        
-        $data = Carbon::parse($dataConseguimento);
-        $scadenza = $data->copy()->addYears($durata);
-        
-        $sheet->setCellValue($colCons . $row, $data->format('d/m/Y'));
-        $sheet->setCellValue($colScad . $row, $scadenza->format('d/m/Y'));
-        
-        // Calcola stato
-        $oggi = Carbon::now();
-        $giorniRimanenti = $oggi->diffInDays($scadenza, false);
-        
-        // Verifica se è prenotato (data conseguimento nel futuro)
-        $isPrenotato = $data->isFuture();
-        
-        $coloreFondo = 'FFFFFF'; // Default bianco
-        if ($isPrenotato) {
-            $coloreFondo = '87CEEB'; // Blu chiaro - prenotato
-        } elseif ($giorniRimanenti < 0) {
-            $coloreFondo = 'FF6B6B'; // Rosso - scaduto
-        } elseif ($giorniRimanenti <= 30) {
-            $coloreFondo = 'FFD93D'; // Giallo - in scadenza
-        } else {
-            $coloreFondo = '6BCF7F'; // Verde - valido
-        }
-        
-        $sheet->getStyle($colScad . $row)->applyFromArray([
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $coloreFondo]],
-        ]);
-        
-        // Allineamento
-        $sheet->getStyle($colCons . $row . ':' . $colScad . $row)->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
     }
 }

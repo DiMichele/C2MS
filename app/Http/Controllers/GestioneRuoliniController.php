@@ -21,11 +21,12 @@ use Illuminate\Support\Facades\Gate;
  */
 class GestioneRuoliniController extends Controller
 {
-    private CompagniaSettingsService $settingsService;
-
-    public function __construct(CompagniaSettingsService $settingsService)
+    /**
+     * Ottiene il service con contesto corretto per l'utente corrente
+     */
+    private function getSettingsService(): CompagniaSettingsService
     {
-        $this->settingsService = $settingsService;
+        return CompagniaSettingsService::forCurrentUser();
     }
 
     /**
@@ -45,6 +46,14 @@ class GestioneRuoliniController extends Controller
         // Se admin e richiesta compagnia specifica
         if ($isGlobalAdmin && $request->filled('compagnia_id')) {
             $compagniaId = $request->compagnia_id;
+        }
+        
+        // Se admin globale senza compagnia assegnata, seleziona la prima disponibile
+        if ($isGlobalAdmin && !$compagniaId) {
+            $primaCompagnia = \App\Models\Compagnia::orderBy('nome')->first();
+            if ($primaCompagnia) {
+                $compagniaId = $primaCompagnia->id;
+            }
         }
 
         if (!$compagniaId) {
@@ -122,7 +131,7 @@ class GestioneRuoliniController extends Controller
         ]);
 
         try {
-            $this->settingsService->updateServizioConfig(
+            $this->getSettingsService()->updateServizioConfig(
                 $tipoServizioId,
                 $request->stato_presenza,
                 $request->note
@@ -157,7 +166,7 @@ class GestioneRuoliniController extends Controller
 
         DB::beginTransaction();
         try {
-            $this->settingsService->updateBatch($request->configurazioni);
+            $this->getSettingsService()->updateBatch($request->configurazioni);
 
             DB::commit();
 
@@ -188,7 +197,7 @@ class GestioneRuoliniController extends Controller
         ]);
 
         try {
-            $this->settingsService->updateDefaultStato($request->default_stato);
+            $this->getSettingsService()->updateDefaultStato($request->default_stato);
 
             return response()->json([
                 'success' => true,
@@ -211,7 +220,7 @@ class GestioneRuoliniController extends Controller
         $this->authorize('manageRuolini', CompagniaSetting::class);
 
         try {
-            $this->settingsService->removeServizioConfig($tipoServizioId);
+            $this->getSettingsService()->removeServizioConfig($tipoServizioId);
 
             return response()->json([
                 'success' => true,
@@ -230,7 +239,7 @@ class GestioneRuoliniController extends Controller
      */
     public function getRules()
     {
-        if (!$this->settingsService->isInitialized()) {
+        if (!$this->getSettingsService()->hasValidContext()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Utente non assegnato a una compagnia'
@@ -239,7 +248,7 @@ class GestioneRuoliniController extends Controller
 
         return response()->json([
             'success' => true,
-            'rules' => $this->settingsService->getRuoliniRules()
+            'rules' => $this->getSettingsService()->getRuoliniRules()
         ]);
     }
 }

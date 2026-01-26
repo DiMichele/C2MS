@@ -1,22 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * 
- * Stili specifici per il sistema di filtri.
- * Include filtri avanzati, controlli di ricerca, indicatori di stato e azioni sui certificati.
- * 
- * @package SUGECO
- * @subpackage Styles
- * @version 1.0
- * @since 1.0
- * @author Michele Di Gennaro
- * @copyright 2025 SUGECO
- * 
- * Sezioni:
- * - Filter Layout: Struttura e layout dei filtri
- * - Filter Controls: Controlli e input dei filtri
- * - Applied Filters: Indicatori e badge filtri attivi
- * - Certificate Actions: Azioni sui certificati
- * - Responsive: Adattamenti per dispositivi mobili
+ * SUGECO Filters - Filter controls and certificate actions
  */
 
 /* ===========================================
@@ -751,8 +734,8 @@ td .cert-missing > *:last-child {
 }
 
 /* Override any Bootstrap or other CSS that might interfere */
-.table td .cert-badge,
-.table td .cert-missing {
+.cert-badge,
+.cert-missing {
     min-height: 90px !important;
     gap: 0.75rem !important;
 }

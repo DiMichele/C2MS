@@ -4,32 +4,8 @@
 
 @section('styles')
 <style>
-/* Stili come anagrafica */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
-
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
 
 .link-name {
     color: #0a2342;
@@ -106,21 +82,21 @@ table.table td,
 @endif
 
 <div class="table-container" style="position: relative; overflow: auto;">
-    <table class="table table-sm table-bordered mb-0">
-        <thead style="background: #0a2342; position: sticky; top: 0; z-index: 10;">
+    <table class="sugeco-table">
+        <thead>
             <tr>
-                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">NOME</th>
-                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">USERNAME</th>
-                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">RUOLO</th>
-                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">COMPAGNIA</th>
-                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">CREATO</th>
-                <th width="220" style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white;">AZIONI</th>
+                <th>NOME</th>
+                <th>USERNAME</th>
+                <th>RUOLO</th>
+                <th>COMPAGNIA</th>
+                <th>CREATO</th>
+                <th>AZIONI</th>
             </tr>
         </thead>
         <tbody>
                     @forelse($users as $user)
                     <tr>
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);">
+                        <td>
                             <strong>{{ $user->name }}</strong>
                             @if($user->must_change_password)
                                 <span class="badge bg-warning text-dark ms-2">
@@ -128,13 +104,13 @@ table.table td,
                                 </span>
                             @endif
                         </td>
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);"><code>{{ $user->username ?? 'N/A' }}</code></td>
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);">
+                        <td><code>{{ $user->username ?? 'N/A' }}</code></td>
+                        <td>
                             @foreach($user->roles as $role)
                                 {{ $role->display_name }}@if(!$loop->last), @endif
                             @endforeach
                         </td>
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);">
+                        <td>
                             @if($user->compagnia)
                                 <span class="badge bg-info">{{ $user->compagnia->nome }}</span>
                             @else
@@ -143,8 +119,8 @@ table.table td,
                                 </span>
                             @endif
                         </td>
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);">{{ $user->created_at->format('d/m/Y') }}</td>
-                        <td style="border: 1px solid rgba(10, 35, 66, 0.2);">
+                        <td>{{ $user->created_at->format('d/m/Y') }}</td>
+                        <td>
                             <div class="btn-group" role="group">
                                 <a href="{{ route('admin.edit', $user) }}" 
                                    class="btn btn-sm btn-outline-primary" 

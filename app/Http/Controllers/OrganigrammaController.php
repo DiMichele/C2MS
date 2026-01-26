@@ -16,8 +16,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Compagnia;
+use App\Models\Polo;
+use App\Services\ExcelStyleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Carbon\Carbon;
 
 /**
  * Controller per la gestione dell'organigramma militare
@@ -179,5 +183,300 @@ class OrganigrammaController extends Controller
             'totalePresenti' => $totalePresenti,
             'percentualePresenti' => $percentualePresenti
         ];
+    }
+    
+    /**
+     * Esporta l'organigramma in formato Excel
+     * 
+     * Genera un file Excel con la vista selezionata (Plotoni o Uffici).
+     * 
+     * @param Request $request
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function exportExcel(Request $request)
+    {
+        $user = auth()->user();
+        $compagniaSelezionataId = null;
+        
+        // Determina la compagnia da esportare
+        if ($user->hasRole('admin') || $user->hasRole('amministratore')) {
+            $compagniaSelezionataId = $request->get('compagnia_id');
+        } else {
+            $compagniaSelezionataId = $user->compagnia_id;
+        }
+        
+        // Determina la vista da esportare (default: plotoni)
+        $vista = $request->get('vista', 'plotoni');
+        
+        // Carica la compagnia con plotoni e militari
+        $query = Compagnia::with([
+            'plotoni' => function ($q) {
+                $q->orderBy('nome');
+            },
+            'plotoni.militari' => function ($q) {
+                $q->orderByGradoENome();
+            },
+            'plotoni.militari.grado',
+            'plotoni.militari.mansione'
+        ]);
+        
+        if ($compagniaSelezionataId) {
+            $compagnia = $query->find($compagniaSelezionataId);
+        } else {
+            $compagnia = $query->first();
+        }
+        
+        if (!$compagnia) {
+            abort(404, 'Nessuna compagnia trovata');
+        }
+        
+        // Crea il file Excel
+        $excelService = new ExcelStyleService();
+        
+        $sheet = null;
+        $tipoVista = '';
+        $gruppi = null;
+        
+        if ($vista === 'uffici') {
+            // Carica i poli con militari filtrati per compagnia
+            $poli = Polo::with(['militari' => function($q) use ($compagnia) {
+                $q->where('compagnia_id', $compagnia->id)
+                  ->orderByGradoENome();
+            }, 'militari.grado', 'militari.plotone'])
+            ->whereHas('militari', function($q) use ($compagnia) {
+                $q->where('compagnia_id', $compagnia->id);
+            })
+            ->orderBy('nome')
+            ->get();
+            
+            $spreadsheet = $excelService->createSpreadsheet('Organigramma per Uffici - ' . $compagnia->nome);
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Uffici');
+            $tipoVista = 'Ufficio';
+            $gruppi = $poli;
+        } else {
+            // Vista plotoni (default)
+            $spreadsheet = $excelService->createSpreadsheet('Organigramma per Plotoni - ' . $compagnia->nome);
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Plotoni');
+            $tipoVista = 'Plotone';
+            $gruppi = $compagnia->plotoni;
+        }
+        
+        $this->popolaFoglioOrganigramma($sheet, $excelService, $compagnia, $gruppi, $tipoVista);
+        
+        // Genera il file
+        $vistaLabel = $vista === 'uffici' ? 'Uffici' : 'Plotoni';
+        $fileName = 'Organigramma_' . $vistaLabel . '_' . str_replace(' ', '_', $compagnia->nome) . '_' . Carbon::now()->format('Y-m-d') . '.xlsx';
+        $tempFile = tempnam(sys_get_temp_dir(), 'organigramma_');
+        
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
+        
+        return response()->download($tempFile, $fileName)->deleteFileAfterSend(true);
+    }
+    
+    /**
+     * Popola un foglio Excel con i dati dell'organigramma
+     * 
+     * @param \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet
+     * @param ExcelStyleService $excelService
+     * @param Compagnia $compagnia
+     * @param \Illuminate\Support\Collection $gruppi (plotoni o uffici)
+     * @param string $tipoGruppo ('Plotone' o 'Ufficio')
+     */
+    private function popolaFoglioOrganigramma($sheet, ExcelStyleService $excelService, $compagnia, $gruppi, string $tipoGruppo): void
+    {
+        $oggi = Carbon::now()->locale('it')->isoFormat('dddd D MMMM YYYY');
+        
+        // Calcola totali
+        $totaleMilitari = $gruppi->sum(fn($g) => $g->militari->count());
+        $totaleGruppi = $gruppi->count();
+        
+        // Colori sobri (in linea con il sito)
+        $navyColor = ExcelStyleService::NAVY;
+        $navyLight = '1A3A5F';
+        $goldColor = ExcelStyleService::GOLD;
+        $grayLight = 'F5F7F9';
+        $grayBorder = 'DEE2E6';
+        
+        // Colonne diverse in base alla vista
+        // Plotoni: N., Grado, Cognome, Nome, Incarico (5 colonne: A-E)
+        // Uffici: N., Grado, Cognome, Nome, Plotone, Telefono (6 colonne: A-F)
+        $isPlotoni = $tipoGruppo === 'Plotone';
+        $lastCol = $isPlotoni ? 'E' : 'F';
+        
+        // ======================================
+        // INTESTAZIONE
+        // ======================================
+        $titolo = 'ORGANIGRAMMA ' . strtoupper($compagnia->nome);
+        $sheet->setCellValue('A1', $titolo);
+        $sheet->mergeCells('A1:' . $lastCol . '1');
+        $sheet->getStyle('A1:' . $lastCol . '1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => $navyColor]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $grayLight]],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => $goldColor]]]
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(45);
+        
+        // Sottotitolo con tipo visualizzazione e data
+        $vistaLabel = $isPlotoni ? 'Plotoni' : 'Uffici';
+        $sottotitolo = 'Organizzazione per ' . $vistaLabel . '  |  ' . ucfirst($oggi);
+        $sheet->setCellValue('A2', $sottotitolo);
+        $sheet->mergeCells('A2:' . $lastCol . '2');
+        $sheet->getStyle('A2:' . $lastCol . '2')->applyFromArray([
+            'font' => ['italic' => true, 'size' => 10, 'color' => ['rgb' => '6c757d']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
+        ]);
+        $sheet->getRowDimension(2)->setRowHeight(24);
+        
+        // ======================================
+        // RIEPILOGO - Solo Forza Effettiva centrata
+        // ======================================
+        $currentRow = 4;
+        
+        // Box Forza Effettiva centrato
+        $sheet->setCellValue('B' . $currentRow, 'FORZA EFFETTIVA');
+        $sheet->mergeCells('B' . $currentRow . ':C' . $currentRow);
+        $sheet->setCellValue('D' . $currentRow, $totaleMilitari);
+        
+        $sheet->getStyle('B' . $currentRow . ':C' . $currentRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $navyColor]],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => $navyColor]]]
+        ]);
+        $sheet->getStyle('D' . $currentRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 18, 'color' => ['rgb' => $navyColor]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => $navyColor]]]
+        ]);
+        
+        $sheet->getRowDimension($currentRow)->setRowHeight(35);
+        $currentRow += 2;
+        
+        // ======================================
+        // CONTENUTO PER OGNI GRUPPO
+        // ======================================
+        foreach ($gruppi as $gruppo) {
+            // Ordina per grado DECRESCENTE (grado più alto prima)
+            $militari = $gruppo->militari->sortByDesc(function($militare) {
+                return optional($militare->grado)->ordine ?? 0;
+            });
+            
+            if ($militari->count() === 0) {
+                continue;
+            }
+            
+            // Header del gruppo - solo nome
+            $sheet->setCellValue('A' . $currentRow, $gruppo->nome);
+            $sheet->mergeCells('A' . $currentRow . ':' . $lastCol . $currentRow);
+            $sheet->getStyle('A' . $currentRow . ':' . $lastCol . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $navyColor]],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'indent' => 1],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => $navyColor]]]
+            ]);
+            $sheet->getRowDimension($currentRow)->setRowHeight(28);
+            $currentRow++;
+            
+            // Header colonne (diverse in base alla vista)
+            if ($isPlotoni) {
+                $headers = ['N.', 'Grado', 'Cognome', 'Nome', 'Incarico'];
+            } else {
+                $headers = ['N.', 'Grado', 'Cognome', 'Nome', 'Plotone', 'Telefono'];
+            }
+            
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . $currentRow, $header);
+                $col++;
+            }
+            $sheet->getStyle('A' . $currentRow . ':' . $lastCol . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 9, 'color' => ['rgb' => $navyColor]],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $grayLight]],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+                'borders' => [
+                    'allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => $grayBorder]],
+                    'bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => $goldColor]]
+                ]
+            ]);
+            $sheet->getRowDimension($currentRow)->setRowHeight(22);
+            $currentRow++;
+            
+            // Dati militari
+            $startDataRow = $currentRow;
+            $numero = 1;
+            foreach ($militari as $militare) {
+                $sheet->setCellValue('A' . $currentRow, $numero++);
+                $sheet->setCellValue('B' . $currentRow, $militare->grado->sigla ?? '-');
+                $sheet->setCellValue('C' . $currentRow, strtoupper($militare->cognome));
+                $sheet->setCellValue('D' . $currentRow, strtoupper($militare->nome));
+                
+                if ($isPlotoni) {
+                    // Per plotoni: mostra incarico
+                    $sheet->setCellValue('E' . $currentRow, $militare->mansione->nome ?? '-');
+                } else {
+                    // Per uffici: mostra plotone e telefono
+                    $sheet->setCellValue('E' . $currentRow, $militare->plotone->nome ?? '-');
+                    $sheet->setCellValue('F' . $currentRow, $militare->telefono ?? '-');
+                }
+                
+                $currentRow++;
+            }
+            
+            // Stile per le righe dati con alternanza colori
+            if ($currentRow > $startDataRow) {
+                for ($row = $startDataRow; $row < $currentRow; $row++) {
+                    $bgColor = (($row - $startDataRow) % 2 === 0) ? 'FFFFFF' : $grayLight;
+                    $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray([
+                        'font' => ['size' => 10],
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
+                        'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => $grayBorder]]],
+                        'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]
+                    ]);
+                    // Centra la colonna N.
+                    $sheet->getStyle('A' . $row)->applyFromArray([
+                        'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
+                    ]);
+                    $sheet->getRowDimension($row)->setRowHeight(20);
+                }
+            }
+            
+            $currentRow += 2; // Spazio tra gruppi
+        }
+        
+        // ======================================
+        // IMPOSTAZIONI FINALI
+        // ======================================
+        
+        // Imposta larghezze colonne in base alla vista
+        if ($isPlotoni) {
+            // Plotoni: N., Grado, Cognome, Nome, Incarico
+            $sheet->getColumnDimension('A')->setWidth(6);    // N.
+            $sheet->getColumnDimension('B')->setWidth(18);   // Grado
+            $sheet->getColumnDimension('C')->setWidth(24);   // Cognome
+            $sheet->getColumnDimension('D')->setWidth(22);   // Nome
+            $sheet->getColumnDimension('E')->setWidth(35);   // Incarico
+        } else {
+            // Uffici: N., Grado, Cognome, Nome, Plotone, Telefono
+            $sheet->getColumnDimension('A')->setWidth(6);    // N.
+            $sheet->getColumnDimension('B')->setWidth(18);   // Grado
+            $sheet->getColumnDimension('C')->setWidth(24);   // Cognome
+            $sheet->getColumnDimension('D')->setWidth(22);   // Nome
+            $sheet->getColumnDimension('E')->setWidth(28);   // Plotone
+            $sheet->getColumnDimension('F')->setWidth(18);   // Telefono
+        }
+        
+        // Data generazione
+        $excelService->addGenerationInfo($sheet, $currentRow);
+        
+        // Area di stampa
+        $excelService->setPrintArea($sheet, $lastCol, $currentRow - 1);
+        
+        // Freeze pane dopo intestazione
+        $sheet->freezePane('A6');
     }
 }

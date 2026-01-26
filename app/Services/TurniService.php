@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\TurnoSettimanale;
 use App\Models\AssegnazioneTurno;
 use App\Models\ServizioTurno;
+use App\Models\ServizioTurnoSettimana;
 use App\Models\Militare;
 use App\Models\PianificazioneMensile;
 use App\Models\PianificazioneGiornaliera;
@@ -36,7 +37,45 @@ class TurniService
     public function getDatiSettimana(Carbon $data)
     {
         $turno = $this->getTurnoSettimana($data);
-        $serviziTurno = ServizioTurno::attivi()->ordinati()->get();
+        $codiciCptServizi = TipoServizio::perCategoria('servizio')->pluck('codice');
+        
+        // Carica le impostazioni specifiche per questa settimana
+        $impostazioniSettimana = ServizioTurnoSettimana::where('turno_settimanale_id', $turno->id)
+            ->where('num_posti', '>', 0)
+            ->where('attivo', true)
+            ->get()
+            ->keyBy('servizio_turno_id');
+        
+        // Ottieni tutti i servizi che hanno impostazioni per questa settimana
+        // OPPURE che hanno posti globali > 0 (per retrocompatibilità)
+        $serviziTurno = ServizioTurno::attivi()
+            ->whereIn('sigla_cpt', $codiciCptServizi)
+            ->where(function($query) use ($impostazioniSettimana) {
+                $query->whereIn('id', $impostazioniSettimana->keys())
+                    ->orWhere('num_posti', '>', 0);
+            })
+            ->ordinati()
+            ->get()
+            ->filter(function($servizio) use ($impostazioniSettimana) {
+                // Se ha impostazioni per settimana, usa quelle
+                if ($impostazioniSettimana->has($servizio->id)) {
+                    return $impostazioniSettimana->get($servizio->id)->num_posti > 0;
+                }
+                // Altrimenti usa il valore globale
+                return $servizio->num_posti > 0;
+            });
+        
+        // Aggiungi num_posti effettivo per questa settimana a ciascun servizio
+        foreach ($serviziTurno as $servizio) {
+            if ($impostazioniSettimana->has($servizio->id)) {
+                $servizio->num_posti_settimana = $impostazioniSettimana->get($servizio->id)->num_posti;
+                $servizio->smontante_settimana = $impostazioniSettimana->get($servizio->id)->smontante_cpt;
+            } else {
+                $servizio->num_posti_settimana = $servizio->num_posti;
+                $servizio->smontante_settimana = $servizio->smontante_cpt;
+            }
+        }
+        
         $giorniSettimana = $turno->getGiorniSettimana();
 
         // Carica tutte le assegnazioni della settimana
@@ -166,18 +205,24 @@ class TurniService
                 }
             }
 
-            // Calcola posizione e verifica limite posti
+            // Calcola posizione e verifica limite posti (usa impostazioni per settimana)
             $assegnazioniEsistenti = AssegnazioneTurno::where('turno_settimanale_id', $turnoId)
                 ->where('servizio_turno_id', $servizioId)
                 ->where('data_servizio', $data)
                 ->count();
 
-            $maxPosti = max((int) $servizio->num_posti, 1);
+            // Ottieni posti specifici per questa settimana
+            $maxPosti = ServizioTurnoSettimana::getPostiPerSettimana($turnoId, $servizioId);
+            if ($maxPosti === 0) {
+                // Fallback al valore globale del servizio
+                $maxPosti = max((int) $servizio->num_posti, 1);
+            }
+            
             if ($assegnazioniEsistenti >= $maxPosti) {
                 DB::rollBack();
                 return [
                     'success' => false,
-                    'message' => "Posti esauriti per il servizio \"{$servizio->nome}\" in questa data.",
+                    'message' => "Posti esauriti per il servizio \"{$servizio->nome}\" in questa data ({$assegnazioniEsistenti}/{$maxPosti}).",
                     'warning' => null,
                     'assegnazione' => null
                 ];
@@ -213,7 +258,14 @@ class TurniService
                 $warningMessage = $warningMessage ? $warningMessage . ' - CPT non sincronizzato.' : 'CPT non sincronizzato automaticamente.';
             }
 
-            if ($servizio->smontante_cpt) {
+            // Verifica smontante usando le impostazioni per settimana
+            $smontanteAttivo = ServizioTurnoSettimana::isSmontanteAttivo($turnoId, $servizioId);
+            if (!$smontanteAttivo) {
+                // Fallback al valore globale
+                $smontanteAttivo = $servizio->smontante_cpt ?? false;
+            }
+            
+            if ($smontanteAttivo) {
                 $smontanteOk = $this->sincronizzaSmontante($assegnazione);
                 if (!$smontanteOk) {
                     $warningMessage = $warningMessage

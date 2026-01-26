@@ -1,121 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'Poligoni - Tiri e Mantenimento')
+@section('title', 'Poligoni')
 
 @section('content')
 <style>
-/* Container tabella con scroll */
-.table-container {
-    position: relative;
-    background: white;
-}
-
-.table-container::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-.table-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 5px;
-}
-
-.table-container::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 5px;
-}
-
-.table-container::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* Stili uniformi come le altre pagine */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
-
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
-
-/* Colonne con larghezza minima ma senza sticky */
-.table th:nth-child(1),
-.table td:nth-child(1) {
-    font-weight: 600;
-    min-width: 120px !important;
-}
-
-.table th:nth-child(2),
-.table td:nth-child(2) {
-    font-weight: 600;
-    min-width: 80px !important;
-}
-
-.table th:nth-child(3),
-.table td:nth-child(3) {
-    font-weight: 600;
-    min-width: 140px !important;
-}
-
-.table th:nth-child(4),
-.table td:nth-child(4) {
-    font-weight: 600;
-    min-width: 120px !important;
-}
-
-/* Celle scadenze - Data colorata con background */
-.scadenza-cell {
-    text-align: center;
-    padding: 10px 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-}
-
-.scadenza-cell:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-/* Colori scadenze - BACKGROUND */
-.scadenza-valido {
-    background-color: #d4edda !important;
-    color: #155724 !important;
-}
-
-.scadenza-in-scadenza {
-    background-color: #fff3cd !important;
-    color: #856404 !important;
-}
-
-.scadenza-scaduto {
-    background-color: #f8d7da !important;
-    color: #721c24 !important;
-}
-
-.scadenza-mancante {
-    background-color: #e9ecef !important;
-    color: #6c757d !important;
-}
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
 
 /* Modal hover per modifica */
 .scadenza-modal {
@@ -297,7 +187,7 @@ table.table td,
 
 <!-- Header Minimal Solo Titolo -->
 <div class="text-center mb-4">
-    <h1 class="page-title">POLIGONI - TIRI E MANTENIMENTO</h1>
+    <h1 class="page-title">POLIGONI</h1>
 </div>
 
 <!-- Barra di ricerca centrata sotto il titolo -->
@@ -316,106 +206,66 @@ table.table td,
 <!-- Filtri e badge su riga separata -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <button type="button" class="btn btn-primary" id="toggleFilters" style="border-radius: 6px !important;">
-        <i class="fas fa-filter me-2"></i> <span id="filterToggleText">Mostra Filtri</span>
+        <span id="filterToggleText">Mostra Filtri</span>
     </button>
-    <div class="d-flex gap-2 align-items-center">
-        <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
-        <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
-        <span class="badge" style="background-color: #f8d7da; color: #721c24;"><i class="fas fa-times"></i> Scaduto</span>
-        <span class="badge" style="background-color: #e9ecef; color: #6c757d;"><i class="fas fa-minus"></i> Mancante</span>
+    <div class="legenda-scadenze">
+        <span class="badge-legenda badge-legenda-valido"><i class="fas fa-check-circle"></i> Valido</span>
+        <span class="badge-legenda badge-legenda-in-scadenza"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
+        <span class="badge-legenda badge-legenda-scaduto"><i class="fas fa-times-circle"></i> Scaduto</span>
+        <span class="badge-legenda badge-legenda-mancante"><i class="fas fa-minus-circle"></i> Non presente</span>
     </div>
 </div>
 
 <!-- Sezione Filtri (usa lo stesso stile delle altre pagine) -->
 <div class="filter-card mb-4" id="filtersSection" style="display: none;">
     <div class="filter-card-header d-flex justify-content-between align-items-center">
-        <div>
-            <i class="fas fa-filter me-2"></i> Filtri avanzati
-        </div>
+        <div>Filtri avanzati</div>
     </div>
     <div class="card-body p-3">
-        <form id="filterForm" method="GET" action="{{ route('poligoni.index') }}">
-            <div class="row">
-                <div class="col mb-2">
-                    <label for="tiri_approntamento" class="form-label small">Teatro Operativo</label>
-                    <div class="select-wrapper">
-                        <select name="tiri_approntamento" id="tiri_approntamento" class="form-select form-select-sm filter-select {{ request()->filled('tiri_approntamento') ? 'applied' : '' }}">
-                            <option value="">Tutti</option>
-                            <option value="valido" {{ request('tiri_approntamento') == 'valido' ? 'selected' : '' }}>✓ Valido</option>
-                            <option value="in_scadenza" {{ request('tiri_approntamento') == 'in_scadenza' ? 'selected' : '' }}>⚠ In Scadenza</option>
-                            <option value="scaduto" {{ request('tiri_approntamento') == 'scaduto' ? 'selected' : '' }}>✗ Scaduto</option>
-                            <option value="mancante" {{ request('tiri_approntamento') == 'mancante' ? 'selected' : '' }}>- Mancante</option>
-                        </select>
-                        @if(request()->filled('tiri_approntamento'))
-                            <span class="clear-filter" data-filter="tiri_approntamento" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="col mb-2">
-                    <label for="mantenimento_arma_lunga" class="form-label small">Mant. Arma Lunga</label>
-                    <div class="select-wrapper">
-                        <select name="mantenimento_arma_lunga" id="mantenimento_arma_lunga" class="form-select form-select-sm filter-select {{ request()->filled('mantenimento_arma_lunga') ? 'applied' : '' }}">
-                            <option value="">Tutti</option>
-                            <option value="valido" {{ request('mantenimento_arma_lunga') == 'valido' ? 'selected' : '' }}>✓ Valido</option>
-                            <option value="in_scadenza" {{ request('mantenimento_arma_lunga') == 'in_scadenza' ? 'selected' : '' }}>⚠ In Scadenza</option>
-                            <option value="scaduto" {{ request('mantenimento_arma_lunga') == 'scaduto' ? 'selected' : '' }}>✗ Scaduto</option>
-                            <option value="mancante" {{ request('mantenimento_arma_lunga') == 'mancante' ? 'selected' : '' }}>- Mancante</option>
-                        </select>
-                        @if(request()->filled('mantenimento_arma_lunga'))
-                            <span class="clear-filter" data-filter="mantenimento_arma_lunga" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="col mb-2">
-                    <label for="mantenimento_arma_corta" class="form-label small">Mant. Arma Corta</label>
-                    <div class="select-wrapper">
-                        <select name="mantenimento_arma_corta" id="mantenimento_arma_corta" class="form-select form-select-sm filter-select {{ request()->filled('mantenimento_arma_corta') ? 'applied' : '' }}">
-                            <option value="">Tutti</option>
-                            <option value="valido" {{ request('mantenimento_arma_corta') == 'valido' ? 'selected' : '' }}>✓ Valido</option>
-                            <option value="in_scadenza" {{ request('mantenimento_arma_corta') == 'in_scadenza' ? 'selected' : '' }}>⚠ In Scadenza</option>
-                            <option value="scaduto" {{ request('mantenimento_arma_corta') == 'scaduto' ? 'selected' : '' }}>✗ Scaduto</option>
-                            <option value="mancante" {{ request('mantenimento_arma_corta') == 'mancante' ? 'selected' : '' }}>- Mancante</option>
-                        </select>
-                        @if(request()->filled('mantenimento_arma_corta'))
-                            <span class="clear-filter" data-filter="mantenimento_arma_corta" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                        @endif
-                    </div>
-                </div>
+        <div class="row">
+            @foreach($colonne as $index => $colonna)
+            <div class="col mb-2">
+                <label for="filter_{{ $colonna['codice'] }}" class="form-label small">{{ $colonna['nome'] }}</label>
+                <select id="filter_{{ $colonna['codice'] }}" class="form-select form-select-sm filter-local" data-campo="{{ $colonna['codice'] }}" data-index="{{ $index }}">
+                    <option value="">Tutti</option>
+                    <option value="valido">Valido</option>
+                    <option value="in_scadenza">In Scadenza</option>
+                    <option value="scaduto">Scaduto</option>
+                    <option value="mancante">Non presente</option>
+                </select>
             </div>
-            
-            @php
-                $activeFilters = [];
-                foreach(['tiri_approntamento', 'mantenimento_arma_lunga', 'mantenimento_arma_corta'] as $filter) {
-                    if(request()->filled($filter)) $activeFilters[] = $filter;
-                }
-                $activeCount = count($activeFilters);
-            @endphp
-            
-            <div class="d-flex justify-content-center mt-3">
-                @if($activeCount > 0)
-                <a href="{{ route('poligoni.index') }}" class="btn btn-danger">
-                    <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri ({{ $activeCount }})
-                </a>
-                @endif
+            @endforeach
+        </div>
+        
+        <div class="d-flex justify-content-center mt-3">
+            <button type="button" id="resetAllFilters" class="btn btn-outline-danger" style="display: none;">
+                Rimuovi tutti i filtri
+            </button>
+        </div>
+        
+        <div id="noResultsMessage" class="text-center py-5" style="display: none;">
+            <div class="d-flex flex-column align-items-center empty-state">
+                <i class="fas fa-users-slash fa-3x mb-3 text-muted"></i>
+                <p class="lead mb-3">Nessun militare trovato</p>
+                <p class="text-muted mb-3">Prova a modificare i criteri di ricerca o i filtri applicati.</p>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<!-- Tabella con scroll orizzontale e verticale -->
-<div class="table-container" style="max-height: calc(100vh - 350px); overflow-x: auto; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 8px;">
-    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable" style="min-width: 1400px;">
-        <thead style="position: sticky; top: 0; z-index: 10;">
-            <tr style="background-color: #0a2342; color: white;">
+<!-- Tabella con scroll orizzontale e verticale con navigazione -->
+<div class="sugeco-table-nav-container" data-table-nav="auto">
+    <div class="sugeco-table-wrapper">
+        <table class="sugeco-table" id="scadenzeTable">
+        <thead>
+            <tr>
                 <th>Compagnia</th>
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
-                <th style="min-width: 160px;">Teatro Operativo</th>
-                <th style="min-width: 180px;">Mantenimento Arma Lunga</th>
-                <th style="min-width: 180px;">Mantenimento Arma Corta</th>
+                @foreach($colonne as $colonna)
+                <th>{{ $colonna['nome'] }}</th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
@@ -431,9 +281,9 @@ table.table td,
                 </td>
                 <td>{{ $item['militare']->nome }}</td>
                 
-                @foreach(['tiri_approntamento', 'mantenimento_arma_lunga', 'mantenimento_arma_corta'] as $campo)
+                @foreach($colonne as $index => $colonna)
                 @php
-                    $scadenza = $item[$campo];
+                    $scadenza = $item[$colonna['codice']];
                     $classeColore = match($scadenza['stato']) {
                         'valido' => 'scadenza-valido',
                         'in_scadenza' => 'scadenza-in-scadenza',
@@ -442,18 +292,18 @@ table.table td,
                         default => 'scadenza-mancante'
                     };
                     $testoData = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('d/m/Y') : 'Non presente';
-                    $campoDB = $campo . '_data_conseguimento';
                     $dataScadenzaISO = $scadenza['data_scadenza'] ? $scadenza['data_scadenza']->format('Y-m-d') : '';
                 @endphp
                 
                 <td class="scadenza-cell {{ $classeColore }}" 
                     data-militare-id="{{ $item['militare']->id }}"
-                    data-campo="{{ $campoDB }}"
-                    data-campo-nome="{{ ucwords(str_replace('_', ' ', $campo)) }}"
+                    data-campo="{{ $colonna['campo_db'] ?? 'tipo_poligono_' . $colonna['id'] }}"
+                    data-campo-nome="{{ $colonna['nome'] }}"
                     data-data-conseguimento="{{ $scadenza['data_conseguimento'] ? $scadenza['data_conseguimento']->format('Y-m-d') : '' }}"
                     data-data-scadenza="{{ $dataScadenzaISO }}"
-                    data-mesi="6"
+                    data-mesi="{{ $colonna['durata_mesi'] }}"
                     data-stato="{{ $scadenza['stato'] }}"
+                    data-index="{{ $index }}"
                     @can('scadenze.edit')
                     onclick="openScadenzaModal(this)"
                     @endcan
@@ -465,6 +315,7 @@ table.table td,
             @endforeach
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- Modal Overlay -->
@@ -521,47 +372,77 @@ document.getElementById('toggleFilters').addEventListener('click', function() {
     }
 });
 
-// Auto-submit quando cambia un filtro
-document.querySelectorAll('.filter-select').forEach(function(select) {
-    select.addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
+// Filtraggio lato client
+function applyFilters() {
+    const filterSelects = document.querySelectorAll('.filter-local');
+    const filters = {};
+    filterSelects.forEach(select => {
+        const index = select.getAttribute('data-index');
+        filters[index] = select.value;
     });
-});
-
-// Gestione click sulle X di cancellazione filtri individuali
-document.querySelectorAll('.clear-filter').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const filterName = this.getAttribute('data-filter');
-        const select = document.getElementById(filterName);
-        if (select) {
-            select.value = '';
-            document.getElementById('filterForm').submit();
-        }
-    });
-});
-
-// Se ci sono filtri attivi, mostra la sezione filtri
-@if(request()->filled('tiri_approntamento') || request()->filled('mantenimento_arma_lunga') || request()->filled('mantenimento_arma_corta'))
-document.getElementById('filtersSection').style.display = 'block';
-document.getElementById('filterToggleText').textContent = 'Nascondi Filtri';
-document.getElementById('toggleFilters').classList.add('active');
-@endif
-
-// Ricerca live
-document.getElementById('searchInput').addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
+    
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     const rows = document.querySelectorAll('#scadenzeTable tbody tr');
+    let visibleCount = 0;
+    let activeFilters = 0;
+    
+    // Conta filtri attivi
+    Object.values(filters).forEach(f => { if (f) activeFilters++; });
     
     rows.forEach(row => {
-        const militareNome = row.getAttribute('data-militare-nome').toLowerCase();
-        if (militareNome.includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+        let show = true;
+        
+        // Filtro ricerca
+        if (searchTerm) {
+            const militareNome = row.getAttribute('data-militare-nome').toLowerCase();
+            if (!militareNome.includes(searchTerm)) {
+                show = false;
+            }
         }
+        
+        // Filtri per stato
+        if (show) {
+            const cells = row.querySelectorAll('td.scadenza-cell');
+            
+            cells.forEach((cell) => {
+                const index = cell.getAttribute('data-index');
+                const filterValue = filters[index];
+                if (filterValue) {
+                    const statoCell = cell.getAttribute('data-stato');
+                    if (statoCell !== filterValue) {
+                        show = false;
+                    }
+                }
+            });
+        }
+        
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
     });
+    
+    // Mostra/nascondi messaggio nessun risultato
+    const noResultsMsg = document.getElementById('noResultsMessage');
+    noResultsMsg.style.display = (visibleCount === 0) ? 'block' : 'none';
+    
+    // Mostra/nascondi pulsante reset filtri
+    const resetBtn = document.getElementById('resetAllFilters');
+    resetBtn.style.display = (activeFilters > 0 || searchTerm) ? 'inline-block' : 'none';
+}
+
+// Event listeners per i filtri locali
+document.querySelectorAll('.filter-local').forEach(function(select) {
+    select.addEventListener('change', applyFilters);
 });
+
+// Reset tutti i filtri
+document.getElementById('resetAllFilters').addEventListener('click', function() {
+    document.querySelectorAll('.filter-local').forEach(s => s.value = '');
+    document.getElementById('searchInput').value = '';
+    applyFilters();
+});
+
+// Ricerca live
+document.getElementById('searchInput').addEventListener('input', applyFilters);
 
 function openScadenzaModal(cell) {
     @cannot('scadenze.edit')
@@ -611,12 +492,18 @@ function saveScadenza() {
     const militareId = currentCell.getAttribute('data-militare-id');
     const campo = currentCell.getAttribute('data-campo');
     const nuovaData = document.getElementById('modalDataConseguimento').value;
+    const mesi = parseInt(currentCell.getAttribute('data-mesi') || 6);
     
     // Salva riferimento per ripristinare dopo errore
     const cellToUpdate = currentCell;
     
-    // Feedback visivo
-    cellToUpdate.style.opacity = '0.5';
+    // Feedback visivo - aggiungi spinner
+    const originalContent = cellToUpdate.innerHTML;
+    cellToUpdate.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    cellToUpdate.style.opacity = '0.7';
+    
+    // Chiudi subito il modal
+    closeScadenzaModal();
     
     // URL BASE CORRETTA
     const baseUrl = window.location.origin + '/SUGECO/public';
@@ -635,25 +522,91 @@ function saveScadenza() {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json().then(err => {
+                throw new Error(err.message || `Errore HTTP ${response.status}`);
+            }).catch(() => {
+                throw new Error(`Errore HTTP ${response.status}`);
+            });
         }
         return response.json();
     })
     .then(data => {
-        if (data.success) {
-            location.reload();
+        if (data.success && data.scadenza) {
+            // Aggiorna la cella in-place senza reload
+            updateCellFromResponse(cellToUpdate, data.scadenza, nuovaData, mesi);
+            
+            // Mostra toast di successo
+            showToast('Scadenza aggiornata con successo', 'success');
         } else {
-            alert('Errore durante l\'aggiornamento');
-            if (cellToUpdate) cellToUpdate.style.opacity = '1';
+            throw new Error(data.message || 'Errore durante l\'aggiornamento');
         }
     })
     .catch(error => {
         console.error('Errore completo:', error);
-        alert('Errore durante l\'aggiornamento: ' + error.message);
-        if (cellToUpdate) cellToUpdate.style.opacity = '1';
+        // Ripristina contenuto originale
+        cellToUpdate.innerHTML = originalContent;
+        cellToUpdate.style.opacity = '1';
+        showToast('Errore: ' + error.message, 'error');
     });
+}
+
+/**
+ * Aggiorna la cella con i dati della risposta senza ricaricare la pagina
+ */
+function updateCellFromResponse(cell, scadenza, dataConseguimento, mesi) {
+    // Rimuovi tutte le classi di stato precedenti
+    cell.classList.remove('scadenza-valido', 'scadenza-in-scadenza', 'scadenza-scaduto', 'scadenza-mancante', 'scadenza-prenotato');
     
-    closeScadenzaModal();
+    // Aggiorna attributi data
+    cell.setAttribute('data-data-conseguimento', dataConseguimento || '');
+    cell.setAttribute('data-stato', scadenza.stato);
+    
+    if (scadenza.data_scadenza) {
+        // Formatta la data per la visualizzazione (dd/mm/yyyy)
+        const dataScadenza = new Date(scadenza.data_scadenza);
+        const dataScadenzaFormatted = dataScadenza.toLocaleDateString('it-IT', {
+            day: '2-digit',
+            month: '2-digit', 
+            year: 'numeric'
+        });
+        const dataScadenzaISO = dataScadenza.toISOString().split('T')[0];
+        
+        cell.setAttribute('data-data-scadenza', dataScadenzaISO);
+        cell.textContent = dataScadenzaFormatted;
+    } else {
+        cell.setAttribute('data-data-scadenza', '');
+        cell.textContent = 'Non presente';
+    }
+    
+    // Aggiungi la classe corretta per lo stato
+    const classeStato = 'scadenza-' + scadenza.stato.replace('_', '-');
+    cell.classList.add(classeStato);
+    
+    // Ripristina opacità
+    cell.style.opacity = '1';
+}
+
+/**
+ * Mostra un toast di notifica
+ */
+function showToast(message, type = 'info') {
+    // Usa il sistema toast se disponibile, altrimenti fallback
+    if (window.SUGECO && window.SUGECO.Toast) {
+        window.SUGECO.Toast.show(message, type);
+    } else if (typeof toastr !== 'undefined') {
+        toastr[type](message);
+    } else {
+        // Fallback: crea un toast semplice
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 10000; min-width: 250px; animation: fadeIn 0.3s;';
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
 }
 
 // Chiudi modal con ESC
@@ -663,9 +616,25 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Export Excel
+// Export Excel con filtri attivi
 document.getElementById('exportExcel').addEventListener('click', function() {
-    window.location.href = '/SUGECO/public/scadenze/poligoni/export-excel';
+    // Raccogli gli ID dei militari visibili
+    const visibleRows = document.querySelectorAll('#scadenzeTable tbody tr:not([style*="display: none"])');
+    const militareIds = [];
+    visibleRows.forEach(row => {
+        const id = row.getAttribute('data-militare-id');
+        if (id) militareIds.push(id);
+    });
+    
+    // Costruisci URL con i filtri
+    const baseUrl = window.location.origin + '/SUGECO/public/poligoni/export-excel';
+    if (militareIds.length > 0 && militareIds.length < document.querySelectorAll('#scadenzeTable tbody tr').length) {
+        // Ci sono filtri attivi, invia solo gli ID visibili
+        window.location.href = baseUrl + '?ids=' + militareIds.join(',');
+    } else {
+        // Nessun filtro, esporta tutto
+        window.location.href = baseUrl;
+    }
 });
 </script>
 @endpush

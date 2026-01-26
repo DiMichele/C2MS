@@ -11,21 +11,21 @@
 --}}
 
 <div class="table-responsive">
-    <table class="table table-striped table-hover table-bordered">
+    <table class="sugeco-table">
         <thead>
             <tr>
-                <th scope="col" style="width: 50px" class="text-center">#</th>
+                <th scope="col">#</th>
                 <th scope="col">Grado</th>
                 <th scope="col">Nominativo</th>
                 <th scope="col">Ruolo</th>
                 <th scope="col">Status</th>
-                <th scope="col" style="width: 120px">Azioni</th>
+                <th scope="col">Azioni</th>
             </tr>
         </thead>
         <tbody id="militariTableBody">
             @forelse($militari as $index => $militare)
                 <tr id="militare-{{ $militare->id }}" class="militare-row" data-militare-id="{{ $militare->id }}">
-                    <td class="text-center">
+                    <td>
                         {{ ($militari->currentPage() - 1) * $militari->perPage() + $index + 1 }}
                     </td>
                     <td>
@@ -65,17 +65,7 @@
                     </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="6" class="text-center py-5">
-                        <div class="d-flex flex-column align-items-center empty-state">
-                            <i class="fas fa-search fa-3x mb-3 text-muted"></i>
-                            <p class="lead mb-3">Nessun militare trovato con i filtri selezionati.</p>
-                            <a href="{{ route('anagrafica.index') }}" class="btn btn-outline-primary mt-2">
-                                <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                @include('components.no-results', ['colspan' => 6, 'showButton' => true, 'buttonUrl' => route('anagrafica.index')])
             @endforelse
         </tbody>
     </table>

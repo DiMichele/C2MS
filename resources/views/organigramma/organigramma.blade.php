@@ -104,7 +104,7 @@
         border-radius: 50px;
     }
     
-    .toggle-slider.poli {
+    .toggle-slider.uffici {
         transform: translateX(100%);
     }
     
@@ -823,7 +823,7 @@
     <div class="d-flex justify-content-center mb-4">
         <div class="d-flex align-items-center gap-3">
             <label for="compagniaSelect" class="form-label mb-0 fw-semibold" style="color: var(--navy);">
-                <i class="fas fa-building me-2"></i>Compagnia:
+                Compagnia:
             </label>
             <select id="compagniaSelect" 
                     class="form-select form-select-sm" 
@@ -846,8 +846,8 @@
             <div id="plotoniBtn" class="toggle-option active" onclick="switchView('plotoni')">
                 <i class="fas fa-users"></i> Plotoni
             </div>
-            <div id="poliBtn" class="toggle-option" onclick="switchView('poli')">
-                <i class="fas fa-building"></i> Poli
+            <div id="ufficiBtn" class="toggle-option" onclick="switchView('uffici')">
+                <i class="fas fa-building"></i> Uffici
             </div>
         </div>
     </div>
@@ -866,25 +866,36 @@
             <!-- Non creiamo searchSuggestions qui - lasciamo che search.js lo faccia -->
         </div>
     </div>
+    
+    <!-- Floating Export Button -->
+    <button type="button" class="fab fab-excel" id="exportExcel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+        <i class="fas fa-file-excel"></i>
+    </button>
 
     <!-- Visualizzazione per Plotoni -->
     <div id="plotoniView" class="org-chart-container org-view">
         <div class="org-tree">
+            @php
+                $militariPlotoni = \App\Models\Militare::whereIn('plotone_id', $compagnia->plotoni->pluck('id'))->get();
+                $forzaEffettivaPlotoni = $militariPlotoni->count();
+                $presentiPlotoni = $militariPlotoni->filter(fn($m) => $m->isPresente())->count();
+                $assentiPlotoni = $forzaEffettivaPlotoni - $presentiPlotoni;
+            @endphp
             <!-- Nodo Compagnia -->
             <div class="node-compagnia">
                 <div class="node-compagnia-header">{{ $compagnia->nome }}</div>
                 <div class="node-compagnia-content">
                     <div>
-                        <span class="stat-label">Plotoni</span>
-                        <span class="stat-value">{{ $compagnia->plotoni->count() }}</span>
-                    </div>
-                    <div>
-                        <span class="stat-label">Militari</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('plotone_id', $compagnia->plotoni->pluck('id'))->count() }}</span>
+                        <span class="stat-label">Forza</span>
+                        <span class="stat-value">{{ $forzaEffettivaPlotoni }}</span>
                     </div>
                     <div>
                         <span class="stat-label">Presenti</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('plotone_id', $compagnia->plotoni->pluck('id'))->get()->filter(fn($m) => $m->isPresente())->count() }}</span>
+                        <span class="stat-value">{{ $presentiPlotoni }}</span>
+                    </div>
+                    <div>
+                        <span class="stat-label">Assenti</span>
+                        <span class="stat-value">{{ $assentiPlotoni }}</span>
                     </div>
                 </div>
             </div>
@@ -901,8 +912,9 @@
                     <div class="nodi-figli {{ $compagnia->plotoni->count() <= 3 ? 'centered' : '' }}" id="plotoni-container">
                         @foreach($compagnia->plotoni as $plotone)
                             @php
-                                $militari = $plotone->militari->sortBy(function($militare) {
-                                    return optional($militare->grado)->ordine ?? 999;
+                                // Ordina per grado DECRESCENTE (grado più alto prima)
+                                $militari = $plotone->militari->sortByDesc(function($militare) {
+                                    return optional($militare->grado)->ordine ?? 0;
                                 });
                                 $presentiCount = $militari->filter(fn($m) => $m->isPresente())->count();
                             @endphp
@@ -970,44 +982,51 @@
         </div>
     </div>
 
-    <!-- Visualizzazione per Poli -->
-    <div id="poliView" class="org-chart-container org-view hidden">
+    <!-- Visualizzazione per Uffici -->
+    <div id="ufficiView" class="org-chart-container org-view hidden">
         <div class="org-tree">
+            @php
+                $militariUffici = \App\Models\Militare::whereIn('polo_id', $poli->pluck('id'))->where('compagnia_id', $compagnia->id)->get();
+                $forzaEffettivaUffici = $militariUffici->count();
+                $presentiUffici = $militariUffici->filter(fn($m) => $m->isPresente())->count();
+                $assentiUffici = $forzaEffettivaUffici - $presentiUffici;
+            @endphp
             <!-- Nodo Compagnia -->
             <div class="node-compagnia">
                 <div class="node-compagnia-header">{{ $compagnia->nome }}</div>
                 <div class="node-compagnia-content">
                     <div>
-                        <span class="stat-label">Poli</span>
-                        <span class="stat-value">{{ $poli->count() }}</span>
-                    </div>
-                    <div>
-                        <span class="stat-label">Militari</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('polo_id', $poli->pluck('id'))->count() }}</span>
+                        <span class="stat-label">Forza</span>
+                        <span class="stat-value">{{ $forzaEffettivaUffici }}</span>
                     </div>
                     <div>
                         <span class="stat-label">Presenti</span>
-                        <span class="stat-value">{{ \App\Models\Militare::whereIn('polo_id', $poli->pluck('id'))->get()->filter(fn($m) => $m->isPresente())->count() }}</span>
+                        <span class="stat-value">{{ $presentiUffici }}</span>
+                    </div>
+                    <div>
+                        <span class="stat-label">Assenti</span>
+                        <span class="stat-value">{{ $assentiUffici }}</span>
                     </div>
                 </div>
             </div>
             
-            <!-- Nodi Poli con scorrimento orizzontale -->
+            <!-- Nodi Uffici con scorrimento orizzontale -->
             @if($poli->count() > 0)
                 <div class="nodi-figli-container">
                     @if($poli->count() > 3)
-                    <button class="nav-arrow nav-prev" id="prevPoli" type="button" aria-label="Precedente">
+                    <button class="nav-arrow nav-prev" id="prevUffici" type="button" aria-label="Precedente">
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     @endif
                     
-                    <div class="nodi-figli {{ $poli->count() <= 3 ? 'centered' : '' }}" id="poli-container">
+                    <div class="nodi-figli {{ $poli->count() <= 3 ? 'centered' : '' }}" id="uffici-container">
                         @foreach($poli as $polo)
                             @php
-                                $militari = $polo->militari->sortBy(function($militare) {
-                                    return optional($militare->grado)->ordine ?? 999;
+                                // Ordina per grado DECRESCENTE (grado più alto prima)
+                                $militari = $polo->militari->sortByDesc(function($militare) {
+                                    return optional($militare->grado)->ordine ?? 0;
                                 });
-                                $presentiCount = $militari->filter(fn($m) => $m->isPresente())->count();
+                                $presentiCountUfficio = $militari->filter(fn($m) => $m->isPresente())->count();
                             @endphp
                             <div class="node-figlio" data-node-id="{{ $polo->id }}">
                                 <div class="node-connector"></div>
@@ -1017,10 +1036,10 @@
                                         <ul class="lista-militari">
                                             @foreach($militari as $militare)
                                                 @php
-                                                    $isPresente = $militare->isPresente();
+                                                    $isPresenteUfficio = $militare->isPresente();
                                                 @endphp
                                                 <li class="militare-item">
-                                                    <span class="stato-presenza {{ $isPresente ? 'presente' : 'assente' }}" data-status="{{ $isPresente ? 'Presente' : 'Assente' }}"></span>
+                                                    <span class="stato-presenza {{ $isPresenteUfficio ? 'presente' : 'assente' }}" data-status="{{ $isPresenteUfficio ? 'Presente' : 'Assente' }}"></span>
                                                     <div class="militare-info">
                                                         <div class="militare-grado">{{ $militare->grado->nome ?? '' }}</div>
                                                         <a href="{{ route('anagrafica.show', $militare->id) }}" class="link-name militare-nome">
@@ -1038,11 +1057,11 @@
                                                     <span class="count-label">Totale</span>
                                                 </div>
                                                 <div class="forza-count presente-count">
-                                                    <span class="count-value">{{ $presentiCount }}</span>
+                                                    <span class="count-value">{{ $presentiCountUfficio }}</span>
                                                     <span class="count-label">Presenti</span>
                                                 </div>
                                                 <div class="forza-count assente-count">
-                                                    <span class="count-value">{{ $militari->count() - $presentiCount }}</span>
+                                                    <span class="count-value">{{ $militari->count() - $presentiCountUfficio }}</span>
                                                     <span class="count-label">Assenti</span>
                                                 </div>
                                             </div>
@@ -1058,11 +1077,11 @@
                     </div>
                     
                     @if($poli->count() > 3)
-                    <button class="nav-arrow nav-next" id="nextPoli" type="button" aria-label="Successivo">
+                    <button class="nav-arrow nav-next" id="nextUffici" type="button" aria-label="Successivo">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                     
-                    <div class="scroll-indicator" id="poli-indicator">
+                    <div class="scroll-indicator" id="uffici-indicator">
                         @for($i = 0; $i < ceil($poli->count() / 3); $i++)
                             <div class="indicator-dot {{ $i == 0 ? 'active' : '' }}" data-index="{{ $i }}"></div>
                         @endfor
@@ -1136,24 +1155,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    const prevPoli = document.getElementById('prevPoli');
-    if (prevPoli) {
-        prevPoli.addEventListener('click', function() {
-            scrollContainer('poli-container', 'prev');
+    const prevUffici = document.getElementById('prevUffici');
+    if (prevUffici) {
+        prevUffici.addEventListener('click', function() {
+            scrollContainer('uffici-container', 'prev');
         });
     }
     
-    const nextPoli = document.getElementById('nextPoli');
-    if (nextPoli) {
-        nextPoli.addEventListener('click', function() {
-            scrollContainer('poli-container', 'next');
+    const nextUffici = document.getElementById('nextUffici');
+    if (nextUffici) {
+        nextUffici.addEventListener('click', function() {
+            scrollContainer('uffici-container', 'next');
+        });
+    }
+    
+    // Export Excel button
+    const exportBtn = document.getElementById('exportExcel');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            exportOrganigrammaExcel();
         });
     }
 });
 
+// Funzione per esportare in Excel
+function exportOrganigrammaExcel() {
+    const compagniaSelect = document.getElementById('compagniaSelect');
+    const compagniaId = compagniaSelect ? compagniaSelect.value : '';
+    const vista = window.currentView || 'plotoni'; // plotoni o uffici
+    
+    const params = new URLSearchParams();
+    if (compagniaId) params.append('compagnia_id', compagniaId);
+    params.append('vista', vista);
+    
+    const queryString = params.toString();
+    window.location.href = '{{ route("organigramma.export-excel") }}' + (queryString ? '?' + queryString : '');
+}
+
 // Configurazione dei container scorrevoli
 function setupScrollContainers() {
-    const containers = ['plotoni-container', 'poli-container'];
+    const containers = ['plotoni-container', 'uffici-container'];
     
     containers.forEach(containerId => {
         const container = document.getElementById(containerId);
@@ -1310,29 +1351,29 @@ function setupTouchNavigation(container) {
 function forceViewVisibility(view) {
     // Assicurati che tutte le viste siano nascoste prima
     const plotoniView = document.getElementById('plotoniView');
-    const poliView = document.getElementById('poliView');
+    const ufficiView = document.getElementById('ufficiView');
     
     if (plotoniView) {
         plotoniView.classList.add('hidden');
         plotoniView.style.display = 'none';
     }
     
-    if (poliView) {
-        poliView.classList.add('hidden');
-        poliView.style.display = 'none';
+    if (ufficiView) {
+        ufficiView.classList.add('hidden');
+        ufficiView.style.display = 'none';
     }
     
     // Mostra solo la vista corrente
     if (view === 'plotoni' && plotoniView) {
         plotoniView.classList.remove('hidden');
         plotoniView.style.display = 'block';
-    } else if (view === 'poli' && poliView) {
-        poliView.classList.remove('hidden');
-        poliView.style.display = 'block';
+    } else if (view === 'uffici' && ufficiView) {
+        ufficiView.classList.remove('hidden');
+        ufficiView.style.display = 'block';
     }
 }
 
-// Switch view (Plotoni/Poli)
+// Switch view (Plotoni/Uffici)
 function switchView(view) {
     // Salva lo stato corrente
     window.currentView = view;
@@ -1342,18 +1383,18 @@ function switchView(view) {
     
     // Aggiorna le classi attive sui pulsanti
     document.getElementById('plotoniBtn').classList.toggle('active', view === 'plotoni');
-    document.getElementById('poliBtn').classList.toggle('active', view === 'poli');
+    document.getElementById('ufficiBtn').classList.toggle('active', view === 'uffici');
     
     // Sposta lo slider con effetto pulsazione
     const toggleSlider = document.getElementById('toggleSlider');
-    toggleSlider.style.transform = view === 'poli' ? 'translateX(100%) scale(1.05)' : 'translateX(0) scale(1.05)';
+    toggleSlider.style.transform = view === 'uffici' ? 'translateX(100%) scale(1.05)' : 'translateX(0) scale(1.05)';
     
     setTimeout(() => {
-        toggleSlider.style.transform = view === 'poli' ? 'translateX(100%) scale(1)' : 'translateX(0) scale(1)';
+        toggleSlider.style.transform = view === 'uffici' ? 'translateX(100%) scale(1)' : 'translateX(0) scale(1)';
     }, 300);
     
     // Aggiorna la classe dello slider
-    toggleSlider.classList.toggle('poli', view === 'poli');
+    toggleSlider.classList.toggle('uffici', view === 'uffici');
     
     // Aggiorna l'animazione all'elemento visualizzato
     if (view === 'plotoni') {
@@ -1362,15 +1403,15 @@ function switchView(view) {
             document.getElementById('plotoniView').style.animation = 'scaleIn 0.5s ease-out';
         }, 10);
     } else {
-        document.getElementById('poliView').style.animation = 'none';
+        document.getElementById('ufficiView').style.animation = 'none';
         setTimeout(() => {
-            document.getElementById('poliView').style.animation = 'scaleIn 0.5s ease-out';
+            document.getElementById('ufficiView').style.animation = 'scaleIn 0.5s ease-out';
         }, 10);
     }
     
     // Reset della posizione di scorrimento e aggiornamento dei controlli di navigazione
     setTimeout(() => {
-        const containerId = view === 'plotoni' ? 'plotoni-container' : 'poli-container';
+        const containerId = view === 'plotoni' ? 'plotoni-container' : 'uffici-container';
         const container = document.getElementById(containerId);
         if (container) {
             container.scrollLeft = 0;

@@ -43,12 +43,16 @@ class DashboardController extends Controller
         // === ATTIVITÀ BOARD IN CORSO ===
         $attivitaOggi = $this->getAttivitaBoardOggi();
         
+        // === COMPLEANNI DI OGGI ===
+        $compleanniOggi = $this->getCompleanniOggi();
+        
         return view('dashboard', compact(
             'kpis',
             'scadenzeRspp',
             'scadenzeIdoneita',
             'scadenzePoligoni',
-            'attivitaOggi'
+            'attivitaOggi',
+            'compleanniOggi'
         ));
     }
     
@@ -327,6 +331,32 @@ class DashboardController extends Controller
                     ];
                 }),
         ];
+    }
+    
+    /**
+     * Compleanni di oggi
+     */
+    private function getCompleanniOggi()
+    {
+        $oggi = Carbon::today();
+        
+        return Militare::with(['grado', 'compagnia'])
+            ->whereMonth('data_nascita', $oggi->month)
+            ->whereDay('data_nascita', $oggi->day)
+            ->orderBy('cognome')
+            ->orderBy('nome')
+            ->get()
+            ->map(function($militare) use ($oggi) {
+                $dataNascita = Carbon::parse($militare->data_nascita);
+                $eta = $dataNascita->diffInYears($oggi);
+                
+                return [
+                    'id' => $militare->id,
+                    'nome_completo' => ($militare->grado->sigla ?? '') . ' ' . $militare->cognome . ' ' . $militare->nome,
+                    'compagnia' => $militare->compagnia->nome ?? '',
+                    'eta' => $eta,
+                ];
+            });
     }
     
     /**

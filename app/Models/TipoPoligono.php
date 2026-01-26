@@ -61,7 +61,7 @@ class TipoPoligono extends Model
      */
     public function scadenzePoligoni()
     {
-        return $this->hasMany(ScadenzaPoligono::class, 'tipo_poligono_id');
+        return $this->hasMany(\App\Models\ScadenzaPoligono::class, 'tipo_poligono_id');
     }
 
     // ==========================================

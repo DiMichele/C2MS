@@ -239,6 +239,38 @@
     @endif
 </div>
 
+<!-- Compleanni di Oggi -->
+@if(isset($compleanniOggi) && count($compleanniOggi) > 0)
+<div class="section-compact">
+    <div class="section-title">
+        <i class="fas fa-birthday-cake"></i>Compleanni di Oggi
+        <span class="badge bg-warning text-dark ms-2" style="font-size: 0.75rem;">{{ count($compleanniOggi) }}</span>
+    </div>
+    <div style="display: grid; gap: 0.5rem;">
+        @foreach($compleanniOggi as $compleanno)
+        <a href="{{ route('anagrafica.show', $compleanno['id']) }}" class="activity-card" style="text-decoration: none; color: inherit; padding: 0.75rem 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #ffc107, #ff9800); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-gift" style="color: white; font-size: 1rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.95rem;">{{ $compleanno['nome_completo'] }}</div>
+                        <div style="font-size: 0.8rem; color: #6c757d;">
+                            {{ $compleanno['compagnia'] }} &bull; Compie {{ $compleanno['eta'] }} anni
+                        </div>
+                    </div>
+                </div>
+                <div style="color: #ffc107; font-size: 1.25rem;">
+                    <i class="fas fa-star"></i>
+                </div>
+            </div>
+        </a>
+        @endforeach
+    </div>
+</div>
+@endif
+
 <!-- Scadenze -->
 <div class="section-compact">
     <div class="section-title">

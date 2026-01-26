@@ -1,9 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * Autosave functionality for forms and inputs
- * 
- * @version 1.0
- * @author Michele Di Gennaro
+ * SUGECO Autosave - Form auto-save functionality
  */
 
 // Ensure SUGECO namespace exists

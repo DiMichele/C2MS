@@ -155,14 +155,14 @@
             <div class="lista-impegni-container">
                 @if(count($listaImpegni) > 0)
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead style="background-color: #0a2342; color: white;">
+                        <table class="sugeco-table">
+                            <thead>
                                 <tr>
-                                    <th style="width: 120px;">Data</th>
-                                    <th style="width: 100px;">Giorno</th>
-                                    <th style="width: 100px;">Codice</th>
+                                    <th>Data</th>
+                                    <th>Giorno</th>
+                                    <th>Codice</th>
                                     <th>Descrizione</th>
-                                    <th style="width: 100px;">Fonte</th>
+                                    <th>Fonte</th>
                                 </tr>
                             </thead>
                             <tbody>

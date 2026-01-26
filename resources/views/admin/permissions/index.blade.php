@@ -1,67 +1,11 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Gestione Ruoli e Permessi')
 
 @section('styles')
 <style>
-/* Stili come anagrafica - identici alla pagina utenti */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
-
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
-
-/* Colonna fissa (prima colonna) - RUOLO */
-.table td.sticky-col,
-.table th.sticky-col {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    border-right: 2px solid rgba(10, 35, 66, 0.25) !important;
-}
-
-.table thead th.sticky-col {
-    z-index: 15;
-    background-color: #0a2342 !important;
-}
-
-/* Assicura che l'header resti sempre sopra */
-.table thead {
-    z-index: 10;
-}
-
-.table thead th {
-    background-color: #0a2342 !important;
-}
-
-/* Background corretto per colonna sticky */
-.table tbody tr:nth-of-type(odd) td.sticky-col {
-    background-color: #ffffff;
-}
-
-.table tbody tr:nth-of-type(even) td.sticky-col {
-    background-color: #fafafa;
-}
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
 
 /* Checkbox styling */
 .permission-form .form-check {
@@ -78,21 +22,6 @@ table.table td,
 
 .icon-permission:hover {
     transform: scale(1.15);
-}
-
-/* Separatore categorie */
-.category-separator {
-    background-color: #e9ecef !important;
-    font-weight: 600;
-    color: #495057;
-}
-
-.category-separator th {
-    background-color: #1a3a5c !important;
-    color: #ffc107;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
 }
 
 /* Badge per tipo pagina */
@@ -300,17 +229,17 @@ table.table td,
 @endphp
 
 <div class="table-container" style="position: relative; overflow: auto;">
-    <table class="table table-sm table-bordered mb-0">
-        <thead style="background: #0a2342; position: sticky; top: 0; z-index: 10;">
+    <table class="sugeco-table">
+        <thead>
             <tr>
-                <th class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white; min-width: 200px;">
+                <th class="sticky-col">
                     <i class="fas fa-user-tag me-2"></i>
                     RUOLO
                 </th>
                 
                 @foreach($categorizedPermissions as $catKey => $catData)
                     @foreach($catData['permissions'] as $pageName => $pageData)
-                    <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 8px 6px; color: white; min-width: 100px; font-size: 0.75rem;" 
+                    <th 
                         title="{{ $pageData['display_name'] }}" 
                         data-category="{{ $catKey }}">
                         <div class="text-center">
@@ -323,9 +252,7 @@ table.table td,
                     @endforeach
                 @endforeach
                 
-                <th style="border: 1px solid rgba(10, 35, 66, 0.2); font-weight: 600; padding: 12px 8px; color: white; min-width: 80px;">
-                    ELIMINA
-                </th>
+                <th>ELIMINA</th>
             </tr>
         </thead>
         <tbody>
@@ -334,7 +261,7 @@ table.table td,
                 $isProtectedRole = ($role->name === 'amministratore');
             @endphp
             <tr>
-                <td class="sticky-col" style="border: 1px solid rgba(10, 35, 66, 0.2); background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.05)' : 'white' }};">
+                <td class="sticky-col">
                     <strong>{{ $role->display_name }}</strong>
                     @if($isProtectedRole)
                     <div class="mt-1">
@@ -354,7 +281,7 @@ table.table td,
                 
                 @foreach($categorizedPermissions as $catKey => $catData)
                     @foreach($catData['permissions'] as $pageName => $pageData)
-                    <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center; background-color: {{ $isProtectedRole ? 'rgba(220, 53, 69, 0.03)' : 'white' }};">
+                <td>
                         <form action="{{ route('admin.roles.permissions.update', $role) }}" 
                               method="POST" 
                               class="permission-form"
@@ -440,7 +367,7 @@ table.table td,
                     @endforeach
                 @endforeach
                 
-                <td style="border: 1px solid rgba(10, 35, 66, 0.2); text-align: center;">
+                <td>
                     @php
                         $isSystemRole = ($role->name === 'amministratore');
                         $usersCount = $role->users()->count();

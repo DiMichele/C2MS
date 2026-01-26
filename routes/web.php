@@ -170,6 +170,10 @@ Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCach
     ->middleware('permission:organigramma.view')
     ->name('organigramma.refresh');
 
+Route::get('/organigramma/export-excel', [OrganigrammaController::class, 'exportExcel'])
+    ->middleware('permission:organigramma.view')
+    ->name('organigramma.export-excel');
+
 /*
 |-------------------------------------------------
 | Rotte per i certificati (DEPRECATE - utilizzare Scadenze)
@@ -280,6 +284,8 @@ Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view'
         Route::post('/rimuovi', [\App\Http\Controllers\TurniController::class, 'rimuovi'])
             ->middleware('permission:turni.edit')
             ->name('rimuovi');
+        Route::get('/assegnazioni', [\App\Http\Controllers\TurniController::class, 'getAssegnazioni'])
+            ->name('assegnazioni');
         Route::post('/copia-settimana', [\App\Http\Controllers\TurniController::class, 'copiaSettimana'])
             ->middleware('permission:turni.edit')
             ->name('copia-settimana');
@@ -290,15 +296,12 @@ Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view'
         Route::post('/comandante', [\App\Http\Controllers\TurniController::class, 'aggiornaComandante'])
             ->middleware('permission:turni.edit')
             ->name('comandante.update');
-        Route::post('/servizi', [\App\Http\Controllers\TurniController::class, 'creaServizio'])
+        Route::post('/servizi/impostazioni', [\App\Http\Controllers\TurniController::class, 'aggiornaImpostazioniServizio'])
             ->middleware('permission:turni.edit')
-            ->name('servizi.store');
-        Route::put('/servizi/{servizio}', [\App\Http\Controllers\TurniController::class, 'aggiornaServizio'])
+            ->name('servizi.update-settings');
+        Route::post('/servizi/impostazioni-batch', [\App\Http\Controllers\TurniController::class, 'aggiornaImpostazioniBatch'])
             ->middleware('permission:turni.edit')
-            ->name('servizi.update');
-        Route::delete('/servizi/{servizio}', [\App\Http\Controllers\TurniController::class, 'rimuoviServizio'])
-            ->middleware('permission:turni.edit')
-            ->name('servizi.destroy');
+            ->name('servizi.update-settings-batch');
     });
 });
 
@@ -381,6 +384,54 @@ Route::prefix('poligoni')->name('poligoni.')->middleware('permission:scadenze.vi
 
 /*
 |-------------------------------------------------
+|| Rotte per gli Impieghi Personale (Teatri Operativi)
+|-------------------------------------------------
+*/
+Route::prefix('impieghi-personale')->name('impieghi-personale.')->middleware('permission:scadenze.view')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'index'])->name('index');
+    Route::get('/export-excel', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'exportExcel'])->name('export-excel');
+    
+    // Gestione Teatri Operativi
+    Route::post('/teatri', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'storeTeatro'])
+        ->middleware('permission:scadenze.edit')
+        ->name('teatri.store');
+    Route::put('/teatri/{id}', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'updateTeatro'])
+        ->middleware('permission:scadenze.edit')
+        ->name('teatri.update');
+    Route::delete('/teatri/{id}', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'destroyTeatro'])
+        ->middleware('permission:admin.access')
+        ->name('teatri.destroy');
+    
+    // Gestione Militari nei Teatri
+    Route::post('/militari/assegna', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'assegnaMilitare'])
+        ->middleware('permission:scadenze.edit')
+        ->name('militari.assegna');
+    Route::delete('/militari/rimuovi', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'rimuoviMilitare'])
+        ->middleware('permission:scadenze.edit')
+        ->name('militari.rimuovi');
+    Route::post('/militari/stato', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'updateStatoAssegnazione'])
+        ->middleware('permission:scadenze.edit')
+        ->name('militari.stato');
+    Route::post('/militari/update', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'updateAssegnazione'])
+        ->middleware('permission:scadenze.edit')
+        ->name('militari.update');
+    Route::post('/militari/conferma-tutti', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'confermaTutti'])
+        ->middleware('permission:scadenze.edit')
+        ->name('militari.conferma-tutti');
+    
+    // API per integrazione esterna
+    Route::get('/api/teatri-confermati', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'getTeatriConfermati'])->name('api.teatri-confermati');
+    Route::get('/api/teatri/{teatro}/militari', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'getMilitariConfermati'])->name('api.militari-confermati');
+    
+    // API per la pagina (AJAX)
+    Route::get('/api/teatri', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'apiGetTeatri'])->name('api.teatri');
+    Route::get('/api/militari', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'apiGetMilitari'])->name('api.militari');
+    Route::get('/api/teatro/{id}', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'apiGetTeatro'])->name('api.teatro');
+    Route::get('/api/teatro/{id}/disponibili', [\App\Http\Controllers\ImpieghiPersonaleController::class, 'apiGetMilitariDisponibili'])->name('api.militari-disponibili');
+});
+
+/*
+|-------------------------------------------------
 || Rotte per gli Approntamenti
 |-------------------------------------------------
 */
@@ -390,6 +441,24 @@ Route::prefix('approntamenti')->name('approntamenti.')->middleware('permission:s
         ->middleware('permission:scadenze.edit')
         ->name('update-singola');
     Route::get('/export-excel', [\App\Http\Controllers\ApprontamentiController::class, 'exportExcel'])->name('export-excel');
+    
+    // Prenotazioni cattedre
+    Route::post('/proponi-prenotazione', [\App\Http\Controllers\ApprontamentiController::class, 'proponiPrenotazione'])
+        ->middleware('permission:scadenze.edit')
+        ->name('proponi-prenotazione');
+    Route::post('/salva-prenotazione', [\App\Http\Controllers\ApprontamentiController::class, 'salvaPrenotazione'])
+        ->middleware('permission:scadenze.edit')
+        ->name('salva-prenotazione');
+    Route::post('/conferma-prenotazione', [\App\Http\Controllers\ApprontamentiController::class, 'confermaPrenotazione'])
+        ->middleware('permission:scadenze.edit')
+        ->name('conferma-prenotazione');
+    Route::get('/statistiche-cattedre', [\App\Http\Controllers\ApprontamentiController::class, 'getStatisticheCattedre'])
+        ->name('statistiche-cattedre');
+    Route::post('/save-config-colonne', [\App\Http\Controllers\ApprontamentiController::class, 'saveConfigColonne'])
+        ->middleware('permission:admin.access')
+        ->name('save-config-colonne');
+    Route::get('/export-proposta', [\App\Http\Controllers\ApprontamentiController::class, 'exportProposta'])
+        ->name('export-proposta');
 });
 
 // Gestione Approntamenti (Admin)

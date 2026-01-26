@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Services\TurniService;
 use App\Models\Militare;
 use App\Models\ServizioTurno;
+use App\Models\ServizioTurnoSettimana;
 use App\Models\CompagniaSetting;
 use App\Models\TipoServizio;
 use App\Models\AssegnazioneTurno;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -15,6 +17,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use App\Services\ExcelStyleService;
 use Illuminate\Support\Facades\Log;
 
 class TurniController extends Controller
@@ -27,7 +30,7 @@ class TurniController extends Controller
     }
 
     /**
-     * Mostra la vista settimanale dei turni
+     * Mostra la vista settimanale dei servizi
      */
     public function index(Request $request)
     {
@@ -38,10 +41,34 @@ class TurniController extends Controller
 
         // Ottieni tutti i dati per la settimana
         $dati = $this->turniService->getDatiSettimana($data);
+        $turnoId = $dati['turno']->id;
+
+        // Carica le impostazioni specifiche per questa settimana
+        $impostazioniSettimana = ServizioTurnoSettimana::where('turno_settimanale_id', $turnoId)
+            ->get()
+            ->keyBy('servizio_turno_id');
+
+        // Prepara i dati dei servizi con le impostazioni per settimana
+        $serviziConImpostazioni = [];
+        foreach (TipoServizio::perCategoria('servizio') as $tipoServizio) {
+            $servizioTurno = ServizioTurno::where('sigla_cpt', $tipoServizio->codice)->first();
+            $impostazione = $servizioTurno ? $impostazioniSettimana->get($servizioTurno->id) : null;
+            
+            $serviziConImpostazioni[] = [
+                'tipo_servizio' => $tipoServizio,
+                'servizio_turno' => $servizioTurno,
+                // Usa impostazioni specifiche per settimana, altrimenti fallback ai valori globali
+                'num_posti' => $impostazione ? $impostazione->num_posti : ($servizioTurno->num_posti ?? 0),
+                'smontante_cpt' => $impostazione ? $impostazione->smontante_cpt : ($servizioTurno->smontante_cpt ?? false),
+            ];
+        }
 
         return view('servizi.turni.index', array_merge($dati, [
             'dataRiferimento' => $data->copy(),
             'comandanteCompagnia' => $this->getComandanteCompagniaName(),
+            'cptServizi' => TipoServizio::perCategoria('servizio'),
+            'serviziTurnoBySigla' => ServizioTurno::all()->keyBy('sigla_cpt'),
+            'serviziConImpostazioni' => $serviziConImpostazioni,
         ]));
     }
 
@@ -98,6 +125,52 @@ class TurniController extends Controller
         $risultato = $this->turniService->rimuoviAssegnazione($request->assegnazione_id);
 
         return response()->json($risultato);
+    }
+
+    /**
+     * API: Recupera le assegnazioni per una cella specifica (servizio + data)
+     * Usato per aggiornare la UI senza ricaricare la pagina
+     */
+    public function getAssegnazioni(Request $request)
+    {
+        $request->validate([
+            'servizio_id' => 'required|exists:servizi_turno,id',
+            'data' => 'required|date',
+            'turno_id' => 'required|exists:turni_settimanali,id',
+        ]);
+
+        try {
+            $assegnazioni = AssegnazioneTurno::where('servizio_turno_id', $request->servizio_id)
+                ->where('data_servizio', $request->data)
+                ->where('turno_settimanale_id', $request->turno_id)
+                ->with(['militare.grado'])
+                ->get();
+
+            $assegnazioniFormatted = $assegnazioni->map(function ($assegnazione) {
+                return [
+                    'id' => $assegnazione->id,
+                    'militare_id' => $assegnazione->militare_id,
+                    'cognome' => $assegnazione->militare->cognome ?? '',
+                    'nome' => $assegnazione->militare->nome ?? '',
+                    'grado_sigla' => $assegnazione->militare->grado->sigla ?? '',
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'assegnazioni' => $assegnazioniFormatted,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Errore getAssegnazioni', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore nel recupero delle assegnazioni.',
+            ], 500);
+        }
     }
 
     /**
@@ -160,110 +233,42 @@ class TurniController extends Controller
     }
 
     /**
-     * Crea un nuovo servizio per i turni
+     * Aggiorna impostazioni servizio (posti + smontante)
      */
-    public function creaServizio(Request $request)
+    public function aggiornaImpostazioniServizio(Request $request)
     {
         $request->validate([
-            'nome' => 'required|string|max:100',
-            'sigla_cpt' => 'required|string|max:10|regex:/^[A-Za-z0-9-]+$/',
-            'num_posti' => 'required|integer|min:1|max:20',
+            'sigla_cpt' => 'required|string|max:10',
+            'num_posti' => 'required|integer|min:0|max:20',
             'smontante_cpt' => 'sometimes|boolean',
         ]);
 
-        $ordine = (int) ServizioTurno::max('ordine') + 1;
-        $numPosti = (int) $request->num_posti;
         $siglaCpt = strtoupper(trim($request->sigla_cpt));
-        $codice = $siglaCpt;
+        $numPosti = (int) $request->num_posti;
+        $smontante = $request->boolean('smontante_cpt', false);
 
-        if (!TipoServizio::where('codice', $siglaCpt)->exists()) {
+        $tipoServizio = TipoServizio::where('codice', $siglaCpt)
+            ->where('categoria', 'servizio')
+            ->first();
+
+        if (!$tipoServizio) {
             return response()->json([
                 'success' => false,
-                'message' => 'Sigla CPT non valida: il codice non esiste nel CPT.',
+                'message' => 'Sigla CPT non valida o non appartenente ai servizi.',
             ], 422);
         }
 
-        if (ServizioTurno::where('sigla_cpt', $siglaCpt)->where('attivo', true)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sigla CPT già associata a un altro servizio attivo.',
-            ], 422);
-        }
-
-        $esistente = ServizioTurno::where('sigla_cpt', $siglaCpt)->orWhere('codice', $codice)->first();
-        if ($esistente) {
-            if ($esistente->attivo) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Codice già utilizzato da un servizio attivo.',
-                ], 422);
-            }
-
-            $esistente->update([
-                'nome' => trim($request->nome),
-                'sigla_cpt' => $siglaCpt,
-                'codice' => $codice,
-                'num_posti' => $numPosti,
-                'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
-                'ordine' => $ordine,
+        $servizio = ServizioTurno::firstOrCreate(
+            ['sigla_cpt' => $siglaCpt],
+            [
+                'nome' => $tipoServizio->descrizione ?: $tipoServizio->nome,
+                'codice' => $siglaCpt,
+                'num_posti' => 0,
+                'tipo' => 'singolo',
+                'ordine' => 0,
                 'attivo' => true,
-                'smontante_cpt' => $request->boolean('smontante_cpt', false),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Servizio riattivato con successo.',
-                'servizio' => $esistente,
-            ]);
-        }
-
-        $servizio = ServizioTurno::create([
-            'nome' => trim($request->nome),
-            'codice' => $codice,
-            'sigla_cpt' => $siglaCpt,
-            'num_posti' => $numPosti,
-            'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
-            'ordine' => $ordine,
-            'attivo' => true,
-            'smontante_cpt' => $request->boolean('smontante_cpt', false),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Servizio creato con successo.',
-            'servizio' => $servizio,
-        ]);
-    }
-
-    /**
-     * Aggiorna un servizio esistente (rename + posti)
-     */
-    public function aggiornaServizio(Request $request, ServizioTurno $servizio)
-    {
-        $request->validate([
-            'nome' => 'required|string|max:100',
-            'sigla_cpt' => 'required|string|max:10|regex:/^[A-Za-z0-9-]+$/',
-            'num_posti' => 'required|integer|min:1|max:20',
-            'smontante_cpt' => 'sometimes|boolean',
-        ]);
-
-        $numPosti = (int) $request->num_posti;
-        $siglaCpt = strtoupper(trim($request->sigla_cpt));
-        $codice = $siglaCpt;
-
-        if (!TipoServizio::where('codice', $siglaCpt)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sigla CPT non valida: il codice non esiste nel CPT.',
-            ], 422);
-        }
-
-        if (ServizioTurno::where('sigla_cpt', $siglaCpt)->where('id', '!=', $servizio->id)->where('attivo', true)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sigla CPT già associata a un altro servizio attivo.',
-            ], 422);
-        }
+            ]
+        );
 
         $maxAssegnazioni = AssegnazioneTurno::where('servizio_turno_id', $servizio->id)
             ->selectRaw('COUNT(*) as tot')
@@ -279,31 +284,127 @@ class TurniController extends Controller
         }
 
         $servizio->update([
-            'nome' => trim($request->nome),
+            'nome' => $tipoServizio->descrizione ?: $tipoServizio->nome,
             'sigla_cpt' => $siglaCpt,
-            'codice' => $codice,
+            'codice' => $siglaCpt,
             'num_posti' => $numPosti,
             'tipo' => $numPosti > 1 ? 'multiplo' : 'singolo',
-            'smontante_cpt' => $request->boolean('smontante_cpt', false),
+            'smontante_cpt' => $smontante,
+            'attivo' => $numPosti > 0,
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Servizio aggiornato con successo.',
+            'message' => 'Impostazioni aggiornate.',
         ]);
     }
 
     /**
-     * Disattiva un servizio (rimozione dall'elenco)
+     * Aggiorna impostazioni servizi in batch per una specifica settimana
+     * I posti sono ora specifici per settimana, non globali
      */
-    public function rimuoviServizio(ServizioTurno $servizio)
+    public function aggiornaImpostazioniBatch(Request $request)
     {
-        $servizio->update(['attivo' => false]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Servizio rimosso con successo.',
+        $validator = Validator::make($request->all(), [
+            'turno_id' => 'required|exists:turni_settimanali,id',
+            'servizi' => 'required|array|min:1',
+            'servizi.*.sigla_cpt' => 'required|string|max:20',
+            'servizi.*.num_posti' => 'required|integer|min:0|max:20',
+            'servizi.*.smontante_cpt' => 'sometimes',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $turnoId = $request->input('turno_id');
+            $serviziPayload = $request->input('servizi', []);
+            
+            foreach ($serviziPayload as $item) {
+                $siglaCpt = strtoupper(trim($item['sigla_cpt'] ?? ''));
+                $numPosti = (int) ($item['num_posti'] ?? 0);
+                $smontante = filter_var($item['smontante_cpt'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+                if (empty($siglaCpt)) {
+                    continue;
+                }
+
+                $tipoServizio = TipoServizio::where('codice', $siglaCpt)
+                    ->where('categoria', 'servizio')
+                    ->first();
+
+                if (!$tipoServizio) {
+                    Log::warning("Sigla CPT non trovata: {$siglaCpt}");
+                    continue;
+                }
+
+                // Assicurati che esista il ServizioTurno base
+                $servizio = ServizioTurno::firstOrCreate(
+                    ['sigla_cpt' => $siglaCpt],
+                    [
+                        'nome' => $tipoServizio->descrizione ?: $tipoServizio->nome,
+                        'codice' => $siglaCpt,
+                        'num_posti' => 0,
+                        'tipo' => 'singolo',
+                        'ordine' => $tipoServizio->ordine ?? 0,
+                        'attivo' => true,
+                    ]
+                );
+
+                // Verifica assegnazioni esistenti per QUESTA settimana
+                if ($numPosti > 0) {
+                    $turno = \App\Models\TurnoSettimanale::find($turnoId);
+                    $maxAssegnazioni = AssegnazioneTurno::where('servizio_turno_id', $servizio->id)
+                        ->where('turno_settimanale_id', $turnoId)
+                        ->whereBetween('data_servizio', [$turno->data_inizio, $turno->data_fine])
+                        ->selectRaw('data_servizio, COUNT(*) as tot')
+                        ->groupBy('data_servizio')
+                        ->orderByDesc('tot')
+                        ->first();
+
+                    if ($maxAssegnazioni && $maxAssegnazioni->tot > $numPosti) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Non puoi ridurre i posti a {$numPosti}: ci sono già {$maxAssegnazioni->tot} assegnazioni per {$siglaCpt} in questa settimana.",
+                        ], 422);
+                    }
+                }
+
+                // Salva le impostazioni specifiche per questa settimana nella tabella pivot
+                ServizioTurnoSettimana::updateOrCreate(
+                    [
+                        'turno_settimanale_id' => $turnoId,
+                        'servizio_turno_id' => $servizio->id,
+                    ],
+                    [
+                        'num_posti' => $numPosti,
+                        'smontante_cpt' => $smontante,
+                        'attivo' => $numPosti > 0,
+                    ]
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Impostazioni salvate per questa settimana.',
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornaImpostazioniBatch', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -313,43 +414,45 @@ class TurniController extends Controller
     {
         $dati = $this->turniService->getDatiSettimana($data);
         
-        $spreadsheet = new Spreadsheet();
+        // Usa servizio per stili Excel
+        $excelService = new ExcelStyleService();
+        $spreadsheet = $excelService->createSpreadsheet('Turni Settimanali');
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Foglio1');
+        $sheet->setTitle('Turni');
 
-        // RIGA 1-3: Intestazione
+        // RIGA 1-3: Intestazione con stile navy SUGECO
         $sheet->setCellValue('A1', "11° REGGIMENTO TRASMISSIONI");
         $sheet->mergeCells('A1:H1');
-        $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
+        $sheet->getStyle('A1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 16, 'color' => ['rgb' => ExcelStyleService::NAVY]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E6F2FF']]
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
         
         $sheet->setCellValue('A2', 'Battaglione Trasmissioni "LEONESSA"');
         $sheet->mergeCells('A2:H2');
-        $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle('A2')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 13, 'color' => ['rgb' => ExcelStyleService::NAVY]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+        ]);
         
         $sheet->setCellValue('A3', '124^ Compagnia');
         $sheet->mergeCells('A3:H3');
-        $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('A3')->getFont()->setBold(true)->setSize(12);
+        $sheet->getStyle('A3')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => ExcelStyleService::NAVY_LIGHT]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+        ]);
         
         // Riga vuota
         $sheet->getRowDimension(4)->setRowHeight(5);
 
         // RIGA 5: Header giorni settimana
         $sheet->setCellValue('A5', 'TIPO DI SERVIZIO');
-        $sheet->getStyle('A5')->getFont()->setBold(true)->setSize(11);
-        $sheet->getStyle('A5')->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
         
         $col = 'B';
         foreach ($dati['giorniSettimana'] as $giorno) {
             $sheet->setCellValue($col . '5', strtoupper($giorno['giorno_settimana']));
-            $sheet->getStyle($col . '5')->getFont()->setBold(true)->setSize(11);
-            $sheet->getStyle($col . '5')->getAlignment()
-                ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                ->setVertical(Alignment::VERTICAL_CENTER);
             $col++;
         }
 
@@ -357,24 +460,30 @@ class TurniController extends Controller
         $col = 'B';
         foreach ($dati['giorniSettimana'] as $giorno) {
             $sheet->setCellValue($col . '6', $giorno['giorno_num']);
-            $sheet->getStyle($col . '6')->getFont()->setBold(true)->setSize(11);
-            $sheet->getStyle($col . '6')->getAlignment()
-                ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                ->setVertical(Alignment::VERTICAL_CENTER);
+            
+            // Evidenzia weekend in rosso
+            $dataGiorno = $giorno['data'];
+            if ($dataGiorno->isWeekend()) {
+                $sheet->getStyle($col . '5:' . $col . '6')->applyFromArray([
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFCDD2']],
+                    'font' => ['color' => ['rgb' => 'C62828']]
+                ]);
+            }
             $col++;
         }
 
-        // Bordi header
+        // Stile header con colore navy SUGECO
         $headerStyle = [
+            'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => '000000']
+                    'color' => ['rgb' => ExcelStyleService::NAVY_LIGHT]
                 ]
             ],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'D9D9D9']
+                'startColor' => ['rgb' => ExcelStyleService::NAVY]
             ],
             'alignment' => [
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
@@ -382,20 +491,25 @@ class TurniController extends Controller
             ]
         ];
         $sheet->getStyle('A5:H6')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(5)->setRowHeight(25);
+        $sheet->getRowDimension(6)->setRowHeight(25);
 
         // Popola servizi e assegnazioni
         $row = 7;
+        $altRowColor = false;
         foreach ($dati['serviziTurno'] as $servizio) {
             $maxPosti = max($servizio->num_posti, 1);
+            $startRow = $row;
             
             for ($posto = 0; $posto < $maxPosti; $posto++) {
                 // Nome servizio solo alla prima riga
                 if ($posto === 0) {
                     $sheet->setCellValue('A' . $row, $servizio->nome);
-                    $sheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(10);
-                    $sheet->getStyle('A' . $row)->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                        ->setVertical(Alignment::VERTICAL_CENTER);
+                    $sheet->getStyle('A' . $row)->applyFromArray([
+                        'font' => ['bold' => true, 'size' => 10],
+                        'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER],
+                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F1F5F9']]
+                    ]);
                     
                     // Merge se multi-posto
                     if ($maxPosti > 1) {
@@ -414,49 +528,60 @@ class TurniController extends Controller
                     if ($assegnazione) {
                         $testoCompleto = ($assegnazione->militare->grado->sigla ?? '') . ' ' . strtoupper($assegnazione->militare->cognome);
                         $sheet->setCellValue($col . $row, $testoCompleto);
+                        $sheet->getStyle($col . $row)->applyFromArray([
+                            'font' => ['size' => 10, 'color' => ['rgb' => ExcelStyleService::NAVY]],
+                            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E8F5E9']]
+                        ]);
                     } else {
-                        $sheet->setCellValue($col . $row, '');
+                        $sheet->setCellValue($col . $row, '-');
+                        $sheet->getStyle($col . $row)->getFont()->setSize(10)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('CCCCCC'));
                     }
                     
                     $sheet->getStyle($col . $row)->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                         ->setVertical(Alignment::VERTICAL_CENTER);
-                    $sheet->getStyle($col . $row)->getFont()->setSize(10);
                     
                     $col++;
                 }
                 
-                // Bordi
+                // Bordi e righe alternate
                 $dataStyle = [
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
-                            'color' => ['rgb' => '000000']
+                            'color' => ['rgb' => ExcelStyleService::BORDER_GRAY]
                         ]
                     ]
                 ];
                 $sheet->getStyle('A' . $row . ':H' . $row)->applyFromArray($dataStyle);
+                $sheet->getRowDimension($row)->setRowHeight(22);
                 
                 $row++;
             }
+            
+            $altRowColor = !$altRowColor;
         }
 
-        // Firma
+        // Firma con stile migliorato
         $row += 2;
         $sheet->setCellValue('F' . $row, "IL COMANDANTE LA COMPAGNIA");
         $sheet->mergeCells('F' . $row . ':H' . $row);
-        $sheet->getStyle('F' . $row)->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle('F' . $row)->getFont()->setBold(true)->setSize(10);
+        $sheet->getStyle('F' . $row)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => ExcelStyleService::NAVY]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
+        ]);
         
         $row++;
         $sheet->setCellValue('F' . $row, $this->getComandanteCompagniaName());
         $sheet->mergeCells('F' . $row . ':H' . $row);
-        $sheet->getStyle('F' . $row)->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle('F' . $row)->getFont()->setSize(10);
+        $sheet->getStyle('F' . $row)->applyFromArray([
+            'font' => ['size' => 10, 'italic' => true, 'color' => ['rgb' => '6c757d']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
+        ]);
+        
+        // Data generazione
+        $row += 2;
+        $excelService->addGenerationInfo($sheet, $row);
 
         // Larghezze colonne
         $sheet->getColumnDimension('A')->setWidth(45); // Tipo di Servizio

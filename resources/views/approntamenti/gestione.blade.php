@@ -18,14 +18,14 @@
 
     <!-- Tabella Colonne -->
     <div class="table-container-ruolini" style="max-width: 900px; margin: 0 auto;">
-        <table class="table table-hover mb-0 ruolini-table" id="colonneTable">
+        <table class="sugeco-table" id="colonneTable">
             <thead>
                 <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 35%;">Nome Colonna</th>
-                    <th style="width: 25%;">Campo DB</th>
-                    <th style="width: 20%; text-align: center;">Scadenza</th>
-                    <th style="width: 15%; text-align: center;">Stato</th>
+                    <th>#</th>
+                    <th>Nome Colonna</th>
+                    <th>Campo DB</th>
+                    <th>Scadenza</th>
+                    <th>Stato</th>
                 </tr>
             </thead>
             <tbody id="colonneTableBody">
@@ -136,41 +136,13 @@
     </div>
 </div>
 
-<style>
+{{-- 
 .table-container-ruolini {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     margin: 0;
-}
-
-.ruolini-table {
-    margin-bottom: 0 !important;
-}
-
-.ruolini-table thead {
-    background-color: #0a2342;
-    color: white;
-}
-
-.ruolini-table thead th {
-    font-weight: 600;
-    padding: 1rem;
-    border-bottom: none;
-}
-
-.ruolini-table tbody tr {
-    transition: all 0.2s;
-}
-
-.ruolini-table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.05);
-}
-
-.ruolini-table td {
-    padding: 0.75rem 1rem;
-    vertical-align: middle;
 }
 
 code {
@@ -180,5 +152,5 @@ code {
     font-size: 0.85rem;
     color: #495057;
 }
-</style>
+--}}
 @endsection

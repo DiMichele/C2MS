@@ -110,7 +110,11 @@
         @break
     
     @case('nome')
-        <td>{{ $valore }}</td>
+        <td>
+            <a href="{{ route('anagrafica.show', $militare->id) }}" class="link-name">
+                {{ $valore }}
+            </a>
+        </td>
         @break
     
     @case('plotone')
@@ -168,7 +172,7 @@
         @break
     
     @case('patenti')
-        <td class="text-center" style="padding: 4px;">
+        <td class="text-center">
             <div class="patenti-container">
                 @php
                     $patentiMilitare = $militare->patenti->pluck('categoria')->toArray();
@@ -275,7 +279,7 @@
             </td>
         @else
             {{-- Comportamento legacy per istituti di tipo text --}}
-            <td class="text-center" style="padding: 8px !important;">
+            <td class="text-center">
                 @php
                     $istituti = $militare->istituti ?? [];
                     // Usa le opzioni dal database se disponibili, altrimenti usa quelle di default

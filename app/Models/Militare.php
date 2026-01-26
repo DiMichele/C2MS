@@ -410,12 +410,30 @@ class Militare extends Model
     }
 
     /**
+     * Scadenze poligoni del militare (dalla tabella scadenze_poligoni)
+     */
+    public function scadenzePoligoni()
+    {
+        return $this->hasMany(ScadenzaPoligono::class, 'militare_id');
+    }
+
+    /**
      * Relazione con le scadenze approntamenti
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function scadenzaApprontamento()
     {
         return $this->hasOne(ScadenzaApprontamento::class, 'militare_id');
+    }
+
+    /**
+     * Relazione con le valutazioni del militare
+     * NOTA: La tabella militare_valutazioni potrebbe non esistere.
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function valutazioni()
+    {
+        return $this->hasMany(MilitareValutazione::class, 'militare_id');
     }
 
     /**
@@ -879,6 +897,51 @@ class Militare extends Model
             'militare_id', 
             'activity_id'
         );
+    }
+
+    /**
+     * Relazione con i Teatri Operativi assegnati
+     */
+    public function teatriOperativi()
+    {
+        return $this->belongsToMany(
+            TeatroOperativo::class,
+            'teatro_operativo_militare',
+            'militare_id',
+            'teatro_operativo_id'
+        )->withPivot(['stato', 'ruolo', 'note', 'data_assegnazione', 'data_fine_assegnazione'])
+         ->withTimestamps();
+    }
+
+    /**
+     * Ottiene il Teatro Operativo confermato attivo del militare
+     */
+    public function getTeatroOperativoConfermato()
+    {
+        return $this->teatriOperativi()
+            ->wherePivot('stato', 'confermato')
+            ->where('teatri_operativi.stato', 'attivo')
+            ->first();
+    }
+
+    /**
+     * Verifica se il militare ha un Teatro Operativo confermato
+     */
+    public function hasTeatroOperativoConfermato()
+    {
+        return $this->teatriOperativi()
+            ->wherePivot('stato', 'confermato')
+            ->where('teatri_operativi.stato', 'attivo')
+            ->exists();
+    }
+
+    /**
+     * Ottiene il nome/codice del Teatro Operativo per la colonna CPT
+     */
+    public function getTeatroOperativoCodice()
+    {
+        $teatro = $this->getTeatroOperativoConfermato();
+        return $teatro ? ($teatro->codice ?? $teatro->nome) : null;
     }
     
     /**

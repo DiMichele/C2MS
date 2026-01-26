@@ -20,15 +20,14 @@
 
     <!-- Tabella Campi -->
     <div class="table-container-ruolini" style="max-width: 1400px; margin: 0 auto;">
-        <table class="table table-hover mb-0 ruolini-table">
+        <table class="sugeco-table">
             <thead>
                 <tr>
-                    <th style="width: 20%;">Nome Campo</th>
-                    <th style="width: 15%;">Tipo</th>
-                    <th style="width: 25%;">Opzioni</th>
-                    <th style="width: 10%;">Obbligatorio</th>
-                    <th style="width: 10%; text-align: center;">Stato</th>
-                    <th style="width: 20%; text-align: center;">Azioni</th>
+                    <th>Nome Campo</th>
+                    <th>Tipo</th>
+                    <th>Opzioni</th>
+                    <th>Stato</th>
+                    <th>Azioni</th>
                 </tr>
             </thead>
             <tbody>
@@ -52,13 +51,6 @@
                             <small>{{ implode(', ', $campo->opzioni) }}</small>
                         @else
                             <span class="text-muted">-</span>
-                        @endif
-                    </td>
-                    <td class="text-center">
-                        @if($campo->obbligatorio)
-                            <span class="badge bg-danger">Obbligatorio</span>
-                        @else
-                            <span class="badge bg-secondary">Opzionale</span>
                         @endif
                     </td>
                     <td class="text-center">
@@ -88,7 +80,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-5">
+                    <td colspan="5" class="text-center text-muted py-5">
                         <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
                         <p class="mb-0">Nessun campo configurato. Aggiungi il tuo primo campo personalizzato!</p>
                     </td>
@@ -260,6 +252,11 @@
 @if(!isset($isTab) || !$isTab)
 @endsection
 @endif
+
+<style>
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
+</style>
 
 @push('scripts')
 <script>

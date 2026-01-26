@@ -1,14 +1,53 @@
 // Pianificazione CPT - JavaScript
+
+// Funzione per calcolare il range consecutivo di un impegno
+function getConsecutiveRange(row, startGiorno, codiceServizio) {
+    if (!codiceServizio || codiceServizio === '-') return { start: startGiorno, end: startGiorno, count: 1 };
+    
+    const militareId = row.getAttribute('data-militare-id');
+    let start = parseInt(startGiorno);
+    let end = parseInt(startGiorno);
+    
+    // Cerca indietro per trovare l'inizio del range
+    let currentGiorno = start - 1;
+    while (currentGiorno >= 1) {
+        const prevCell = row.querySelector(`[data-giorno="${currentGiorno}"]`);
+        if (prevCell && prevCell.textContent.trim() === codiceServizio) {
+            start = currentGiorno;
+            currentGiorno--;
+        } else {
+            break;
+        }
+    }
+    
+    // Cerca avanti per trovare la fine del range
+    currentGiorno = parseInt(startGiorno) + 1;
+    const giorniNelMese = window.pageData ? new Date(window.pageData.anno, window.pageData.mese, 0).getDate() : 31;
+    while (currentGiorno <= giorniNelMese) {
+        const nextCell = row.querySelector(`[data-giorno="${currentGiorno}"]`);
+        if (nextCell && nextCell.textContent.trim() === codiceServizio) {
+            end = currentGiorno;
+            currentGiorno++;
+        } else {
+            break;
+        }
+    }
+    
+    return { start, end, count: end - start + 1 };
+}
+
 function openEditModal(cell) {
     const militareId = cell.getAttribute('data-militare-id');
     const giorno = cell.getAttribute('data-giorno');
+    const tipoServizioId = cell.getAttribute('data-tipo-servizio-id');
     
     const row = cell.closest('tr');
     if (!row) return;
     
-    const gradoCell = row.cells[0];
-    const cognomeCell = row.cells[1]; 
-    const nomeCell = row.cells[2];
+    // L'indice delle celle corrette: 1=Grado, 2=Cognome, 3=Nome
+    const gradoCell = row.cells[1];
+    const cognomeCell = row.cells[2]; 
+    const nomeCell = row.cells[3];
     
     if (!gradoCell || !cognomeCell || !nomeCell) return;
     
@@ -17,14 +56,25 @@ function openEditModal(cell) {
     const cognome = cognomeLink ? cognomeLink.textContent.trim() : cognomeCell.textContent.trim();
     const nome = nomeCell.textContent.trim();
     
+    // Formato: Grado Cognome Nome (senza Compagnia)
     const nomeCompleto = grado + ' ' + cognome + ' ' + nome;
-    const giornoCompleto = giorno + ' Settembre';
     
-    let codiceServizio = '';
-    const badge = cell.querySelector('.badge');
-    if (badge) {
-        codiceServizio = badge.textContent.trim();
-    }
+    // Data formattata correttamente
+    const mesiItaliani = window.pageData && window.pageData.mesiItaliani 
+        ? window.pageData.mesiItaliani 
+        : {1: 'Gennaio', 2: 'Febbraio', 3: 'Marzo', 4: 'Aprile', 5: 'Maggio', 6: 'Giugno', 7: 'Luglio', 8: 'Agosto', 9: 'Settembre', 10: 'Ottobre', 11: 'Novembre', 12: 'Dicembre'};
+    const meseCorrente = window.pageData ? window.pageData.mese : new Date().getMonth() + 1;
+    const giornoCompleto = giorno + ' ' + mesiItaliani[meseCorrente];
+    
+    // Prendi il codice servizio DALLA CELLA (il testo visualizzato)
+    let codiceServizio = cell.textContent.trim();
+    if (codiceServizio === '-') codiceServizio = '';
+    
+    // Calcola il range consecutivo dell'impegno corrente
+    const currentRange = getConsecutiveRange(row, giorno, codiceServizio);
+    // Salva il range originale per confronto quando si salva
+    window.originalRange = currentRange;
+    window.originalCodiceServizio = codiceServizio;
     
     const modal = document.getElementById('editGiornoModal');
     const editMilitareId = document.getElementById('editMilitareId');
@@ -37,36 +87,76 @@ function openEditModal(cell) {
     
     if (editMilitareId) editMilitareId.value = militareId;
     if (editGiorno) editGiorno.value = giorno;
-    if (editTipoServizio) editTipoServizio.value = codiceServizio;
     if (editMilitareNome) editMilitareNome.value = nomeCompleto;
     if (editGiornoLabel) editGiornoLabel.value = giornoCompleto;
+    
+    
+    // Imposta il tipo servizio corretto usando il codice o l'ID
+    if (editTipoServizio) {
+        let found = false;
+        
+        // Prima prova a selezionare tramite l'ID (data-tipo-servizio-id)
+        if (tipoServizioId && tipoServizioId.trim() !== '') {
+            // Cerca l'opzione con data-id corrispondente
+            for (let i = 0; i < editTipoServizio.options.length; i++) {
+                const opt = editTipoServizio.options[i];
+                const optId = opt.getAttribute('data-id');
+                if (optId && optId === tipoServizioId) {
+                    editTipoServizio.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        
+        // Fallback: usa il codice dalla cella se non trovato tramite ID
+        if (!found && codiceServizio && codiceServizio !== '-') {
+            for (let i = 0; i < editTipoServizio.options.length; i++) {
+                const opt = editTipoServizio.options[i];
+                if (opt.value === codiceServizio) {
+                    editTipoServizio.selectedIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+        }
+        
+        // Se ancora non trovato, imposta "Nessun impegno"
+        if (!found) {
+            editTipoServizio.value = '';
+        }
+    }
     
     const editGiornoFine = document.getElementById('editGiornoFine');
     if (editGiornoFine && window.pageData) {
         const mese = window.pageData.mese;
         const anno = window.pageData.anno;
-        
-        const giornoSuccessivo = parseInt(giorno) + 1;
+        const giornoCorrente = parseInt(giorno);
         const giorniNelMese = new Date(anno, mese, 0).getDate();
         
-        if (giornoSuccessivo <= giorniNelMese) {
-            const dataMinima = `${anno}-${mese.toString().padStart(2, '0')}-${giornoSuccessivo.toString().padStart(2, '0')}`;
-            editGiornoFine.setAttribute('min', dataMinima);
-        } else {
-            const meseSuccessivo = mese === 12 ? 1 : mese + 1;
-            const annoSuccessivo = mese === 12 ? anno + 1 : anno;
-            const dataMinima = `${annoSuccessivo}-${meseSuccessivo.toString().padStart(2, '0')}-01`;
-            editGiornoFine.setAttribute('min', dataMinima);
-        }
+        // Se c'è un range esistente, usa l'inizio del range come giorno di partenza
+        const giornoInizioRange = (codiceServizio && currentRange.start) ? currentRange.start : giornoCorrente;
+        
+        // Salva il giorno di inizio del range per usarlo nel salvataggio
+        window.originalRangeStart = giornoInizioRange;
+        
+        // La data minima è l'inizio del range (permette di modificare da qualsiasi punto)
+        const dataMinima = `${anno}-${mese.toString().padStart(2, '0')}-${giornoInizioRange.toString().padStart(2, '0')}`;
+        editGiornoFine.setAttribute('min', dataMinima);
         
         const dataMassima = `${anno + 1}-12-31`;
         editGiornoFine.setAttribute('max', dataMassima);
         
-        editGiornoFine.value = '';
-        editGiornoFine.setAttribute('placeholder', 'Seleziona data di fine (opzionale)');
+        // Pre-compila con la data di fine del range esistente (se c'è un range > 1 giorno)
+        if (codiceServizio && currentRange.count > 1 && currentRange.end >= giornoCorrente) {
+            const dataFineRange = `${anno}-${mese.toString().padStart(2, '0')}-${currentRange.end.toString().padStart(2, '0')}`;
+            editGiornoFine.value = dataFineRange;
+        } else {
+            editGiornoFine.value = '';
+        }
         
         editGiornoFine.addEventListener('change', function() {
-            updateRangePreview(giorno, mese, anno, this.value);
+            updateRangePreview(giornoInizioRange, mese, anno, this.value);
         });
     }
     
@@ -154,7 +244,11 @@ function setupSaveButton() {
                 return;
             }
             
-            const giornoInizio = giorno;
+            // Se stiamo modificando un range esistente, usa l'inizio del range originale
+            // altrimenti usa il giorno cliccato
+            const giornoInizio = (window.originalRangeStart && window.originalCodiceServizio) 
+                ? window.originalRangeStart 
+                : giorno;
             let giornoFineNum, meseFine, annoFine;
             
             if (giornoFine) {
@@ -210,24 +304,61 @@ function setupSaveButton() {
                 }
             }
             
+            // Calcola i giorni da rimuovere se il range è stato ridotto
+            const giorniDaRimuovere = [];
+            if (window.originalRange && window.originalCodiceServizio) {
+                const newEnd = giornoFineNum;
+                const origEnd = window.originalRange.end;
+                const origStart = window.originalRange.start;
+                
+                // Se il nuovo range è più corto o il servizio è cambiato
+                // Rimuovi l'impegno dai giorni non più inclusi
+                if (origEnd > newEnd && meseFine === window.pageData.mese && annoFine === window.pageData.anno) {
+                    for (let g = newEnd + 1; g <= origEnd; g++) {
+                        giorniDaRimuovere.push({
+                            giorno: g,
+                            mese: window.pageData.mese,
+                            anno: window.pageData.anno
+                        });
+                    }
+                }
+            }
+            
+            // Funzione per completare il salvataggio
+            const completeSave = () => {
+                const modal = document.getElementById('editGiornoModal');
+                if (modal && typeof bootstrap !== 'undefined') {
+                    const bsModal = bootstrap.Modal.getInstance(modal);
+                    if (bsModal) {
+                        bsModal.hide();
+                        
+                        setTimeout(() => {
+                            const originalCell = document.querySelector(`[data-militare-id="${militareId}"][data-giorno="${giorno}"]`);
+                            if (originalCell) {
+                                originalCell.focus();
+                            }
+                        }, 300);
+                    }
+                }
+                
+                if (giornoFineEl) {
+                    giornoFineEl.value = '';
+                }
+                
+                const rangePreview = document.getElementById('rangePreview');
+                if (rangePreview) {
+                    rangePreview.remove();
+                }
+                
+                // Reset range originale
+                window.originalRange = null;
+                window.originalCodiceServizio = null;
+                window.originalRangeStart = null;
+            };
+            
             if (giorniDaSalvare.length > 1) {
                 saveDaysRange(militareId, giorniDaSalvare, tipoServizioId)
                     .then(result => {
-                        const modal = document.getElementById('editGiornoModal');
-                        if (modal && typeof bootstrap !== 'undefined') {
-                            const bsModal = bootstrap.Modal.getInstance(modal);
-                            if (bsModal) {
-                                bsModal.hide();
-                                
-                                setTimeout(() => {
-                                    const originalCell = document.querySelector(`[data-militare-id="${militareId}"][data-giorno="${giorno}"]`);
-                                    if (originalCell) {
-                                        originalCell.focus();
-                                    }
-                                }, 300);
-                            }
-                        }
-                        
                         if (result.success) {
                             result.pianificazioni.forEach((data, index) => {
                                 if (index < giorniDaSalvare.length) {
@@ -240,14 +371,21 @@ function setupSaveButton() {
                             });
                         }
                         
-                        if (giornoFineEl) {
-                            giornoFineEl.value = '';
+                        // Rimuovi i giorni non più inclusi nel range
+                        if (giorniDaRimuovere.length > 0) {
+                            return saveDaysRange(militareId, giorniDaRimuovere, null);
                         }
-                        
-                        const rangePreview = document.getElementById('rangePreview');
-                        if (rangePreview) {
-                            rangePreview.remove();
+                        return Promise.resolve({ success: true });
+                    })
+                    .then(removeResult => {
+                        if (removeResult && removeResult.success && giorniDaRimuovere.length > 0) {
+                            giorniDaRimuovere.forEach(dayData => {
+                                if (dayData.mese === window.pageData.mese && dayData.anno === window.pageData.anno) {
+                                    updateCellContent(militareId, dayData.giorno, null);
+                                }
+                            });
                         }
+                        completeSave();
                     })
                     .catch(error => {
                         alert('Errore nel salvataggio: ' + error.message);
@@ -255,34 +393,25 @@ function setupSaveButton() {
             } else {
                 saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizioId)
                     .then(result => {
-                        const modal = document.getElementById('editGiornoModal');
-                        if (modal && typeof bootstrap !== 'undefined') {
-                            const bsModal = bootstrap.Modal.getInstance(modal);
-                            if (bsModal) {
-                                bsModal.hide();
-                                
-                                setTimeout(() => {
-                                    const originalCell = document.querySelector(`[data-militare-id="${militareId}"][data-giorno="${giorno}"]`);
-                                    if (originalCell) {
-                                        originalCell.focus();
-                                    }
-                                }, 300);
-                            }
-                        }
-                        
                         if (result.success) {
                             updateCellContent(militareId, giorno, result.pianificazione);
                         }
                         
-                        if (giornoFineEl) {
-                            giornoFineEl.value = '';
+                        // Rimuovi i giorni non più inclusi nel range
+                        if (giorniDaRimuovere.length > 0) {
+                            return saveDaysRange(militareId, giorniDaRimuovere, null);
                         }
-                        
-                        const rangePreview = document.getElementById('rangePreview');
-                        if (rangePreview) {
-                            rangePreview.remove();
+                        return Promise.resolve({ success: true });
+                    })
+                    .then(removeResult => {
+                        if (removeResult && removeResult.success && giorniDaRimuovere.length > 0) {
+                            giorniDaRimuovere.forEach(dayData => {
+                                if (dayData.mese === window.pageData.mese && dayData.anno === window.pageData.anno) {
+                                    updateCellContent(militareId, dayData.giorno, null);
+                                }
+                            });
                         }
-                        
+                        completeSave();
                     })
                     .catch(error => {
                         alert('Errore nel salvataggio: ' + error.message);
@@ -351,29 +480,40 @@ function updateCellContent(militareId, giorno, pianificazioneData) {
     
     if (!cell) return;
     
+    // Rimuovi eventuali dataset per l'hover
+    delete cell.dataset.originalBg;
+    
     if (pianificazioneData && pianificazioneData.tipo_servizio && pianificazioneData.tipo_servizio.codice) {
         const codice = pianificazioneData.tipo_servizio.codice;
+        const nomeServizio = pianificazioneData.tipo_servizio.nome || codice;
         
-        const codiciGialli = ['LS', 'LO', 'LM', 'P', 'TIR', 'TRAS', 'APS1', 'APS2', 'APS3', 'APS4', 
-                              'AL-ELIX', 'AL-MCM', 'AL-BLS', 'AL-CIED', 'AL-SM', 'AL-RM', 'AL-RSPP', 
-                              'AL-LEG', 'AL-SEA', 'AL-MI', 'AL-PO', 'AL-PI', 'AP-M', 'AP-A', 'AC-SW', 
-                              'AC', 'PEFO'];
-        
-        const codiciRossi = ['RMD', 'LC', 'IS', 'TO'];
-        
-        let bgColor = '';
+        // Usa il colore dal tipo servizio se disponibile
+        let bgColor = pianificazioneData.tipo_servizio.colore_badge || '';
         let textColor = '';
         
-        if (codiciGialli.includes(codice)) {
-            bgColor = '#ffff00';
-            textColor = '#000000';
-        } else if (codiciRossi.includes(codice)) {
-            bgColor = '#ff0000';
-            textColor = '#ffffff';
-        } else {
-            bgColor = '#00b050';
-            textColor = '#ffffff';
+        // Fallback ai colori hardcoded se non c'è colore nel DB
+        if (!bgColor) {
+            const codiciGialli = ['LS', 'LO', 'LM', 'P', 'TIR', 'TRAS', 'APS1', 'APS2', 'APS3', 'APS4', 
+                                  'AL-ELIX', 'AL-MCM', 'AL-BLS', 'AL-CIED', 'AL-SM', 'AL-RM', 'AL-RSPP', 
+                                  'AL-LEG', 'AL-SEA', 'AL-MI', 'AL-PO', 'AL-PI', 'AP-M', 'AP-A', 'AC-SW', 
+                                  'AC', 'PEFO'];
+            
+            const codiciRossi = ['RMD', 'LC', 'IS', 'TO'];
+            
+            if (codiciGialli.includes(codice)) {
+                bgColor = '#ffff00';
+            } else if (codiciRossi.includes(codice)) {
+                bgColor = '#ff0000';
+            } else {
+                bgColor = '#00b050';
+            }
         }
+        
+        // Calcola il colore del testo in base alla luminosità
+        textColor = isLightColor(bgColor) ? '#000000' : '#ffffff';
+        
+        // Aggiungi classe has-impegno
+        cell.classList.add('has-impegno');
         
         cell.style.backgroundColor = bgColor;
         cell.style.color = textColor;
@@ -382,11 +522,51 @@ function updateCellContent(militareId, giorno, pianificazioneData) {
         
         cell.textContent = codice;
         
+        // Aggiorna il tooltip con le info del servizio
+        cell.setAttribute('title', codice + ' - ' + nomeServizio);
+        
+        // Aggiorna data-tipo-servizio-id
+        if (pianificazioneData.tipo_servizio.id) {
+            cell.setAttribute('data-tipo-servizio-id', pianificazioneData.tipo_servizio.id);
+        }
+        
     } else {
-        cell.style.backgroundColor = '';
+        // Rimuovi classe has-impegno
+        cell.classList.remove('has-impegno');
+        
+        // Ripristina il colore appropriato per weekend/festivi/oggi
+        const isWeekend = cell.classList.contains('weekend-column');
+        const isHoliday = cell.classList.contains('holiday-column');
+        const isToday = cell.classList.contains('today-column');
+        
+        if (isWeekend || isHoliday) {
+            cell.style.backgroundColor = 'rgba(255, 0, 0, 0.12)';
+        } else if (isToday) {
+            cell.style.backgroundColor = 'rgba(255, 220, 0, 0.20)';
+        } else {
+            cell.style.backgroundColor = '';
+        }
+        
         cell.style.color = '';
         cell.textContent = '-';
+        
+        // Aggiorna il tooltip
+        cell.setAttribute('title', 'Nessuna pianificazione - Clicca per aggiungere');
+        
+        // Rimuovi data-tipo-servizio-id
+        cell.removeAttribute('data-tipo-servizio-id');
     }
+}
+
+// Funzione per determinare se un colore è chiaro
+function isLightColor(hexColor) {
+    if (!hexColor) return true;
+    const hex = hexColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+    return brightness > 128;
 }
 
 function initTooltips() {

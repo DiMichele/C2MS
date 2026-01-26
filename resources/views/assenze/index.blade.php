@@ -2,32 +2,8 @@
 
 @section('content')
 <style>
-/* Effetto hover sulle righe */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-/* Sfondo leggermente off-white per la tabella */
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-/* Bordi leggermente più scuri dell'hover */
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
-
-.table-striped > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
 
 /* Stili per i link */
 .link-name {
@@ -65,8 +41,9 @@
 
     <a href="{{ route('assenze.create') }}" class="btn btn-primary mb-3">➕ Aggiungi Assenza</a>
 
-    <table class="table table-striped">
-    <thead>
+    <div class="sugeco-table-wrapper">
+        <table class="sugeco-table">
+        <thead>
         <tr>
             <th>TIPOLOGIA</th>
             <th>DATA INIZIO</th>
@@ -116,7 +93,8 @@
         </tr>
         @endforeach
     </tbody>
-</table>
+        </table>
+    </div>
 
 </div>
 @endsection

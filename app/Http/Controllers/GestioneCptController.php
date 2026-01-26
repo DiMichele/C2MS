@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\CodiciServizioGerarchia;
 use App\Models\TipoServizio;
+use App\Services\ExcelStyleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 /**
  * Controller per la gestione dei codici CPT
@@ -14,6 +18,67 @@ use Illuminate\Support\Facades\DB;
  */
 class GestioneCptController extends Controller
 {
+    /**
+     * SINGLE SOURCE OF TRUTH: Definizione colonne tabella CPT
+     * Usato sia nella vista che nell'export Excel per mantenere sincronizzazione automatica
+     * 
+     * @var array
+     */
+    public const COLONNE_TABELLA = [
+        'codice' => [
+            'header' => 'Codice',
+            'width' => 15,
+            'align' => 'center',
+            'campo' => 'codice',
+            'tipo' => 'badge_colorato', // Indica che questa colonna usa il colore_badge
+        ],
+        'descrizione' => [
+            'header' => 'Descrizione',
+            'width' => 45,
+            'align' => 'left',
+            'campo' => 'attivita_specifica',
+            'tipo' => 'testo',
+        ],
+        'tipo_impiego' => [
+            'header' => 'Tipo Impiego',
+            'width' => 25,
+            'align' => 'center',
+            'campo' => 'impiego',
+            'tipo' => 'impiego', // Formattazione speciale per tipo impiego
+        ],
+        'stato' => [
+            'header' => 'Stato',
+            'width' => 12,
+            'align' => 'center',
+            'campo' => 'attivo',
+            'tipo' => 'stato', // Attivo/Inattivo
+        ],
+    ];
+
+    /**
+     * Mappa colori per tipo impiego (usato nell'export Excel)
+     * Colori simili a quelli visualizzati nella pagina web
+     * 
+     * @var array
+     */
+    public const COLORI_IMPIEGO = [
+        'DISPONIBILE' => ['bg' => 'd4edda', 'text' => '155724'],
+        'INDISPONIBILE' => ['bg' => 'fff3cd', 'text' => '856404'],
+        'NON_DISPONIBILE' => ['bg' => 'f8d7da', 'text' => '721c24'],
+        'PRESENTE_SERVIZIO' => ['bg' => 'cce5ff', 'text' => '004085'],
+        'DISPONIBILE_ESIGENZA' => ['bg' => 'd1ecf1', 'text' => '0c5460'],
+    ];
+
+    /**
+     * Ottiene le colonne della tabella (per uso nelle viste)
+     * 
+     * @return array
+     */
+    public static function getColonneTabella(): array
+    {
+        return self::COLONNE_TABELLA;
+    }
+
     /**
      * Visualizza l'elenco di tutti i codici CPT
      */
@@ -315,32 +380,201 @@ class GestioneCptController extends Controller
     }
 
     /**
-     * Esporta i codici in formato CSV
+     * Esporta i codici in formato Excel con formattazione
+     * Le colonne sono sincronizzate automaticamente con COLONNE_TABELLA
      */
     public function export()
     {
         $codici = CodiciServizioGerarchia::orderBy('ordine')->get();
-
-        $csv = "Codice;Macro Attività;Tipo Attività;Attività Specifica;Impiego;Descrizione;Colore;Attivo;Ordine\n";
         
-        foreach ($codici as $codice) {
-            $csv .= sprintf(
-                "%s;%s;%s;%s;%s;%s;%s;%s;%d\n",
-                $codice->codice,
-                $codice->macro_attivita ?? '',
-                $codice->tipo_attivita ?? '',
-                $codice->attivita_specifica,
-                $codice->impiego,
-                $codice->descrizione_impiego ?? '',
-                $codice->colore_badge,
-                $codice->attivo ? 'SI' : 'NO',
-                $codice->ordine
-            );
+        // Usa ExcelStyleService per stili consistenti
+        $excelService = new ExcelStyleService();
+        $spreadsheet = $excelService->createSpreadsheet('Codici CPT');
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Codici CPT');
+        
+        // --- HEADER ---
+        $col = 'A';
+        $headerRow = 1;
+        
+        foreach (self::COLONNE_TABELLA as $key => $config) {
+            $sheet->setCellValue($col . $headerRow, $config['header']);
+            $sheet->getColumnDimension($col)->setWidth($config['width']);
+            $col++;
         }
+        
+        // Applica stile header
+        $lastCol = chr(ord('A') + count(self::COLONNE_TABELLA) - 1);
+        $excelService->applyHeaderStyle($sheet, "A{$headerRow}:{$lastCol}{$headerRow}");
+        $sheet->getRowDimension($headerRow)->setRowHeight(25);
+        
+        // --- DATI ---
+        $row = 2;
+        foreach ($codici as $codice) {
+            $col = 'A';
+            
+            foreach (self::COLONNE_TABELLA as $key => $config) {
+                $cell = $col . $row;
+                $valore = $this->getValoreCella($codice, $config);
+                $sheet->setCellValue($cell, $valore);
+                
+                // Applica formattazione in base al tipo
+                $this->applicaFormattazioneCella($sheet, $cell, $codice, $config, $excelService);
+                
+                $col++;
+            }
+            
+            // Altezza riga per testo su più linee
+            $sheet->getRowDimension($row)->setRowHeight(-1); // Auto-height
+            $row++;
+        }
+        
+        // Stile generale dati
+        $lastRow = $row - 1;
+        if ($lastRow >= 2) {
+            $excelService->applyDataStyle($sheet, "A2:{$lastCol}{$lastRow}", false);
+            $excelService->applyAlternateRowColors($sheet, 2, $lastRow, 'A', $lastCol);
+        }
+        
+        // Freeze header
+        $excelService->freezeHeader($sheet);
+        
+        // Info generazione
+        $excelService->addGenerationInfo($sheet, $lastRow + 2);
+        
+        // Genera file
+        $writer = new Xlsx($spreadsheet);
+        $filename = 'Codici_CPT_' . date('Y-m-d') . '.xlsx';
+        
+        // Output
+        $tempFile = tempnam(sys_get_temp_dir(), 'excel');
+        $writer->save($tempFile);
+        
+        return response()->download($tempFile, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
 
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="codici_cpt_' . date('Y-m-d') . '.csv"');
+    /**
+     * Ottiene il valore formattato per una cella
+     * 
+     * @param CodiciServizioGerarchia $codice
+     * @param array $config
+     * @return string
+     */
+    private function getValoreCella(CodiciServizioGerarchia $codice, array $config): string
+    {
+        $campo = $config['campo'];
+        $valore = $codice->$campo;
+        
+        switch ($config['tipo']) {
+            case 'impiego':
+                // Formatta l'impiego per esteso
+                return str_replace('_', ' ', ucfirst(strtolower($valore)));
+            
+            case 'stato':
+                return $valore ? 'Attivo' : 'Inattivo';
+            
+            default:
+                return $valore ?? '';
+        }
+    }
+
+    /**
+     * Applica la formattazione specifica alla cella
+     * 
+     * @param \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet
+     * @param string $cell
+     * @param CodiciServizioGerarchia $codice
+     * @param array $config
+     * @param ExcelStyleService $excelService
+     */
+    private function applicaFormattazioneCella($sheet, string $cell, CodiciServizioGerarchia $codice, array $config, ExcelStyleService $excelService): void
+    {
+        // Allineamento base
+        $align = match ($config['align']) {
+            'center' => Alignment::HORIZONTAL_CENTER,
+            'right' => Alignment::HORIZONTAL_RIGHT,
+            default => Alignment::HORIZONTAL_LEFT,
+        };
+        
+        $sheet->getStyle($cell)->getAlignment()->setHorizontal($align);
+        $sheet->getStyle($cell)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle($cell)->getAlignment()->setWrapText(true);
+        
+        switch ($config['tipo']) {
+            case 'badge_colorato':
+                // Usa il colore_badge del codice come sfondo
+                $coloreHex = ltrim($codice->colore_badge, '#');
+                
+                // Determina se usare testo chiaro o scuro in base al colore di sfondo
+                $testoColore = $this->isColorChiaro($coloreHex) ? '000000' : 'FFFFFF';
+                
+                $sheet->getStyle($cell)->applyFromArray([
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => $coloreHex]
+                    ],
+                    'font' => [
+                        'bold' => true,
+                        'color' => ['rgb' => $testoColore]
+                    ]
+                ]);
+                break;
+            
+            case 'impiego':
+                // Colore in base al tipo di impiego
+                $colori = self::COLORI_IMPIEGO[$codice->impiego] ?? ['bg' => 'FFFFFF', 'text' => '000000'];
+                
+                $sheet->getStyle($cell)->applyFromArray([
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => $colori['bg']]
+                    ],
+                    'font' => [
+                        'color' => ['rgb' => $colori['text']]
+                    ]
+                ]);
+                break;
+            
+            case 'stato':
+                // Verde per attivo, grigio per inattivo
+                if ($codice->attivo) {
+                    $excelService->applyBadgeStyle($sheet, $cell, 'success');
+                } else {
+                    $sheet->getStyle($cell)->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => '6c757d']
+                        ],
+                        'font' => [
+                            'color' => ['rgb' => 'FFFFFF']
+                        ]
+                    ]);
+                }
+                break;
+        }
+    }
+
+    /**
+     * Determina se un colore è chiaro (per decidere se usare testo nero o bianco)
+     * 
+     * @param string $hexColor Colore esadecimale senza #
+     * @return bool True se il colore è chiaro
+     */
+    private function isColorChiaro(string $hexColor): bool
+    {
+        // Assicura che il colore sia in formato corretto
+        $hexColor = str_pad($hexColor, 6, '0', STR_PAD_LEFT);
+        
+        $r = hexdec(substr($hexColor, 0, 2));
+        $g = hexdec(substr($hexColor, 2, 2));
+        $b = hexdec(substr($hexColor, 4, 2));
+        
+        // Formula per luminosità percepita
+        $luminosita = ($r * 299 + $g * 587 + $b * 114) / 1000;
+        
+        return $luminosita > 128;
     }
 
     /**

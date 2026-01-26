@@ -4,123 +4,7 @@
 
 @section('content')
 <style>
-/* Container tabella con scroll */
-.table-container {
-    position: relative;
-    background: white;
-}
-
-.table-container::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
-}
-
-.table-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 5px;
-}
-
-.table-container::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 5px;
-}
-
-.table-container::-webkit-scrollbar-thumb:hover {
-    background: #555;
-}
-
-/* Stili uniformi come le altre pagine */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
-
-.table tbody tr {
-    background-color: #fafafa;
-}
-
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
-
-/* Colonne con larghezza minima ma senza sticky */
-.table th:nth-child(1),
-.table td:nth-child(1) {
-    font-weight: 600;
-    min-width: 120px !important;
-}
-
-.table th:nth-child(2),
-.table td:nth-child(2) {
-    font-weight: 600;
-    min-width: 80px !important;
-}
-
-.table th:nth-child(3),
-.table td:nth-child(3) {
-    font-weight: 600;
-    min-width: 140px !important;
-}
-
-.table th:nth-child(4),
-.table td:nth-child(4) {
-    font-weight: 600;
-    min-width: 120px !important;
-}
-
-/* Celle scadenze - Data colorata con background */
-.scadenza-cell {
-    text-align: center;
-    padding: 10px 8px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.2s;
-}
-
-.scadenza-cell:hover {
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
-
-/* Colori scadenze - BACKGROUND */
-.scadenza-valido {
-    background-color: #d4edda !important;
-    color: #155724 !important;
-}
-
-.scadenza-in-scadenza {
-    background-color: #fff3cd !important;
-    color: #856404 !important;
-}
-
-.scadenza-scaduto {
-    background-color: #f8d7da !important;
-    color: #721c24 !important;
-}
-
-.scadenza-mancante {
-    background-color: #e9ecef !important;
-    color: #6c757d !important;
-}
-
-.scadenza-prenotato {
-    background-color: #cce5ff !important;
-    color: #004085 !important;
-}
+/* Stili per scadenza-prenotato sono in table-standard.css */
 
 /* Modal hover per modifica */
 .scadenza-modal {
@@ -326,16 +210,15 @@ table.table td,
 <!-- Filtri e badge su riga separata -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <button id="toggleFilters" class="btn btn-primary" style="border-radius: 6px !important;">
-        <i class="fas fa-filter me-2"></i> 
         <span id="toggleFiltersText">Mostra filtri</span>
     </button>
     
-    <div class="d-flex gap-2 align-items-center">
-        <span class="badge" style="background-color: #d4edda; color: #155724;"><i class="fas fa-check"></i> Valido</span>
-        <span class="badge" style="background-color: #fff3cd; color: #856404;"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
-        <span class="badge" style="background-color: #f8d7da; color: #721c24;"><i class="fas fa-times"></i> Scaduto</span>
-        <span class="badge" style="background-color: #cce5ff; color: #004085;"><i class="fas fa-calendar-alt"></i> Prenotato</span>
-        <span class="badge" style="background-color: #e9ecef; color: #6c757d;"><i class="fas fa-minus"></i> Mancante</span>
+    <div class="legenda-scadenze">
+        <span class="badge-legenda badge-legenda-valido"><i class="fas fa-check-circle"></i> Valido</span>
+        <span class="badge-legenda badge-legenda-in-scadenza"><i class="fas fa-exclamation-triangle"></i> In Scadenza</span>
+        <span class="badge-legenda badge-legenda-scaduto"><i class="fas fa-times-circle"></i> Scaduto</span>
+        <span class="badge-legenda badge-legenda-prenotato"><i class="fas fa-calendar-check"></i> Prenotato</span>
+        <span class="badge-legenda badge-legenda-mancante"><i class="fas fa-minus-circle"></i> Non presente</span>
     </div>
 </div>
 
@@ -373,7 +256,7 @@ table.table td,
                         <option value="in_scadenza">In Scadenza</option>
                         <option value="scaduto">Scaduto</option>
                         <option value="prenotato">Prenotato</option>
-                        <option value="mancante">Mancante</option>
+                        <option value="mancante">Non presente</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -384,7 +267,7 @@ table.table td,
                         <option value="in_scadenza">In Scadenza</option>
                         <option value="scaduto">Scaduto</option>
                         <option value="prenotato">Prenotato</option>
-                        <option value="mancante">Mancante</option>
+                        <option value="mancante">Non presente</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -395,7 +278,7 @@ table.table td,
                         <option value="in_scadenza">In Scadenza</option>
                         <option value="scaduto">Scaduto</option>
                         <option value="prenotato">Prenotato</option>
-                        <option value="mancante">Mancante</option>
+                        <option value="mancante">Non presente</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -406,7 +289,7 @@ table.table td,
                         <option value="in_scadenza">In Scadenza</option>
                         <option value="scaduto">Scaduto</option>
                         <option value="prenotato">Prenotato</option>
-                        <option value="mancante">Mancante</option>
+                        <option value="mancante">Non presente</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -417,7 +300,7 @@ table.table td,
                         <option value="in_scadenza">In Scadenza</option>
                         <option value="scaduto">Scaduto</option>
                         <option value="prenotato">Prenotato</option>
-                        <option value="mancante">Mancante</option>
+                        <option value="mancante">Non presente</option>
                     </select>
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
@@ -439,21 +322,22 @@ table.table td,
     </div>
 </div>
 
-<!-- Tabella con scroll orizzontale e verticale -->
-<div class="table-container" style="max-height: calc(100vh - 350px); overflow-x: auto; overflow-y: scroll; border: 1px solid #dee2e6; border-radius: 8px;">
-    <table class="table table-sm table-bordered table-hover mb-0" id="scadenzeTable" style="min-width: 1200px;">
-        <thead style="position: sticky; top: 0; z-index: 10;">
-            <tr style="background-color: #0a2342; color: white;">
+<!-- Tabella con scroll orizzontale e verticale con navigazione -->
+<div class="sugeco-table-nav-container" data-table-nav="auto">
+    <div class="sugeco-table-wrapper">
+        <table class="sugeco-table" id="scadenzeTable">
+        <thead>
+            <tr>
                 <th>Compagnia</th>
                 <th>Grado</th>
                 <th>Cognome</th>
                 <th>Nome</th>
-                <th style="min-width: 200px;">Teatro Operativo</th>
-                <th style="min-width: 150px;">Idoneità Mansione</th>
-                <th style="min-width: 130px;">Idoneità SMI</th>
-                <th style="min-width: 130px;">Idoneità T.O.</th>
-                <th style="min-width: 130px;">ECG</th>
-                <th style="min-width: 130px;">Prelievi</th>
+                <th>Teatro Operativo</th>
+                <th>Idoneità Mansione</th>
+                <th>Idoneità SMI</th>
+                <th>Idoneità T.O.</th>
+                <th>ECG</th>
+                <th>Prelievi</th>
             </tr>
         </thead>
         <tbody>
@@ -470,7 +354,7 @@ table.table td,
                 <td>{{ $item['militare']->nome }}</td>
                 
                 {{-- Colonna Teatro Operativo --}}
-                <td class="teatro-operativo-cell" style="padding: 6px 8px;">
+                <td class="teatro-operativo-cell">
                     @if(count($item['teatro_operativo']) > 0)
                         @foreach($item['teatro_operativo'] as $to)
                             <div class="to-badge" title="{{ $to['title'] }}&#10;Dal: {{ \Carbon\Carbon::parse($to['start_date'])->format('d/m/Y') }}{{ $to['end_date'] ? ' al ' . \Carbon\Carbon::parse($to['end_date'])->format('d/m/Y') : '' }}">
@@ -542,6 +426,7 @@ table.table td,
             @endforeach
         </tbody>
     </table>
+    </div>
 </div>
 
 <!-- Modal Overlay -->
@@ -664,12 +549,18 @@ function saveScadenza() {
     const militareId = currentCell.getAttribute('data-militare-id');
     const campo = currentCell.getAttribute('data-campo');
     const nuovaData = document.getElementById('modalDataConseguimento').value;
+    const durata = parseInt(currentCell.getAttribute('data-durata') || 1);
     
     // Salva riferimento per ripristinare dopo errore
     const cellToUpdate = currentCell;
     
-    // Feedback visivo
-    cellToUpdate.style.opacity = '0.5';
+    // Feedback visivo - aggiungi spinner
+    const originalContent = cellToUpdate.innerHTML;
+    cellToUpdate.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    cellToUpdate.style.opacity = '0.7';
+    
+    // Chiudi subito il modal
+    closeScadenzaModal();
     
     // URL BASE CORRETTA
     const baseUrl = window.location.origin + '/SUGECO/public';
@@ -688,25 +579,104 @@ function saveScadenza() {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json().then(err => {
+                throw new Error(err.message || `Errore HTTP ${response.status}`);
+            }).catch(() => {
+                throw new Error(`Errore HTTP ${response.status}`);
+            });
         }
         return response.json();
     })
     .then(data => {
-        if (data.success) {
-            location.reload();
+        if (data.success && data.scadenza) {
+            // Aggiorna la cella in-place senza reload
+            updateCellFromResponse(cellToUpdate, data.scadenza, nuovaData, durata);
+            
+            // Mostra toast di successo
+            showToast('Scadenza aggiornata con successo', 'success');
         } else {
-            alert('Errore durante l\'aggiornamento');
-            if (cellToUpdate) cellToUpdate.style.opacity = '1';
+            throw new Error(data.message || 'Errore durante l\'aggiornamento');
         }
     })
     .catch(error => {
         console.error('Errore completo:', error);
-        alert('Errore durante l\'aggiornamento: ' + error.message);
-        if (cellToUpdate) cellToUpdate.style.opacity = '1';
+        // Ripristina contenuto originale
+        cellToUpdate.innerHTML = originalContent;
+        cellToUpdate.style.opacity = '1';
+        showToast('Errore: ' + error.message, 'error');
     });
+}
+
+/**
+ * Aggiorna la cella con i dati della risposta senza ricaricare la pagina
+ */
+function updateCellFromResponse(cell, scadenza, dataConseguimento, durata) {
+    // Rimuovi tutte le classi di stato precedenti
+    cell.classList.remove('scadenza-valido', 'scadenza-in-scadenza', 'scadenza-scaduto', 'scadenza-mancante', 'scadenza-prenotato');
     
-    closeScadenzaModal();
+    // Aggiorna attributi data
+    cell.setAttribute('data-data-conseguimento', dataConseguimento || '');
+    cell.setAttribute('data-stato', scadenza.stato);
+    
+    // Verifica se è una prenotazione (data conseguimento nel futuro)
+    const isPrenotato = dataConseguimento && new Date(dataConseguimento) > new Date();
+    
+    if (isPrenotato) {
+        cell.setAttribute('data-stato', 'prenotato');
+        cell.classList.add('scadenza-prenotato');
+    }
+    
+    if (scadenza.data_scadenza) {
+        // Formatta la data per la visualizzazione (dd/mm/yyyy)
+        const dataScadenza = new Date(scadenza.data_scadenza);
+        const dataScadenzaFormatted = dataScadenza.toLocaleDateString('it-IT', {
+            day: '2-digit',
+            month: '2-digit', 
+            year: 'numeric'
+        });
+        const dataScadenzaISO = dataScadenza.toISOString().split('T')[0];
+        
+        cell.setAttribute('data-data-scadenza', dataScadenzaISO);
+        cell.textContent = dataScadenzaFormatted;
+        
+        // Aggiungi la classe corretta per lo stato (se non già prenotato)
+        if (!isPrenotato) {
+            const classeStato = 'scadenza-' + scadenza.stato.replace('_', '-');
+            cell.classList.add(classeStato);
+        }
+    } else {
+        cell.setAttribute('data-data-scadenza', '');
+        cell.textContent = 'Non presente';
+        if (!isPrenotato) {
+            cell.classList.add('scadenza-mancante');
+        }
+    }
+    
+    // Ripristina opacità
+    cell.style.opacity = '1';
+}
+
+/**
+ * Mostra un toast di notifica
+ */
+function showToast(message, type = 'info') {
+    // Usa il sistema toast se disponibile, altrimenti fallback
+    if (window.SUGECO && window.SUGECO.Toast) {
+        window.SUGECO.Toast.show(message, type);
+    } else if (typeof toastr !== 'undefined') {
+        toastr[type](message);
+    } else {
+        // Fallback: crea un toast semplice
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 10000; min-width: 250px; animation: fadeIn 0.3s;';
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>${message}`;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
 }
 
 // Chiudi modal con ESC
@@ -716,9 +686,21 @@ document.addEventListener('keydown', function(e) {
     }
 });
 
-// Export Excel
+// Export Excel con filtri attivi
 document.getElementById('exportExcel').addEventListener('click', function() {
-    window.location.href = `${baseUrl}/idoneita/export-excel`;
+    const visibleRows = document.querySelectorAll('#scadenzeTable tbody tr:not([style*="display: none"])');
+    const militareIds = [];
+    visibleRows.forEach(row => {
+        const id = row.getAttribute('data-militare-id');
+        if (id) militareIds.push(id);
+    });
+    
+    const baseUrl = window.location.origin + '/SUGECO/public/idoneita/export-excel';
+    if (militareIds.length > 0 && militareIds.length < document.querySelectorAll('#scadenzeTable tbody tr').length) {
+        window.location.href = baseUrl + '?ids=' + militareIds.join(',');
+    } else {
+        window.location.href = baseUrl;
+    }
 });
 
 // Inizializzazione filtri
@@ -750,8 +732,9 @@ function applicaFiltriStato() {
         const campiMap = {
             'idoneita_mansione': 5,
             'idoneita_smi': 6,
-            'ecg': 7,
-            'prelievi': 8
+            'idoneita_to': 7,
+            'ecg': 8,
+            'prelievi': 9
         };
         
         for (const [campo, statoRichiesto] of Object.entries(filtri)) {

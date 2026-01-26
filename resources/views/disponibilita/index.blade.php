@@ -3,120 +3,152 @@
 @section('title', 'Disponibilità Personale - SUGECO')
 
 @section('content')
-<div class="container-fluid px-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4 pt-3">
-        <h1 class="h3 mb-0 text-dark fw-bold">Disponibilità Personale</h1>
+<script>
+// Dati militari per il filtraggio lato client
+window.militariData = @json($militariData);
+window.giorniMese = @json(count($giorniMese));
+</script>
+
+<div class="container-fluid">
+    <!-- Header Centrato -->
+    <div class="text-center mb-4">
+        <h1 class="page-title">Disponibilità Personale</h1>
     </div>
 
-    <!-- Filtri -->
-    <div class="card mb-4">
-        <div class="card-body py-3">
-            <form method="GET" class="row align-items-end g-3">
-                <div class="col-auto">
-                    <label class="form-label small text-muted mb-1">Mese</label>
-                    <select name="mese" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 140px;">
-                        @foreach($nomiMesi as $num => $nome)
-                            <option value="{{ $num }}" {{ $mese == $num ? 'selected' : '' }}>{{ $nome }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <label class="form-label small text-muted mb-1">Anno</label>
-                    <select name="anno" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 100px;">
-                        @for($a = 2025; $a <= 2030; $a++)
-                            <option value="{{ $a }}" {{ $anno == $a ? 'selected' : '' }}>{{ $a }}</option>
-                        @endfor
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <label class="form-label small text-muted mb-1">Ufficio</label>
-                    <select name="polo_id" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 180px;">
-                        <option value="">Tutti</option>
-                        @foreach($poli as $polo)
-                            <option value="{{ $polo->id }}" {{ $poloId == $polo->id ? 'selected' : '' }}>{{ $polo->nome }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-auto ms-auto">
-                    <div class="d-flex gap-2 align-items-center small">
-                        <span class="badge bg-success">Alto (&gt;70%)</span>
-                        <span class="badge bg-warning text-dark">Medio (40-70%)</span>
-                        <span class="badge bg-danger">Basso (&lt;40%)</span>
-                    </div>
-                </div>
-            </form>
+    <!-- Selettori Mese/Anno centrati -->
+    <div class="d-flex justify-content-center mb-3">
+        <form method="GET" class="d-flex gap-2 align-items-center flex-wrap justify-content-center">
+            <select name="mese" class="form-select form-select-sm" onchange="cambiaPeriodo()" style="width: 140px; border-radius: 6px !important;">
+                @foreach($nomiMesi as $num => $nome)
+                    <option value="{{ $num }}" {{ $mese == $num ? 'selected' : '' }}>{{ $nome }}</option>
+                @endforeach
+            </select>
+            <select name="anno" class="form-select form-select-sm" onchange="cambiaPeriodo()" style="width: 100px; border-radius: 6px !important;">
+                @for($a = 2025; $a <= 2030; $a++)
+                    <option value="{{ $a }}" {{ $anno == $a ? 'selected' : '' }}>{{ $a }}</option>
+                @endfor
+            </select>
+        </form>
+    </div>
+
+    <!-- Filtri Compagnia, Plotone, Ufficio -->
+    <div class="disponibilita-filters-inline mb-4">
+        <div class="disponibilita-filter-item">
+            <label for="compagniaSelect">Compagnia</label>
+            <select id="compagniaSelect" class="form-select form-select-sm">
+                <option value="">Tutte le compagnie</option>
+                @foreach($compagnie as $compagnia)
+                    <option value="{{ $compagnia->id }}">
+                        {{ $compagnia->nome }}
+                    </option>
+                @endforeach
+            </select>
         </div>
+
+        <div class="disponibilita-filter-item">
+            <label for="plotoneSelect">Plotone</label>
+            <select id="plotoneSelect" class="form-select form-select-sm" disabled>
+                <option value="">Seleziona prima una compagnia</option>
+                @foreach($plotoni as $plotone)
+                    <option value="{{ $plotone->id }}" 
+                            data-compagnia-id="{{ $plotone->compagnia_id }}">
+                        {{ $plotone->nome }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="disponibilita-filter-item">
+            <label for="ufficioSelect">Ufficio</label>
+            <select id="ufficioSelect" class="form-select form-select-sm">
+                <option value="">Tutti gli uffici</option>
+                @foreach($poli as $polo)
+                    <option value="{{ $polo->id }}">
+                        {{ $polo->nome }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+
+    <!-- Legenda badge -->
+    <div class="d-flex justify-content-center gap-2 mb-3">
+        <span class="badge" style="background-color: #d4edda; color: #155724;">Alto (&gt;70%)</span>
+        <span class="badge" style="background-color: #fff3cd; color: #856404;">Medio (40-70%)</span>
+        <span class="badge" style="background-color: #f8d7da; color: #721c24;">Basso (&lt;40%)</span>
     </div>
 
     <!-- Tabella Disponibilità -->
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive" style="max-height: calc(100vh - 280px);">
-                <table class="table table-sm table-bordered mb-0">
-                    <thead class="table-dark sticky-top">
-                        <tr>
-                            <th style="min-width: 180px; position: sticky; left: 0; background-color: #212529; z-index: 10;">
-                                Ufficio
-                            </th>
-                            <th class="text-center" style="min-width: 50px;">Tot.</th>
-                            @foreach($giorniMese as $giorno)
-                                <th class="text-center {{ $giorno['is_weekend'] || $giorno['is_holiday'] ? 'bg-secondary' : '' }}" 
-                                    style="min-width: 45px; {{ $giorno['is_today'] ? 'background-color: #ffc107 !important; color: #000;' : '' }}">
-                                    <div class="fw-bold">{{ $giorno['giorno'] }}</div>
-                                    <small class="text-uppercase" style="font-size: 0.65rem;">{{ $giorno['nome_giorno'] }}</small>
-                                </th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($disponibilitaPerPolo as $poloData)
-                            @if($poloData['totale_militari'] > 0)
-                            <tr>
-                                <td class="fw-medium" style="position: sticky; left: 0; background-color: #fff; z-index: 5;">
-                                    {{ $poloData['polo']->nome }}
-                                </td>
-                                <td class="text-center bg-light fw-bold">
-                                    {{ $poloData['totale_militari'] }}
-                                </td>
-                                @foreach($giorniMese as $giorno)
-                                    @php
-                                        $datiGiorno = $poloData['giorni'][$giorno['giorno']];
-                                        $percentuale = $datiGiorno['percentuale_liberi'];
-                                        
-                                        if ($percentuale >= 70) {
-                                            $bgColor = 'rgba(40, 167, 69, 0.25)';
-                                            $textColor = '#155724';
-                                        } elseif ($percentuale >= 40) {
-                                            $bgColor = 'rgba(255, 193, 7, 0.25)';
-                                            $textColor = '#856404';
-                                        } else {
-                                            $bgColor = 'rgba(220, 53, 69, 0.25)';
-                                            $textColor = '#721c24';
-                                        }
-                                        
-                                        if ($giorno['is_weekend'] || $giorno['is_holiday']) {
-                                            $bgColor = 'rgba(108, 117, 125, 0.1)';
-                                        }
-                                    @endphp
-                                    <td class="text-center disponibilita-cell" 
-                                        style="background-color: {{ $bgColor }}; cursor: pointer;"
-                                        data-polo-id="{{ $poloData['polo']->id }}"
-                                        data-data="{{ $anno }}-{{ str_pad($mese, 2, '0', STR_PAD_LEFT) }}-{{ str_pad($giorno['giorno'], 2, '0', STR_PAD_LEFT) }}"
-                                        data-liberi="{{ $datiGiorno['liberi'] }}"
-                                        data-impegnati="{{ $datiGiorno['impegnati'] }}"
-                                        data-totale="{{ $datiGiorno['totale'] }}"
-                                        title="Liberi: {{ $datiGiorno['liberi'] }} / Impegnati: {{ $datiGiorno['impegnati'] }}">
-                                        <strong style="color: {{ $textColor }};">{{ $datiGiorno['liberi'] }}</strong>
-                                    </td>
-                                @endforeach
-                            </tr>
-                            @endif
+    <div class="sugeco-table-wrapper">
+        <table class="sugeco-table">
+            <thead>
+                <tr>
+                    <th>Ufficio</th>
+                    <th>Tot.</th>
+                    @foreach($giorniMese as $giorno)
+                        @php
+                            $isWeekend = $giorno['is_weekend'];
+                            $isHoliday = $giorno['is_holiday'];
+                            $isToday = $giorno['is_today'] ?? false;
+                        @endphp
+                        @php
+                            // Mappa nomi giorni (abbreviati e completi) -> nome completo maiuscolo
+                            $mappaGiorni = [
+                                'Dom' => 'DOMENICA', 'Domenica' => 'DOMENICA',
+                                'Lun' => 'LUNEDI', 'Lunedì' => 'LUNEDI',
+                                'Mar' => 'MARTEDI', 'Martedì' => 'MARTEDI',
+                                'Mer' => 'MERCOLEDI', 'Mercoledì' => 'MERCOLEDI',
+                                'Gio' => 'GIOVEDI', 'Giovedì' => 'GIOVEDI',
+                                'Ven' => 'VENERDI', 'Venerdì' => 'VENERDI',
+                                'Sab' => 'SABATO', 'Sabato' => 'SABATO'
+                            ];
+                            $nomeGiornoCompleto = $mappaGiorni[$giorno['nome_giorno']] ?? strtoupper($giorno['nome_giorno']);
+                        @endphp
+                        <th class="{{ $isWeekend || $isHoliday ? 'weekend' : '' }} {{ $isToday ? 'today' : '' }}" 
+                            style="padding: 4px 2px;">
+                            <div>{{ $nomeGiornoCompleto }}</div>
+                            <div class="date-badge">{{ $giorno['data']->format('d/m') }}</div>
+                        </th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody id="disponibilitaTableBody">
+                @foreach($disponibilitaPerPolo as $poloData)
+                    <tr class="polo-row" data-polo-id="{{ $poloData['polo']->id }}">
+                        <td class="polo-nome"><strong>{{ $poloData['polo']->nome }}</strong></td>
+                        <td class="polo-totale"><strong>{{ $poloData['totale_militari'] }}</strong></td>
+                        @foreach($giorniMese as $giorno)
+                            @php
+                                $datiGiorno = $poloData['giorni'][$giorno['giorno']];
+                                $percentuale = $datiGiorno['percentuale_liberi'];
+                                
+                                if ($percentuale >= 70) {
+                                    $classeColore = 'scadenza-valido';
+                                } elseif ($percentuale >= 40) {
+                                    $classeColore = 'scadenza-in-scadenza';
+                                } else {
+                                    $classeColore = 'scadenza-scaduto';
+                                }
+                                
+                                $isWeekendHoliday = $giorno['is_weekend'] || $giorno['is_holiday'];
+                                if ($isWeekendHoliday) {
+                                    $classeColore = 'scadenza-mancante';
+                                }
+                            @endphp
+                            <td class="disponibilita-cell {{ $classeColore }}"
+                                data-polo-id="{{ $poloData['polo']->id }}"
+                                data-giorno="{{ $giorno['giorno'] }}"
+                                data-data="{{ $anno }}-{{ str_pad($mese, 2, '0', STR_PAD_LEFT) }}-{{ str_pad($giorno['giorno'], 2, '0', STR_PAD_LEFT) }}"
+                                data-is-weekend="{{ $isWeekendHoliday ? '1' : '0' }}"
+                                title="Liberi: {{ $datiGiorno['liberi'] }} / Impegnati: {{ $datiGiorno['impegnati'] }}"
+                                style="cursor: pointer;">
+                                <strong class="liberi-count">{{ $datiGiorno['liberi'] }}</strong>
+                            </td>
                         @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -124,8 +156,8 @@
 <div class="modal fade" id="dettaglioGiornoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-dark text-white py-2">
-                <h6 class="modal-title mb-0">Dettaglio Disponibilità</h6>
+            <div class="modal-header" style="background: linear-gradient(135deg, #0A2342 0%, #1a3a5a 100%); color: white;">
+                <h5 class="modal-title mb-0">Dettaglio Disponibilità</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="dettaglioGiornoContent">
@@ -139,37 +171,100 @@
 </div>
 
 <style>
-.card {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.table th {
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.table td {
-    font-size: 0.85rem;
-    vertical-align: middle;
-}
-
 .disponibilita-cell:hover {
     opacity: 0.8;
 }
 
-.sticky-top {
-    position: sticky;
-    top: 0;
-    z-index: 2;
+/* Date badge nell'header - stesso stile di CPT/Pianificazione */
+.date-badge {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    display: inline-block;
+    margin-top: 3px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 500;
 }
 
-/* Modal Styles */
-.modal-header {
-    border-bottom: 1px solid #dee2e6;
+/* Weekend header - stesso stile di CPT/Pianificazione */
+.sugeco-table th.weekend {
+    background-color: #dc3545 !important;
+    border-top-color: #dc3545;
 }
 
+/* Today header */
+.sugeco-table th.today {
+    background-color: #0A2342 !important;
+}
+
+.sugeco-table th.today .date-badge {
+    background: #ff8c00;
+    color: white;
+}
+
+/* Filtri inline */
+.disponibilita-filters-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 16px 24px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.disponibilita-filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.disponibilita-filter-item label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    font-weight: 600;
+}
+
+.disponibilita-filter-item .form-select {
+    min-width: 200px;
+    border-radius: 6px !important;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.disponibilita-filter-item .form-select:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .disponibilita-filters-inline {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .disponibilita-filter-item {
+        width: 100%;
+    }
+
+    .disponibilita-filter-item .form-select {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+/* Riepilogo Box */
 .riepilogo-box {
     text-align: center;
     padding: 16px;
@@ -227,34 +322,84 @@
     border-bottom-color: #212529;
 }
 
-/* Lista militari */
-.militari-table {
-    font-size: 0.85rem;
-}
-
-.militari-table th {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: #6c757d;
-    border-bottom-width: 1px;
-    padding: 8px 12px;
-}
-
-.militari-table td {
-    padding: 10px 12px;
-    vertical-align: middle;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.militari-table tbody tr:hover {
-    background-color: #f9fafb;
-}
-
 .empty-msg {
     text-align: center;
-    padding: 30px;
+    padding: 40px 20px;
     color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Lista militari - Design moderno */
+.lista-militari {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+}
+
+.militare-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.militare-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.militare-libero {
+    border-left-color: #28a745;
+}
+
+.militare-impegnato {
+    border-left-color: #dc3545;
+}
+
+.militare-numero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: #0A2342;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.militare-libero .militare-numero {
+    background: #28a745;
+}
+
+.militare-impegnato .militare-numero {
+    background: #dc3545;
+}
+
+.militare-nome {
+    font-weight: 600;
+    color: #212529;
+    font-size: 0.9rem;
+}
+
+.militare-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.militare-motivo {
+    font-size: 0.8rem;
+    color: #6c757d;
+    font-style: italic;
 }
 
 /* Scrollbar */
@@ -277,6 +422,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalElement = document.getElementById('dettaglioGiornoModal');
     const modalContent = document.getElementById('dettaglioGiornoContent');
     const modal = new bootstrap.Modal(modalElement);
+    
+    // Inizializza filtri
+    initFiltri();
     
     const loadingHTML = `
         <div class="text-center py-4">
@@ -355,27 +503,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         `;
                         
                         if (responseData.militari_liberi && responseData.militari_liberi.length > 0) {
-                            html += `
-                                <table class="table militari-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Ufficio</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                            `;
-                            responseData.militari_liberi.forEach(function(m) {
+                            html += `<div class="lista-militari">`;
+                            responseData.militari_liberi.forEach(function(m, index) {
                                 html += `
-                                    <tr>
-                                        <td class="fw-medium">${m.nome_completo}</td>
-                                        <td class="text-muted">${m.polo || '-'}</td>
-                                    </tr>
+                                    <div class="militare-item militare-libero">
+                                        <span class="militare-numero">${index + 1}</span>
+                                        <span class="militare-nome">${m.nome_completo}</span>
+                                    </div>
                                 `;
                             });
-                            html += `</tbody></table>`;
+                            html += `</div>`;
                         } else {
-                            html += `<div class="empty-msg">Nessun militare libero</div>`;
+                            html += `<div class="empty-msg"><i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i><br>Nessun militare libero</div>`;
                         }
                         
                         html += `
@@ -388,32 +527,21 @@ document.addEventListener('DOMContentLoaded', function() {
                         `;
                         
                         if (responseData.militari_impegnati && responseData.militari_impegnati.length > 0) {
-                            html += `
-                                <table class="table militari-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>Ufficio</th>
-                                            <th>Motivo</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                            `;
-                            responseData.militari_impegnati.forEach(function(m) {
+                            html += `<div class="lista-militari">`;
+                            responseData.militari_impegnati.forEach(function(m, index) {
                                 html += `
-                                    <tr>
-                                        <td class="fw-medium">${m.nome_completo}</td>
-                                        <td class="text-muted">${m.polo || '-'}</td>
-                                        <td>
-                                            <span class="badge bg-secondary">${m.codice || m.fonte}</span>
-                                            <small class="text-muted ms-1">${m.motivo || ''}</small>
-                                        </td>
-                                    </tr>
+                                    <div class="militare-item militare-impegnato">
+                                        <span class="militare-numero">${index + 1}</span>
+                                        <div class="militare-info">
+                                            <span class="militare-nome">${m.nome_completo}</span>
+                                            <span class="militare-motivo">${m.motivo || m.codice || m.fonte || '-'}</span>
+                                        </div>
+                                    </div>
                                 `;
                             });
-                            html += `</tbody></table>`;
+                            html += `</div>`;
                         } else {
-                            html += `<div class="empty-msg">Nessun militare impegnato</div>`;
+                            html += `<div class="empty-msg"><i class="fas fa-users text-muted mb-2" style="font-size: 2rem;"></i><br>Nessun militare impegnato</div>`;
                         }
                         
                         html += `
@@ -444,5 +572,209 @@ document.addEventListener('DOMContentLoaded', function() {
         modalContent.innerHTML = loadingHTML;
     });
 });
+
+/**
+ * Inizializza i filtri e gestisce la logica di filtraggio lato client
+ */
+function initFiltri() {
+    const compagniaSelect = document.getElementById('compagniaSelect');
+    const plotoneSelect = document.getElementById('plotoneSelect');
+    const ufficioSelect = document.getElementById('ufficioSelect');
+    
+    if (compagniaSelect) {
+        compagniaSelect.addEventListener('change', function() {
+            aggiornaOpzioniPlotone(this.value);
+            applicaFiltriClientSide();
+        });
+    }
+    
+    if (plotoneSelect) {
+        plotoneSelect.addEventListener('change', function() {
+            applicaFiltriClientSide();
+        });
+    }
+    
+    if (ufficioSelect) {
+        ufficioSelect.addEventListener('change', function() {
+            applicaFiltriClientSide();
+        });
+    }
+    
+    // Applica i filtri iniziali
+    applicaFiltriClientSide();
+}
+
+/**
+ * Aggiorna le opzioni visibili del select plotone in base alla compagnia
+ */
+function aggiornaOpzioniPlotone(compagniaId) {
+    const plotoneSelect = document.getElementById('plotoneSelect');
+    if (!plotoneSelect) return;
+    
+    const options = plotoneSelect.querySelectorAll('option');
+    const placeholderOption = plotoneSelect.querySelector('option[value=""]');
+    
+    if (!compagniaId) {
+        // Nessuna compagnia selezionata: disabilita il select plotoni
+        plotoneSelect.disabled = true;
+        plotoneSelect.value = '';
+        if (placeholderOption) {
+            placeholderOption.textContent = 'Seleziona prima una compagnia';
+        }
+        // Nascondi tutte le opzioni tranne il placeholder
+        options.forEach(option => {
+            if (option.value) {
+                option.style.display = 'none';
+            }
+        });
+        return;
+    }
+    
+    // Compagnia selezionata: abilita il select e filtra plotoni
+    plotoneSelect.disabled = false;
+    if (placeholderOption) {
+        placeholderOption.textContent = 'Tutti i plotoni';
+    }
+    
+    options.forEach(option => {
+        if (!option.value) return;
+        
+        const optCompagniaId = option.dataset.compagniaId;
+        option.style.display = (optCompagniaId === compagniaId) ? '' : 'none';
+    });
+    
+    // Se il plotone selezionato non appartiene più alla compagnia, resetta
+    if (plotoneSelect.value) {
+        const selectedOption = plotoneSelect.querySelector(`option[value="${plotoneSelect.value}"]`);
+        if (selectedOption && selectedOption.style.display === 'none') {
+            plotoneSelect.value = '';
+        }
+    }
+}
+
+/**
+ * Cambia il periodo (mese/anno) - questo richiede reload per nuovi dati
+ */
+function cambiaPeriodo() {
+    const mese = document.querySelector('select[name="mese"]').value;
+    const anno = document.querySelector('select[name="anno"]').value;
+    
+    const params = new URLSearchParams();
+    params.append('mese', mese);
+    params.append('anno', anno);
+    
+    window.location.href = '{{ route("disponibilita.index") }}?' + params.toString();
+}
+
+/**
+ * Applica i filtri lato client senza ricaricare la pagina
+ */
+function applicaFiltriClientSide() {
+    const compagniaId = document.getElementById('compagniaSelect').value;
+    const plotoneId = document.getElementById('plotoneSelect').value;
+    const ufficioId = document.getElementById('ufficioSelect').value;
+    
+    const militariData = window.militariData || [];
+    const giorniMese = window.giorniMese || 31;
+    
+    // Filtra i militari in base ai filtri selezionati
+    const militariFiltrati = militariData.filter(m => {
+        if (compagniaId && m.compagnia_id != compagniaId) return false;
+        if (plotoneId && m.plotone_id != plotoneId) return false;
+        if (ufficioId && m.polo_id != ufficioId) return false;
+        return true;
+    });
+    
+    // Raggruppa per polo
+    const militariPerPolo = {};
+    militariFiltrati.forEach(m => {
+        if (!militariPerPolo[m.polo_id]) {
+            militariPerPolo[m.polo_id] = [];
+        }
+        militariPerPolo[m.polo_id].push(m);
+    });
+    
+    // Aggiorna ogni riga della tabella
+    document.querySelectorAll('.polo-row').forEach(row => {
+        const poloId = row.dataset.poloId;
+        const militariPolo = militariPerPolo[poloId] || [];
+        const totaleMilitari = militariPolo.length;
+        
+        // Se filtro ufficio è attivo, nascondi righe non corrispondenti
+        if (ufficioId && poloId !== ufficioId) {
+            row.style.display = 'none';
+            return;
+        }
+        
+        // Mostra la riga se ha militari o se nessun filtro compagnia/plotone è attivo
+        if (totaleMilitari === 0 && (compagniaId || plotoneId)) {
+            row.style.display = 'none';
+            return;
+        }
+        
+        row.style.display = '';
+        
+        // Aggiorna il totale
+        const totaleCell = row.querySelector('.polo-totale strong');
+        if (totaleCell) {
+            totaleCell.textContent = totaleMilitari;
+        }
+        
+        // Aggiorna ogni cella giorno
+        row.querySelectorAll('.disponibilita-cell').forEach(cell => {
+            const giorno = parseInt(cell.dataset.giorno);
+            const isWeekend = cell.dataset.isWeekend === '1';
+            
+            // Calcola liberi/impegnati per questo giorno
+            let impegnati = 0;
+            militariPolo.forEach(m => {
+                if (m.impegni && m.impegni[giorno]) {
+                    impegnati++;
+                }
+            });
+            
+            const liberi = totaleMilitari - impegnati;
+            const percentuale = totaleMilitari > 0 ? Math.round((liberi / totaleMilitari) * 100) : 0;
+            
+            // Aggiorna il numero
+            const countEl = cell.querySelector('.liberi-count');
+            if (countEl) {
+                countEl.textContent = liberi;
+            }
+            
+            // Aggiorna il colore (solo se non è weekend/festivo)
+            cell.classList.remove('scadenza-valido', 'scadenza-in-scadenza', 'scadenza-scaduto', 'scadenza-mancante');
+            
+            if (isWeekend) {
+                cell.classList.add('scadenza-mancante');
+            } else if (percentuale >= 70) {
+                cell.classList.add('scadenza-valido');
+            } else if (percentuale >= 40) {
+                cell.classList.add('scadenza-in-scadenza');
+            } else {
+                cell.classList.add('scadenza-scaduto');
+            }
+            
+            // Aggiorna tooltip
+            cell.title = `Liberi: ${liberi} / Impegnati: ${impegnati}`;
+        });
+    });
+    
+    // Verifica se ci sono righe visibili
+    const righeVisibili = document.querySelectorAll('.polo-row[style=""], .polo-row:not([style])');
+    const noResultsMsg = document.getElementById('noResultsMessage');
+    
+    if (righeVisibili.length === 0) {
+        if (!noResultsMsg) {
+            const tbody = document.getElementById('disponibilitaTableBody');
+            const msg = document.createElement('tr');
+            msg.id = 'noResultsMessage';
+            msg.innerHTML = '<td colspan="100" class="text-center py-4 text-muted"><i class="fas fa-search me-2"></i>Nessun risultato con i filtri selezionati</td>';
+            tbody.appendChild(msg);
+        }
+    } else if (noResultsMsg) {
+        noResultsMsg.remove();
+    }
+}
 </script>
 @endsection

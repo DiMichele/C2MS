@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Hub Attività')
 
@@ -1633,7 +1633,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (!noResultsMsg) {
                     noResultsMsg = document.createElement('div');
                     noResultsMsg.className = 'militari-no-results';
-                    noResultsMsg.innerHTML = '<i class="fas fa-search"></i><br>Nessun militare trovato';
+                    noResultsMsg.innerHTML = '<i class="fas fa-users-slash"></i><br>Nessun militare trovato';
                     listContainer.appendChild(noResultsMsg);
                 }
             } else {

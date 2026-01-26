@@ -104,21 +104,34 @@
                 <form action="{{ route('codici-cpt.store') }}" method="POST" id="formCodice">
                     @csrf
 
-                    <!-- Codice -->
+                    <!-- Nome Attività (prima) -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold required">Codice/Sigla</label>
+                        <label class="form-label fw-semibold required">Nome attività</label>
+                        <input type="text" 
+                               name="attivita_specifica" 
+                               class="form-control" 
+                               placeholder="es. Turno Ordinario, Licenza Ordinaria" 
+                               value="{{ old('attivita_specifica') }}" 
+                               maxlength="200" 
+                               required>
+                        <div class="form-text">Nome completo dell'attività</div>
+                    </div>
+
+                    <!-- Sigla (seconda) -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold required">Sigla</label>
                         <input type="text" 
                                name="codice" 
                                class="form-control form-control-lg" 
-                               placeholder="es. TO, S-UI, lo" 
+                               placeholder="es. TO, S-UI, LO" 
                                value="{{ old('codice') }}" 
                                maxlength="20" 
                                required
                                style="text-transform: uppercase;">
-                        <div class="form-text">Codice breve univoco (max 20 caratteri)</div>
+                        <div class="form-text">Sigla breve univoca (max 20 caratteri)</div>
                     </div>
 
-                    <!-- Categoria -->
+                    <!-- Categoria (terza) -->
                     <div class="mb-4">
                         <label class="form-label fw-semibold required">Categoria</label>
                         <select name="macro_attivita" class="form-select form-select-lg" required>
@@ -138,32 +151,8 @@
                         <div class="form-text">Il codice verrà aggiunto come ultimo di questa categoria</div>
                     </div>
 
-                    <!-- Descrizione -->
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold required">Descrizione</label>
-                        <input type="text" 
-                               name="attivita_specifica" 
-                               class="form-control" 
-                               placeholder="es. Turno Ordinario, Licenza Ordinaria" 
-                               value="{{ old('attivita_specifica') }}" 
-                               maxlength="200" 
-                               required>
-                        <div class="form-text">Descrizione completa dell'attività</div>
-                    </div>
-
-                    <!-- Tipo Impiego -->
-                    <div class="mb-4">
-                        <label class="form-label fw-semibold required">Tipo di Impiego</label>
-                        <select name="impiego" class="form-select" required>
-                            <option value="">-- Seleziona tipo --</option>
-                            @foreach($impieghi as $value => $label)
-                                <option value="{{ $value }}" {{ old('impiego') == $value ? 'selected' : '' }}>
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div class="form-text">Determina la disponibilità del militare</div>
-                    </div>
+                    <!-- Campo nascosto per impiego (valore default) -->
+                    <input type="hidden" name="impiego" value="DISPONIBILE">
 
                     <!-- Colore -->
                     <div class="mb-4">

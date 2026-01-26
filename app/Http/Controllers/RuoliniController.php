@@ -12,9 +12,8 @@ use App\Services\CompagniaSettingsService;
 use App\Models\Polo;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
+use App\Services\ExcelStyleService;
 
 /**
  * Controller per la gestione dei Ruolini
@@ -74,51 +73,49 @@ class RuoliniController extends Controller
             $compagniaId = null;
         }
         
-        // Plotoni - filtrati per compagnia se selezionata
-        $plotoni = collect();
-        if ($compagniaId) {
-            $plotoni = Plotone::where('compagnia_id', $compagniaId)
-                ->orderBy('nome')
-                ->get();
-        }
+        // Plotoni - carica tutti quelli delle compagnie visibili per filtraggio client-side
+        $compagnieIds = $compagnie->pluck('id')->toArray();
+        $plotoni = Plotone::whereIn('compagnia_id', $compagnieIds)
+            ->orderBy('compagnia_id')
+            ->orderBy('nome')
+            ->get();
 
         // Uffici (Poli) - non filtrati per compagnia perché la tabella non ha quella colonna
         $uffici = Polo::orderBy('nome')->get();
         
-        // Query base per i militari
+        // Query base per i militari - carica tutti quelli delle compagnie visibili
+        // Il filtraggio per compagnia/plotone/ufficio avviene client-side
         $query = Militare::with([
             'grado',
             'plotone.compagnia',
             'compagnia'
         ])->orderByGradoENome();
         
-        // Applica filtri
-        if ($compagniaId) {
-            $query->where(function($q) use ($compagniaId) {
-                $q->whereHas('plotone', function($subq) use ($compagniaId) {
-                    $subq->where('compagnia_id', $compagniaId);
-                })
-                ->orWhere('compagnia_id', $compagniaId);
-            });
-        } elseif (!$user->hasGlobalVisibility() && $user->compagnia_id) {
-            // Se non è admin e non ha selezionato compagnia, filtra per la sua
+        // Filtra solo per compagnie visibili all'utente (sicurezza)
+        if (!$user->hasGlobalVisibility() && $user->compagnia_id) {
+            // Utente normale: vede solo la sua compagnia
             $query->where(function($q) use ($user) {
                 $q->whereHas('plotone', function($subq) use ($user) {
                     $subq->where('compagnia_id', $user->compagnia_id);
                 })
                 ->orWhere('compagnia_id', $user->compagnia_id);
             });
+        } elseif ($user->hasGlobalVisibility() && !empty($compagnieIds)) {
+            // Admin: vede tutte le compagnie visibili
+            $query->where(function($q) use ($compagnieIds) {
+                $q->whereHas('plotone', function($subq) use ($compagnieIds) {
+                    $subq->whereIn('compagnia_id', $compagnieIds);
+                })
+                ->orWhereIn('compagnia_id', $compagnieIds);
+            });
         }
         
-        if ($plotoneId) {
-            $query->where('plotone_id', $plotoneId);
-        }
-
-        if ($ufficioId) {
-            $query->where('polo_id', $ufficioId);
-        }
+        // NON filtrare per compagnia/plotone/ufficio qui - lo facciamo client-side
         
         $militari = $query->get();
+        
+        // Ottieni il service per la configurazione ruolini della compagnia
+        $settingsService = $this->getSettingsService($compagniaId ? (int)$compagniaId : null);
         
         // Dividi militari per categoria
         $categorie = [
@@ -132,9 +129,13 @@ class RuoliniController extends Controller
             $categoria = $this->getCategoriaGrado($militare->grado);
             $impegni = $this->getImpegniMilitare($militare, $dataSelezionata, $dataObj);
             
-            if (empty($impegni)) {
+            // Usa la configurazione ruolini per determinare se è presente o assente
+            $isPresente = $this->determinaPresenzaConService($impegni, $settingsService);
+            
+            if ($isPresente) {
                 $categorie[$categoria]['presenti'][] = [
                     'militare' => $militare,
+                    'impegni' => $impegni, // Passa anche gli impegni per mostrare cosa fa
                 ];
             } else {
                 $categorie[$categoria]['assenti'][] = [
@@ -276,8 +277,23 @@ class RuoliniController extends Controller
      * 
      * @param array $impegni Array di impegni del militare
      * @return bool True se il militare è presente, False se assente
+     * @deprecated Usa determinaPresenzaConService() invece
      */
     private function determinaPresenza(array $impegni): bool
+    {
+        return $this->determinaPresenzaConService($impegni, $this->getSettingsService());
+    }
+    
+    /**
+     * Determina se un militare è presente in base agli impegni e alla configurazione
+     * 
+     * SINGLE SOURCE OF TRUTH: Usa CompagniaSettingsService per le regole.
+     * 
+     * @param array $impegni Array di impegni del militare
+     * @param CompagniaSettingsService $settingsService Service per le regole della compagnia
+     * @return bool True se il militare è presente, False se assente
+     */
+    private function determinaPresenzaConService(array $impegni, CompagniaSettingsService $settingsService): bool
     {
         // Nessun impegno = sempre presente
         if (empty($impegni)) {
@@ -289,7 +305,7 @@ class RuoliniController extends Controller
             // Solo per impegni CPT (hanno tipo_servizio_id)
             if ($impegno['tipo'] === 'CPT' && isset($impegno['tipo_servizio_id'])) {
                 // Usa il service centralizzato per le regole
-                $isPresente = $this->getSettingsService()->isPresente($impegno['tipo_servizio_id']);
+                $isPresente = $settingsService->isPresente($impegno['tipo_servizio_id']);
                 
                 // Se configurato come presente, ignora questo impegno
                 if ($isPresente) {
@@ -337,11 +353,32 @@ class RuoliniController extends Controller
             abort(403, 'Non hai i permessi per esportare i ruolini di quella compagnia.');
         }
         
+        // Recupera nomi per il titolo e sottotitolo
+        $nomeCompagnia = '';
+        $nomePlotone = '';
+        $nomeUfficio = '';
+        
+        if ($compagniaId) {
+            $compagnia = Compagnia::find($compagniaId);
+            $nomeCompagnia = $compagnia ? $compagnia->nome : '';
+        }
+        
+        if ($plotoneId) {
+            $plotone = Plotone::find($plotoneId);
+            $nomePlotone = $plotone ? $plotone->nome : '';
+        }
+        
+        if ($ufficioId) {
+            $ufficio = Polo::find($ufficioId);
+            $nomeUfficio = $ufficio ? $ufficio->nome : '';
+        }
+        
         // Query base per i militari
         $query = Militare::with([
             'grado',
             'plotone.compagnia',
-            'compagnia'
+            'compagnia',
+            'polo'
         ])->orderByGradoENome();
         
         // Applica filtri
@@ -371,6 +408,9 @@ class RuoliniController extends Controller
         
         $militari = $query->get();
         
+        // Ottieni il service per la configurazione ruolini della compagnia
+        $settingsService = $this->getSettingsService($compagniaId ? (int)$compagniaId : null);
+        
         // Dividi militari per categoria
         $categorie = [
             'Ufficiali' => ['presenti' => [], 'assenti' => []],
@@ -383,9 +423,13 @@ class RuoliniController extends Controller
             $categoria = $this->getCategoriaGrado($militare->grado);
             $impegni = $this->getImpegniMilitare($militare, $dataSelezionata, $dataObj);
             
-            if (empty($impegni)) {
+            // Usa la configurazione ruolini per determinare se è presente o assente
+            $isPresente = $this->determinaPresenzaConService($impegni, $settingsService);
+            
+            if ($isPresente) {
                 $categorie[$categoria]['presenti'][] = [
                     'militare' => $militare,
+                    'impegni' => $impegni,
                 ];
             } else {
                 $categorie[$categoria]['assenti'][] = [
@@ -395,9 +439,11 @@ class RuoliniController extends Controller
             }
         }
         
-        // Crea il file Excel
-        $spreadsheet = new Spreadsheet();
+        // Usa il servizio per stili Excel
+        $excelService = new ExcelStyleService();
+        $spreadsheet = $excelService->createSpreadsheet('Ruolino ' . $dataObj->format('d/m/Y'));
         $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Ruolino');
         
         // Calcola i totali
         $totalePresenti = 0;
@@ -408,153 +454,285 @@ class RuoliniController extends Controller
         }
         $forzaEffettiva = $totalePresenti + $totaleAssenti;
         
-        // Titolo
-        $sheet->setCellValue('A1', 'RUOLINO DEL ' . $dataObj->locale('it')->isoFormat('dddd D MMMM YYYY'));
-        $sheet->mergeCells('A1:H1');
-        $sheet->getStyle('A1')->applyFromArray([
-            'font' => ['size' => 16, 'bold' => true, 'color' => ['rgb' => '0F3A6D']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E6F2FF']]
-        ]);
-        $sheet->getRowDimension('1')->setRowHeight(30);
+        // ======================================
+        // INTESTAZIONE CON TITOLO E DATA
+        // ======================================
+        $dataFormattata = ucfirst($dataObj->locale('it')->isoFormat('dddd D MMMM YYYY'));
+        $titolo = 'RUOLINO GIORNALIERO' . ($nomeCompagnia ? ' - ' . strtoupper($nomeCompagnia) : '');
+        $excelService->applyTitleStyle($sheet, 'A1:G1', $titolo);
+        $sheet->getRowDimension(1)->setRowHeight(45);
         
-        // Riepilogo Forza
-        $sheet->setCellValue('A2', 'FORZA EFFETTIVA: ' . $forzaEffettiva);
-        $sheet->setCellValue('C2', 'PRESENTI: ' . $totalePresenti);
-        $sheet->setCellValue('E2', 'ASSENTI: ' . $totaleAssenti);
+        // Sottotitolo con data
+        $sheet->setCellValue('A2', $dataFormattata);
+        $sheet->mergeCells('A2:G2');
         $sheet->getStyle('A2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => '0F3A6D']],
+            'font' => ['italic' => true, 'size' => 12, 'color' => ['rgb' => '6c757d']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
         ]);
-        $sheet->getStyle('C2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => '198754']],
-        ]);
-        $sheet->getStyle('E2')->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'DC3545']],
-        ]);
-        
-        $currentRow = 4;
+        $sheet->getRowDimension(2)->setRowHeight(24);
         
         // ======================================
-        // SEZIONE PRESENTI
+        // RIGA FILTRI APPLICATI
         // ======================================
-        $sheet->setCellValue('A' . $currentRow, 'PRESENTI (' . $totalePresenti . ')');
-        $sheet->mergeCells('A' . $currentRow . ':H' . $currentRow);
-        $sheet->getStyle('A' . $currentRow)->applyFromArray([
-            'font' => ['size' => 14, 'bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '198754']]
-        ]);
-        $currentRow += 2;
-        
-        // Header Presenti
-        $headerPresenti = ['#', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'TELEFONO', 'ISTITUTI'];
-        $col = 'A';
-        foreach ($headerPresenti as $header) {
-            $sheet->setCellValue($col . $currentRow, $header);
-            $col++;
+        $filtriApplicati = [];
+        if ($nomePlotone) {
+            $filtriApplicati[] = 'Plotone: ' . $nomePlotone;
         }
-        $sheet->getStyle('A' . $currentRow . ':H' . $currentRow)->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '198754']],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+        if ($nomeUfficio) {
+            $filtriApplicati[] = 'Ufficio: ' . $nomeUfficio;
+        }
+        
+        $testoFiltri = empty($filtriApplicati) ? 'Visualizzazione: Intera Compagnia' : implode(' | ', $filtriApplicati);
+        $sheet->setCellValue('A3', $testoFiltri);
+        $sheet->mergeCells('A3:G3');
+        $sheet->getStyle('A3')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => ExcelStyleService::NAVY]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF8E1']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'FFE082']]]
         ]);
+        $sheet->getRowDimension(3)->setRowHeight(26);
+        
+        // ======================================
+        // BOX FORZA EFFETTIVA - Solo questo nel riepilogo
+        // ======================================
+        $currentRow = 5;
+        
+        // Box Forza Effettiva centrato
+        $sheet->setCellValue('C' . $currentRow, 'FORZA EFFETTIVA');
+        $sheet->mergeCells('C' . $currentRow . ':E' . $currentRow);
+        $sheet->getStyle('C' . $currentRow . ':E' . $currentRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => ExcelStyleService::NAVY]],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => ExcelStyleService::NAVY]]]
+        ]);
+        $sheet->getRowDimension($currentRow)->setRowHeight(30);
         $currentRow++;
         
-        // Dati Presenti
+        // Valore Forza Effettiva
+        $sheet->setCellValue('C' . $currentRow, $forzaEffettiva);
+        $sheet->mergeCells('C' . $currentRow . ':E' . $currentRow);
+        $sheet->getStyle('C' . $currentRow . ':E' . $currentRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 24, 'color' => ['rgb' => ExcelStyleService::NAVY]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E3F2FD']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => ExcelStyleService::NAVY]]]
+        ]);
+        $sheet->getRowDimension($currentRow)->setRowHeight(45);
+        $currentRow += 2;
+        
+        // ======================================
+        // SEZIONE PRESENTI - DIVISA PER CATEGORIA
+        // ======================================
+        $sheet->setCellValue('A' . $currentRow, 'PERSONALE PRESENTE (' . $totalePresenti . ')');
+        $sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
+        $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '2E7D32']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => '1B5E20']]]
+        ]);
+        $sheet->getRowDimension($currentRow)->setRowHeight(35);
+        $currentRow++;
+        
+        // Itera su ogni categoria per i presenti
         $numeroPresente = 1;
         foreach ($categorie as $catNome => $catData) {
+            if (count($catData['presenti']) === 0) {
+                continue;
+            }
+            
+            $currentRow++;
+            
+            // Header categoria
+            $sheet->setCellValue('A' . $currentRow, strtoupper($catNome) . ' (' . count($catData['presenti']) . ')');
+            $sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
+            $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '43A047']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'indent' => 1],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '2E7D32']]]
+            ]);
+            $sheet->getRowDimension($currentRow)->setRowHeight(26);
+            $currentRow++;
+            
+            // Header tabella presenti
+            $headers = ['N.', 'GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'UFFICIO', 'TELEFONO'];
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . $currentRow, $header);
+                $col++;
+            }
+            $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '2E7D32']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'wrapText' => true],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => '1B5E20']]]
+            ]);
+            $sheet->getRowDimension($currentRow)->setRowHeight(28);
+            $currentRow++;
+            
+            // Dati
+            $startDataRow = $currentRow;
             foreach ($catData['presenti'] as $item) {
                 $m = $item['militare'];
-                $istituti = !empty($m->istituti) ? implode(', ', $m->istituti) : '-';
                 
                 $sheet->setCellValue('A' . $currentRow, $numeroPresente++);
-                $sheet->setCellValue('B' . $currentRow, $m->compagnia->nome ?? '-');
-                $sheet->setCellValue('C' . $currentRow, $m->grado->sigla ?? '');
-                $sheet->setCellValue('D' . $currentRow, $m->cognome);
-                $sheet->setCellValue('E' . $currentRow, $m->nome);
-                $sheet->setCellValue('F' . $currentRow, $m->plotone->nome ?? '-');
+                $sheet->setCellValue('B' . $currentRow, $m->grado->sigla ?? '-');
+                $sheet->setCellValue('C' . $currentRow, strtoupper($m->cognome));
+                $sheet->setCellValue('D' . $currentRow, strtoupper($m->nome));
+                $sheet->setCellValue('E' . $currentRow, $m->plotone->nome ?? '-');
+                $sheet->setCellValue('F' . $currentRow, $m->polo->nome ?? '-');
                 $sheet->setCellValue('G' . $currentRow, $m->telefono ?? '-');
-                $sheet->setCellValue('H' . $currentRow, $istituti);
-                
-                $sheet->getStyle('A' . $currentRow . ':H' . $currentRow)->applyFromArray([
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-                ]);
                 
                 $currentRow++;
+            }
+            
+            // Stile dati
+            if ($currentRow > $startDataRow) {
+                $excelService->applyDataStyle($sheet, 'A' . $startDataRow . ':G' . ($currentRow - 1));
+                // Alternanza colori con sfumatura verde chiara
+                for ($row = $startDataRow; $row < $currentRow; $row++) {
+                    $bgColor = (($row - $startDataRow) % 2 === 0) ? 'FFFFFF' : 'E8F5E9';
+                    $sheet->getStyle('A' . $row . ':G' . $row)->applyFromArray([
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
+                        'borders' => [
+                            'allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'C8E6C9']],
+                            'left' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => '43A047']]
+                        ]
+                    ]);
+                    $sheet->getRowDimension($row)->setRowHeight(22);
+                }
             }
         }
         
         $currentRow += 2;
         
         // ======================================
-        // SEZIONE ASSENTI
+        // SEZIONE ASSENTI - DIVISA PER CATEGORIA
         // ======================================
-        $sheet->setCellValue('A' . $currentRow, 'ASSENTI (' . $totaleAssenti . ')');
-        $sheet->mergeCells('A' . $currentRow . ':H' . $currentRow);
-        $sheet->getStyle('A' . $currentRow)->applyFromArray([
-            'font' => ['size' => 14, 'bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DC3545']]
+        $sheet->setCellValue('A' . $currentRow, 'PERSONALE ASSENTE (' . $totaleAssenti . ')');
+        $sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
+        $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'C62828']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => 'B71C1C']]]
         ]);
-        $currentRow += 2;
-        
-        // Header Assenti
-        $headerAssenti = ['#', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'TELEFONO', 'MOTIVAZIONE'];
-        $col = 'A';
-        foreach ($headerAssenti as $header) {
-            $sheet->setCellValue($col . $currentRow, $header);
-            $col++;
-        }
-        $sheet->getStyle('A' . $currentRow . ':H' . $currentRow)->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'wrapText' => true],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DC3545']],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-        ]);
+        $sheet->getRowDimension($currentRow)->setRowHeight(35);
         $currentRow++;
         
-        // Dati Assenti
+        // Itera su ogni categoria per gli assenti
         $numeroAssente = 1;
         foreach ($categorie as $catNome => $catData) {
+            if (count($catData['assenti']) === 0) {
+                continue;
+            }
+            
+            $currentRow++;
+            
+            // Header categoria
+            $sheet->setCellValue('A' . $currentRow, strtoupper($catNome) . ' (' . count($catData['assenti']) . ')');
+            $sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
+            $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E53935']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'indent' => 1],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'C62828']]]
+            ]);
+            $sheet->getRowDimension($currentRow)->setRowHeight(26);
+            $currentRow++;
+            
+            // Header tabella assenti
+            $headers = ['N.', 'GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'UFFICIO', 'MOTIVAZIONE'];
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . $currentRow, $header);
+                $col++;
+            }
+            $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray([
+                'font' => ['bold' => true, 'size' => 10, 'color' => ['rgb' => ExcelStyleService::WHITE]],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'C62828']],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER, 'wrapText' => true],
+                'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'B71C1C']]]
+            ]);
+            $sheet->getRowDimension($currentRow)->setRowHeight(28);
+            $currentRow++;
+            
+            // Dati
+            $startDataRow = $currentRow;
             foreach ($catData['assenti'] as $item) {
                 $m = $item['militare'];
                 $motivazioni = [];
                 foreach ($item['impegni'] as $impegno) {
-                    $motivazioni[] = $impegno['descrizione'];
+                    $motivazioni[] = $impegno['codice'] . ' - ' . $impegno['descrizione'];
                 }
                 $motivazioneStr = implode(', ', $motivazioni);
                 
                 $sheet->setCellValue('A' . $currentRow, $numeroAssente++);
-                $sheet->setCellValue('B' . $currentRow, $m->compagnia->nome ?? '-');
-                $sheet->setCellValue('C' . $currentRow, $m->grado->sigla ?? '');
-                $sheet->setCellValue('D' . $currentRow, $m->cognome);
-                $sheet->setCellValue('E' . $currentRow, $m->nome);
-                $sheet->setCellValue('F' . $currentRow, $m->plotone->nome ?? '-');
-                $sheet->setCellValue('G' . $currentRow, $m->telefono ?? '-');
-                $sheet->setCellValue('H' . $currentRow, $motivazioneStr);
-                
-                $sheet->getStyle('A' . $currentRow . ':H' . $currentRow)->applyFromArray([
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
-                ]);
+                $sheet->setCellValue('B' . $currentRow, $m->grado->sigla ?? '-');
+                $sheet->setCellValue('C' . $currentRow, strtoupper($m->cognome));
+                $sheet->setCellValue('D' . $currentRow, strtoupper($m->nome));
+                $sheet->setCellValue('E' . $currentRow, $m->plotone->nome ?? '-');
+                $sheet->setCellValue('F' . $currentRow, $m->polo->nome ?? '-');
+                $sheet->setCellValue('G' . $currentRow, $motivazioneStr ?: '-');
                 
                 $currentRow++;
             }
+            
+            // Stile dati
+            if ($currentRow > $startDataRow) {
+                $excelService->applyDataStyle($sheet, 'A' . $startDataRow . ':G' . ($currentRow - 1));
+                // Alternanza colori con sfumatura rossa chiara
+                for ($row = $startDataRow; $row < $currentRow; $row++) {
+                    $bgColor = (($row - $startDataRow) % 2 === 0) ? 'FFFFFF' : 'FFEBEE';
+                    $sheet->getStyle('A' . $row . ':G' . $row)->applyFromArray([
+                        'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $bgColor]],
+                        'borders' => [
+                            'allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => 'FFCDD2']],
+                            'left' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM, 'color' => ['rgb' => 'E53935']]
+                        ]
+                    ]);
+                    $sheet->getRowDimension($row)->setRowHeight(22);
+                }
+            }
         }
         
-        // Imposta larghezze colonne
-        $sheet->getColumnDimension('A')->setWidth(8);   // #
-        $sheet->getColumnDimension('B')->setWidth(20);  // Compagnia
-        $sheet->getColumnDimension('C')->setWidth(12);  // Grado
-        $sheet->getColumnDimension('D')->setWidth(22);  // Cognome
-        $sheet->getColumnDimension('E')->setWidth(22);  // Nome
-        $sheet->getColumnDimension('F')->setWidth(20);  // Plotone
-        $sheet->getColumnDimension('G')->setWidth(18);  // Telefono
-        $sheet->getColumnDimension('H')->setWidth(45);  // Istituti (Presenti) / Motivazione (Assenti)
+        // ======================================
+        // IMPOSTAZIONI FINALI
+        // ======================================
+        $currentRow += 2;
+        
+        // Imposta larghezze colonne - ottimizzate per il nuovo layout
+        $sheet->getColumnDimension('A')->setWidth(8);     // N. / Forza
+        $sheet->getColumnDimension('B')->setWidth(14);    // Grado / Presenti
+        $sheet->getColumnDimension('C')->setWidth(18);    // Cognome / Assenti
+        $sheet->getColumnDimension('D')->setWidth(16);    // Nome
+        $sheet->getColumnDimension('E')->setWidth(18);    // Plotone / Categoria
+        $sheet->getColumnDimension('F')->setWidth(24);    // Ufficio / Pres.
+        $sheet->getColumnDimension('G')->setWidth(38);    // Telefono/Motivazione / Ass.
+        
+        // Imposta altezza minima righe dati per migliore leggibilità
+        for ($i = 1; $i <= $currentRow; $i++) {
+            $rowHeight = $sheet->getRowDimension($i)->getRowHeight();
+            if ($rowHeight < 18 || $rowHeight == -1) {
+                $sheet->getRowDimension($i)->setRowHeight(20);
+            }
+        }
+        
+        // Data generazione
+        $excelService->addGenerationInfo($sheet, $currentRow);
+        
+        // Area di stampa
+        $excelService->setPrintArea($sheet, 'G', $currentRow - 1);
+        
+        // Freeze pane dopo l'intestazione (riga 8, dopo riepilogo forza)
+        $sheet->freezePane('A8');
         
         // Genera il file
         $fileName = 'Ruolino_' . $dataObj->format('Y-m-d') . '.xlsx';
-        $tempFile = tempnam(sys_get_temp_dir(), $fileName);
+        $tempFile = tempnam(sys_get_temp_dir(), 'ruolino_');
         
         $writer = new Xlsx($spreadsheet);
         $writer->save($tempFile);

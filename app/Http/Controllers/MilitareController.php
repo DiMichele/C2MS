@@ -25,11 +25,8 @@ use App\Models\Mansione;
 use App\Models\RuoloCertificati;
 use App\Services\MilitareService;
 use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
+use App\Services\ExcelStyleService;
 
 /**
  * Controller per la gestione dei militari
@@ -101,14 +98,14 @@ class MilitareController extends Controller
                 'polo', 
                 'mansione', 
                 'ruolo',
-                'scadenza',
-                'valutazioni'
-                // 'assenze', // Tabella non esiste
-                // 'eventi'   // Controllare se esiste
+                'scadenza'
             ]);
             
-            // Ottieni la valutazione del militare (se esiste)
-            $valutazioneUtente = $militare->valutazioni->first();
+            // Ottieni la valutazione del militare (se esiste e la tabella esiste)
+            $valutazioneUtente = null;
+            if (\App\Models\MilitareValutazione::tableExists()) {
+                $valutazioneUtente = \App\Models\MilitareValutazione::where('militare_id', $militare->id)->first();
+            }
             
             return view('militare.show', compact('militare', 'valutazioneUtente'));
             
@@ -664,132 +661,122 @@ class MilitareController extends Controller
             $data = $this->militareService->getFilteredMilitari($request);
             $militari = $data['militari'];
             
-            Log::info('Militari recuperati: ' . $militari->count());
-            
-            // Crea un nuovo spreadsheet
-            $spreadsheet = new Spreadsheet();
-            $sheet = $spreadsheet->getActiveSheet();
-            
-            // Imposta il titolo del foglio
-            $sheet->setTitle('Anagrafica Militari');
-            
-            // Intestazioni
-            $headers = [
-                'A1' => 'Compagnia',
-                'B1' => 'Grado',
-                'C1' => 'Cognome', 
-                'D1' => 'Nome',
-                'E1' => 'Plotone',
-                'F1' => 'Ufficio',
-                'G1' => 'Incarico',
-                'H1' => 'Patenti',
-                'I1' => 'NOS',
-                'J1' => 'Anzianità',
-                'K1' => 'Data di Nascita',
-                'L1' => 'Email Istituzionale',
-                'M1' => 'Cellulare'
-            ];
-            
-            // Imposta le intestazioni
-            foreach ($headers as $cell => $value) {
-                $sheet->setCellValue($cell, $value);
+            // Se sono stati passati IDs specifici, filtra per quelli
+            if ($request->filled('ids')) {
+                $ids = explode(',', $request->ids);
+                $militari = $militari->whereIn('id', $ids);
             }
             
-            // Stile per le intestazioni
-            $headerStyle = [
-                'font' => [
-                    'bold' => true,
-                    'color' => ['rgb' => 'FFFFFF']
-                ],
-                'fill' => [
-                    'fillType' => Fill::FILL_SOLID,
-                    'startColor' => ['rgb' => '2C3E50']
-                ],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => '000000']
-                    ]
-                ]
-            ];
+            Log::info('Militari recuperati: ' . $militari->count());
             
-            $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
-            $sheet->getStyle('A1:M1')->getAlignment()->setWrapText(true);
-            $sheet->getRowDimension('1')->setRowHeight(35);
+            // Usa il servizio per stili Excel
+            $excelService = new ExcelStyleService();
+            $spreadsheet = $excelService->createSpreadsheet('Anagrafica Militari');
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Anagrafica Militari');
             
-            // Dati dei militari
-            $row = 2;
+            // Titolo principale
+            $excelService->applyTitleStyle($sheet, 'A1:O1', 'ANAGRAFICA MILITARI');
+            
+            // Intestazioni colonne (riga 2)
+            $headers = ['Compagnia', 'Grado', 'Cognome', 'Nome', 'Codice Fiscale', 'Plotone', 'Ufficio', 
+                        'Incarico', 'Patenti', 'NOS', 'Anzianità', 'Data Nascita', 
+                        'Email Istituzionale', 'Cellulare', 'Istituti'];
+            
+            $col = 'A';
+            foreach ($headers as $header) {
+                $sheet->setCellValue($col . '2', $header);
+                $col++;
+            }
+            
+            $excelService->applyHeaderStyle($sheet, 'A2:O2');
+            $sheet->getRowDimension('2')->setRowHeight(30);
+            
+            // Dati dei militari (dalla riga 3)
+            $row = 3;
             foreach ($militari as $militare) {
-                $sheet->setCellValue('A' . $row, $militare->compagnia ? $militare->compagnia . 'a' : '');
-                $sheet->setCellValue('B' . $row, $militare->grado->sigla ?? '');  // Usa sigla invece di nome
-                $sheet->setCellValue('C' . $row, $militare->cognome);
-                $sheet->setCellValue('D' . $row, $militare->nome);
-                $sheet->setCellValue('E' . $row, $militare->plotone->nome ?? '');
-                $sheet->setCellValue('F' . $row, $militare->polo->nome ?? '');
-                $sheet->setCellValue('G' . $row, $militare->mansione->nome ?? '');
+                // Compagnia
+                $compagniaValue = '';
+                if ($militare->compagnia_id) {
+                    $comp = $militare->compagnia;
+                    $compagniaValue = $comp ? ($comp->numero ?? $comp->nome) : '';
+                }
+                
+                $sheet->setCellValue('A' . $row, $compagniaValue);
+                $sheet->setCellValue('B' . $row, $militare->grado->sigla ?? '');
+                $sheet->setCellValue('C' . $row, strtoupper($militare->cognome));
+                $sheet->setCellValue('D' . $row, strtoupper($militare->nome));
+                $sheet->setCellValue('E' . $row, $militare->codice_fiscale ?? '-');
+                $sheet->setCellValue('F' . $row, $militare->plotone->nome ?? '-');
+                $sheet->setCellValue('G' . $row, $militare->polo->nome ?? '-');
+                $sheet->setCellValue('H' . $row, $militare->mansione->nome ?? '-');
                 
                 // Patenti - mostra tutte le patenti separate da spazio
                 $patenti = $militare->patenti->pluck('categoria')->toArray();
-                $sheet->setCellValue('H' . $row, !empty($patenti) ? implode(' ', $patenti) : '');
+                $sheet->setCellValue('I' . $row, !empty($patenti) ? implode(' ', $patenti) : '-');
                 
-                $sheet->setCellValue('I' . $row, $militare->nos_status ? ucfirst($militare->nos_status) : '');
-                $sheet->setCellValue('J' . $row, $militare->anzianita ? (is_object($militare->anzianita) ? $militare->anzianita->format('d/m/Y') : $militare->anzianita) : '');
-                $sheet->setCellValue('K' . $row, $militare->data_nascita ? $militare->data_nascita->format('d/m/Y') : '');
-                $sheet->setCellValue('L' . $row, $militare->email_istituzionale ?? '');
-                $sheet->setCellValue('M' . $row, $militare->telefono ?? '');
+                // NOS con colore in base al valore
+                $nosValue = $militare->nos_status ? ucfirst($militare->nos_status) : '-';
+                $sheet->setCellValue('J' . $row, $nosValue);
+                if ($militare->nos_status === 'si') {
+                    $excelService->applyBadgeStyle($sheet, 'J' . $row, 'success');
+                } elseif ($militare->nos_status === 'no') {
+                    $excelService->applyBadgeStyle($sheet, 'J' . $row, 'danger');
+                }
+                
+                $sheet->setCellValue('K' . $row, $militare->anzianita ? (is_object($militare->anzianita) ? $militare->anzianita->format('d/m/Y') : $militare->anzianita) : '-');
+                $sheet->setCellValue('L' . $row, $militare->data_nascita ? $militare->data_nascita->format('d/m/Y') : '-');
+                $sheet->setCellValue('M' . $row, $militare->email_istituzionale ?? '-');
+                $sheet->setCellValue('N' . $row, $militare->telefono ?? '-');
+                
+                // Istituti - mostra tutti gli istituti separati da virgola
+                $istituti = $militare->istituti ?? [];
+                $sheet->setCellValue('O' . $row, !empty($istituti) ? implode(', ', $istituti) : '-');
                 
                 $row++;
             }
             
-            // Stile per i dati
-            $dataStyle = [
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                        'color' => ['rgb' => 'CCCCCC']
-                    ]
-                ],
-                'alignment' => [
-                    'vertical' => Alignment::VERTICAL_CENTER
-                ]
-            ];
-            
-            if ($row > 2) {
-                $sheet->getStyle('A2:M' . ($row - 1))->applyFromArray($dataStyle);
+            // Applica stili dati
+            if ($row > 3) {
+                $excelService->applyDataStyle($sheet, 'A3:O' . ($row - 1));
+                $excelService->applyAlternateRowColors($sheet, 3, $row - 1, 'A', 'O');
             }
             
-            // Imposta la larghezza delle colonne (ottimizzate per evitare troncamenti)
+            // Imposta larghezza colonne
             $columnWidths = [
-                'A' => 12,  // Compagnia
-                'B' => 12,  // Grado (sigla)
-                'C' => 25,  // Cognome
-                'D' => 22,  // Nome
-                'E' => 25,  // Plotone
-                'F' => 35,  // Ufficio
-                'G' => 35,  // Incarico
-                'H' => 18,  // Patenti
-                'I' => 10,  // NOS
-                'J' => 15,  // Anzianità
-                'K' => 18,  // Data di Nascita
-                'L' => 40,  // Email
-                'M' => 20   // Cellulare
+                'A' => 14,  // Compagnia
+                'B' => 14,  // Grado
+                'C' => 20,  // Cognome
+                'D' => 18,  // Nome
+                'E' => 18,  // Codice Fiscale
+                'F' => 20,  // Plotone
+                'G' => 28,  // Ufficio
+                'H' => 28,  // Incarico
+                'I' => 14,  // Patenti
+                'J' => 10,  // NOS
+                'K' => 14,  // Anzianità
+                'L' => 14,  // Data Nascita
+                'M' => 35,  // Email
+                'N' => 16,  // Cellulare
+                'O' => 30   // Istituti
             ];
             
             foreach ($columnWidths as $column => $width) {
                 $sheet->getColumnDimension($column)->setWidth($width);
             }
             
-            // Crea il writer
+            // Data generazione
+            $excelService->addGenerationInfo($sheet, $row + 1);
+            
+            // Freeze header
+            $excelService->freezeHeader($sheet, 2);
+            
+            // Area di stampa
+            $excelService->setPrintArea($sheet, 'O', $row - 1);
+            
+            // Crea il writer e salva
             $writer = new Xlsx($spreadsheet);
-            
-            // Nome del file
-            $filename = 'anagrafica_militari_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-            
-            // Crea il file e invia come download
+            $filename = 'Anagrafica_Militari_' . now()->format('Y-m-d_His') . '.xlsx';
             $tempFile = tempnam(sys_get_temp_dir(), 'anagrafica_');
             $writer->save($tempFile);
             

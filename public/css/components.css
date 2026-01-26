@@ -1,21 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * 
- * Stili per i componenti dell'applicazione.
- * Include stili per profili, certificati, timeline, cards e altri componenti UI.
- * 
- * @package SUGECO
- * @subpackage Styles
- * @version 1.0
- * @since 1.0
- * @author Michele Di Gennaro
- * @copyright 2025 SUGECO
- * 
- * Sezioni:
- * - Profile Components: Header profilo, avatar, info cards
- * - Certificate Components: Cards certificati, timeline, stati
- * - UI Components: Badges, pagination, animazioni
- * - Responsive: Adattamenti per dispositivi mobili
+ * SUGECO Components - Profile, certificates, timeline, and UI components
  */
 
 /* ===========================================

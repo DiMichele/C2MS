@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 @section('title', 'Anagrafica - SUGECO')
 
 @section('content')
@@ -46,24 +46,9 @@
 }
 
 /* ========================================
-   STILI TABELLA ORIGINALI
+   Stili specifici per questa pagina
+   (Stili base tabelle in table-standard.css)
    ======================================== */
-/* Effetto hover sulle righe come nel CPT */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-/* Assicura che l'hover funzioni anche con le celle inline */
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-/* Bordi squadrati per le celle come nel CPT */
-.table-bordered td, 
-table.table td, 
-.table td {
-    border-radius: 0 !important;
-}
 
 /* Uniforma gli stili dei form controls */
 .form-control, .form-select {
@@ -75,56 +60,31 @@ table.table td,
     border-radius: 0 !important;
 }
 
-/* Assicura che la tabella abbia lo stesso comportamento del CPT */
-.table-container {
-    overflow-x: auto !important;
-    overflow-y: auto !important;
+/* Override altezza max per questa pagina (più elementi nell'header) */
+.sugeco-table-wrapper {
+    max-height: calc(100vh - 300px);
 }
 
-.table-header-fixed table,
-.table-body-scroll table {
-    table-layout: fixed !important;
+/* Larghezze specifiche per colonne anagrafica (override) */
+.sugeco-table-wrapper .sugeco-table th:nth-child(2),
+.sugeco-table-wrapper .sugeco-table td:nth-child(2) { min-width: 180px; } /* Grado - più largo */
+
+.sugeco-table-wrapper .sugeco-table th:nth-child(3),
+.sugeco-table-wrapper .sugeco-table td:nth-child(3) { min-width: 180px; } /* Cognome - più largo */
+
+/* Colonne con input speciali (override per anagrafica) */
+.sugeco-table-wrapper .sugeco-table td input[type="email"] {
+    min-width: 240px;
 }
 
-/* Sfondo leggermente off-white per la tabella */
-.table tbody tr {
-    background-color: #fafafa;
+/* Patenti container */
+.sugeco-table-wrapper .sugeco-table td .patenti-container {
+    min-width: 140px;
 }
 
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-/* Bordi leggermente piÃ¹ scuri dell'hover */
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
-}
-
-/* Stili per i link come nel CPT */
-.link-name {
-    color: #0a2342;
-    text-decoration: none;
-    position: relative;
-}
-
-.link-name:hover {
-    color: #0a2342;
-    text-decoration: none;
-}
-
-.link-name::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: -2px;
-    left: 0;
-    background-color: #d4af37;
-    transition: width 0.3s ease;
-}
-
-.link-name:hover::after {
-    width: 100%;
+/* Istituti container più largo */
+.sugeco-table-wrapper .sugeco-table td .istituti-container {
+    min-width: 320px;
 }
 
 /* Ridimensiona le icone nei pulsanti azioni */
@@ -179,7 +139,7 @@ table.table td,
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'ruolo_id', 'email_istituzionale', 'telefono', 'presenza', 'compleanno'] as $filter) {
+    foreach(['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email_istituzionale', 'telefono', 'presenza', 'compleanno'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $hasActiveFilters = count($activeFilters) > 0;
@@ -209,7 +169,6 @@ table.table td,
 <!-- Filtri e azioni su riga separata -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
-        <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
         <span id="toggleFiltersText">
             {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
         </span>
@@ -226,91 +185,69 @@ table.table td,
 <div id="filtersContainer" class="filter-section {{ $hasActiveFilters ? 'visible' : '' }}">
     <div class="filter-card mb-4">
         <div class="filter-card-header d-flex justify-content-between align-items-center">
-            <div>
-                <i class="fas fa-filter me-2"></i> Filtri avanzati
-            </div>
+            <div>Filtri avanzati</div>
         </div>
         <div class="card-body p-3">
-            <form id="filtroForm" action="{{ route('anagrafica.index') }}" method="GET">
+            <form id="filtroForm" action="{{ route('anagrafica.index') }}" method="GET" class="filter-local">
                 {{-- Prima riga filtri --}}
                 <div class="row mb-3">
                     {{-- Filtro Compagnia --}}
                     <div class="col-md-3">
-                        <label for="compagnia" class="form-label">
-                            <i class="fas fa-flag me-1"></i> Compagnia
-                        </label>
+                        <label for="compagnia" class="form-label small mb-1">Compagnia</label>
                         <div class="select-wrapper">
-                            <select name="compagnia" id="compagnia" class="form-select filter-select {{ request()->filled('compagnia') ? 'applied' : '' }}">
-                                <option value="">Tutte le compagnie</option>
+                            <select name="compagnia" id="filter_compagnia" class="form-select form-select-sm filter-select" data-nosubmit="true">
+                                <option value="">Tutte</option>
                                 @foreach($compagnie as $compagnia)
-                                    <option value="{{ $compagnia->id }}" {{ request('compagnia') == $compagnia->id ? 'selected' : '' }}>
+                                    <option value="{{ $compagnia->id }}">
                                         {{ $compagnia->numero ?? $compagnia->nome }}
                                     </option>
                                 @endforeach
                             </select>
-                            @if(request()->filled('compagnia'))
-                                <span class="clear-filter" data-filter="compagnia" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="compagnia" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
                     {{-- Filtro Plotone --}}
                     <div class="col-md-3">
-                        <label for="plotone_id" class="form-label">
-                            <i class="fas fa-users me-1"></i> Plotone
-                        </label>
+                        <label for="plotone_id" class="form-label small mb-1">Plotone</label>
                         <div class="select-wrapper">
-                            <select name="plotone_id" id="plotone_id" class="form-select filter-select {{ request()->filled('plotone_id') ? 'applied' : '' }}">
-                                <option value="">Tutti i plotoni</option>
+                            <select name="plotone_id" id="filter_plotone_id" class="form-select form-select-sm filter-select" data-nosubmit="true" disabled title="Seleziona prima una compagnia">
+                                <option value="">Seleziona compagnia</option>
                                 @foreach($plotoni as $plotone)
-                                    <option value="{{ $plotone->id }}" {{ request('plotone_id') == $plotone->id ? 'selected' : '' }}>
+                                    <option value="{{ $plotone->id }}" data-compagnia-id="{{ $plotone->compagnia_id }}">
                                         {{ $plotone->nome }}
                                     </option>
                                 @endforeach
                             </select>
-                            @if(request()->filled('plotone_id'))
-                                <span class="clear-filter" data-filter="plotone_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="plotone_id" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
                     {{-- Filtro Grado --}}
                     <div class="col-md-3">
-                        <label for="grado_id" class="form-label">
-                            <i class="fas fa-medal me-1"></i> Grado
-                        </label>
+                        <label for="grado_id" class="form-label small mb-1">Grado</label>
                         <div class="select-wrapper">
-                            <select name="grado_id" id="grado_id" class="form-select filter-select {{ request()->filled('grado_id') ? 'applied' : '' }}">
-                                <option value="">Tutti i gradi</option>
+                            <select name="grado_id" id="filter_grado_id" class="form-select form-select-sm filter-select" data-nosubmit="true">
+                                <option value="">Tutti</option>
                                 @foreach($gradi as $grado)
-                                    <option value="{{ $grado->id }}" {{ request('grado_id') == $grado->id ? 'selected' : '' }}>
-                                        {{ $grado->nome }}
-                                    </option>
+                                    <option value="{{ $grado->id }}">{{ $grado->nome }}</option>
                                 @endforeach
                             </select>
-                            @if(request()->filled('grado_id'))
-                                <span class="clear-filter" data-filter="grado_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="grado_id" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
                     {{-- Filtro Ufficio (Polo) --}}
                     <div class="col-md-3">
-                        <label for="polo_id" class="form-label">
-                            <i class="fas fa-building me-1"></i> Ufficio
-                        </label>
+                        <label for="polo_id" class="form-label small mb-1">Ufficio</label>
                         <div class="select-wrapper">
-                            <select name="polo_id" id="polo_id" class="form-select filter-select {{ request()->filled('polo_id') ? 'applied' : '' }}">
-                                <option value="">Tutti gli uffici</option>
+                            <select name="polo_id" id="filter_polo_id" class="form-select form-select-sm filter-select" data-nosubmit="true">
+                                <option value="">Tutti</option>
                                 @foreach($poli as $polo)
-                                    <option value="{{ $polo->id }}" {{ request('polo_id') == $polo->id ? 'selected' : '' }}>
-                                        {{ $polo->nome }}
-                                    </option>
+                                    <option value="{{ $polo->id }}">{{ $polo->nome }}</option>
                                 @endforeach
                             </select>
-                            @if(request()->filled('polo_id'))
-                                <span class="clear-filter" data-filter="polo_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="polo_id" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                 </div>
@@ -319,171 +256,83 @@ table.table td,
                 <div class="row">
                     {{-- Filtro Incarico (Mansione) --}}
                     <div class="col-md-3">
-                        <label for="mansione_id" class="form-label">
-                            <i class="fas fa-briefcase me-1"></i> Incarico
-                        </label>
+                        <label for="mansione_id" class="form-label small mb-1">Incarico</label>
                         <div class="select-wrapper">
-                            <select name="mansione_id" id="mansione_id" class="form-select filter-select {{ request()->filled('mansione_id') ? 'applied' : '' }}">
-                                <option value="">Tutti gli incarichi</option>
+                            <select name="mansione_id" id="filter_mansione_id" class="form-select form-select-sm filter-select" data-nosubmit="true">
+                                <option value="">Tutti</option>
                                 @foreach($mansioni as $mansione)
-                                    <option value="{{ $mansione->id }}" {{ request('mansione_id') == $mansione->id ? 'selected' : '' }}>
-                                        {{ $mansione->nome }}
-                                    </option>
+                                    <option value="{{ $mansione->id }}">{{ $mansione->nome }}</option>
                                 @endforeach
                             </select>
-                            @if(request()->filled('mansione_id'))
-                                <span class="clear-filter" data-filter="mansione_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="mansione_id" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
                     {{-- Filtro NOS --}}
                     <div class="col-md-3">
-                        <label for="nos_status" class="form-label">
-                            <i class="fas fa-check-circle me-1"></i> NOS
-                        </label>
+                        <label for="nos_status" class="form-label small mb-1">NOS</label>
                         <div class="select-wrapper">
-                            <select name="nos_status" id="nos_status" class="form-select filter-select {{ request()->filled('nos_status') ? 'applied' : '' }}">
+                            <select name="nos_status" id="filter_nos_status" class="form-select form-select-sm filter-select" data-nosubmit="true">
                                 <option value="">Tutti</option>
-                                <option value="si" {{ request('nos_status') == 'si' ? 'selected' : '' }}>SI</option>
-                                <option value="no" {{ request('nos_status') == 'no' ? 'selected' : '' }}>NO</option>
-                                <option value="da richiedere" {{ request('nos_status') == 'da richiedere' ? 'selected' : '' }}>Da Richiedere</option>
-                                <option value="non previsto" {{ request('nos_status') == 'non previsto' ? 'selected' : '' }}>Non Previsto</option>
-                                <option value="in attesa" {{ request('nos_status') == 'in attesa' ? 'selected' : '' }}>In Attesa</option>
+                                <option value="si">SI</option>
+                                <option value="no">NO</option>
+                                <option value="da richiedere">Da Richiedere</option>
+                                <option value="non previsto">Non Previsto</option>
+                                <option value="in attesa">In Attesa</option>
                             </select>
-                            @if(request()->filled('nos_status'))
-                                <span class="clear-filter" data-filter="nos_status" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="nos_status" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
                     {{-- Filtro Email Istituzionale --}}
                     <div class="col-md-3">
-                        <label for="email_istituzionale" class="form-label">
-                            <i class="fas fa-envelope me-1"></i> Email Istituzionale
-                        </label>
+                        <label for="email_istituzionale" class="form-label small mb-1">Email Istituzionale</label>
                         <div class="select-wrapper">
-                            <select name="email_istituzionale" id="email_istituzionale" class="form-select filter-select {{ request()->filled('email_istituzionale') ? 'applied' : '' }}">
+                            <select name="email_istituzionale" id="filter_email_istituzionale" class="form-select form-select-sm filter-select" data-nosubmit="true">
                                 <option value="">Tutte</option>
-                                <option value="registrata" {{ request('email_istituzionale') == 'registrata' ? 'selected' : '' }}>Registrata</option>
-                                <option value="non_registrata" {{ request('email_istituzionale') == 'non_registrata' ? 'selected' : '' }}>Non Registrata</option>
+                                <option value="registrata">Registrata</option>
+                                <option value="non_registrata">Non Registrata</option>
                             </select>
-                            @if(request()->filled('email_istituzionale'))
-                                <span class="clear-filter" data-filter="email_istituzionale" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="email_istituzionale" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
                     {{-- Filtro Cellulare --}}
                     <div class="col-md-3">
-                        <label for="telefono" class="form-label">
-                            <i class="fas fa-phone me-1"></i> Cellulare
-                        </label>
+                        <label for="telefono" class="form-label small mb-1">Cellulare</label>
                         <div class="select-wrapper">
-                            <select name="telefono" id="telefono" class="form-select filter-select {{ request()->filled('telefono') ? 'applied' : '' }}">
+                            <select name="telefono" id="filter_telefono" class="form-select form-select-sm filter-select" data-nosubmit="true">
                                 <option value="">Tutti</option>
-                                <option value="registrato" {{ request('telefono') == 'registrato' ? 'selected' : '' }}>Registrato</option>
-                                <option value="non_registrato" {{ request('telefono') == 'non_registrato' ? 'selected' : '' }}>Non Registrato</option>
+                                <option value="registrato">Registrato</option>
+                                <option value="non_registrato">Non Registrato</option>
                             </select>
-                            @if(request()->filled('telefono'))
-                                <span class="clear-filter" data-filter="telefono" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                
-                {{-- Terza riga filtri (Ruolo) --}}
-                <div class="row mb-3">
-                    {{-- Filtro Ruolo --}}
-                    <div class="col-md-3">
-                        <label for="ruolo_id" class="form-label">
-                            <i class="fas fa-user-tag me-1"></i> Ruolo
-                        </label>
-                        <div class="select-wrapper">
-                            <select name="ruolo_id" id="ruolo_id" class="form-select filter-select {{ request()->filled('ruolo_id') ? 'applied' : '' }}">
-                                <option value="">Tutti i ruoli</option>
-                                @foreach($ruoli as $ruolo)
-                                    <option value="{{ $ruolo->id }}" {{ request('ruolo_id') == $ruolo->id ? 'selected' : '' }}>
-                                        {{ $ruolo->nome }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @if(request()->filled('ruolo_id'))
-                                <span class="clear-filter" data-filter="ruolo_id" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
+                            <span class="clear-filter" data-filter="telefono" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="d-flex justify-content-center mt-3">
-                    @if($hasActiveFilters)
-                    <a href="{{ route('anagrafica.index') }}" class="btn btn-danger">
-                        <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri ({{ count($activeFilters) }})
-                    </a>
-                    @endif
+                    <button type="button" class="btn btn-danger btn-sm reset-all-filters" style="display: none;">
+                        Rimuovi tutti i filtri (0)
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Table contenente i militari -->
-<!-- Tabella con intestazione fissa e scroll -->
-@php
-    // Calcola la larghezza totale della tabella basandosi sui campi attivi
-    $larghezzeColonne = [
-        'compagnia' => 160,
-        'grado' => 200,
-        'cognome' => 230,
-        'nome' => 170,
-        'plotone' => 190,
-        'ufficio' => 190,
-        'incarico' => 210,
-        'patenti' => 180,
-        'nos' => 140,
-        'anzianita' => 180,  // Aumentata per mostrare date complete
-        'data_nascita' => 180,  // Aumentata per mostrare date complete
-        'email_istituzionale' => 270,
-        'telefono' => 210,
-        'codice_fiscale' => 200,
-        'istituti' => 350,
-    ];
-    $larghezzaTotale = 150; // Azioni
-    foreach($campiCustom as $campo) {
-        $larghezzaTotale += $larghezzeColonne[$campo->nome_campo] ?? 180;
-    }
-@endphp
-<div class="table-container" style="position: relative; max-height: calc(100vh - 280px); overflow-x: auto; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px;">
-    <!-- Intestazione fissa -->
-     <div class="table-header-fixed" style="position: sticky; top: 0; z-index: 10; background: white;">
-         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ $larghezzaTotale }}px; min-width: {{ $larghezzaTotale }}px;">
-             <colgroup>
-                 @foreach($campiCustom as $campo)
-                 <col style="width:{{ $larghezzeColonne[$campo->nome_campo] ?? 180 }}px">
-                 @endforeach
-                 <col style="width:150px">
-             </colgroup>
-            <thead class="table-dark" style="user-select:none;">
-                <tr>
-                    @foreach($campiCustom as $campo)
-                    <th class="text-center">{{ $campo->etichetta }}</th>
-                    @endforeach
-                    <th class="text-center">Azioni</th>
-                </tr>
-            </thead>
-        </table>
-    </div>
-    
-    <!-- Corpo scrollabile -->
-     <div class="table-body-scroll">
-         <table class="table table-sm table-bordered mb-0" style="table-layout: fixed; width: {{ $larghezzaTotale }}px; min-width: {{ $larghezzaTotale }}px;">
-             <colgroup>
-                 @foreach($campiCustom as $campo)
-                 <col style="width:{{ $larghezzeColonne[$campo->nome_campo] ?? 180 }}px">
-                 @endforeach
-                 <col style="width:150px">
-             </colgroup>
-            <tbody id="militariTableBody">
+<!-- Tabella con scroll orizzontale -->
+<div class="sugeco-table-wrapper">
+    <table class="sugeco-table">
+        <thead>
+            <tr>
+                @foreach($campiCustom as $campo)
+                <th>{{ $campo->etichetta }}</th>
+                @endforeach
+                <th>Azioni</th>
+            </tr>
+        </thead>
+        <tbody id="militariTableBody">
             @forelse($militari as $m)
                 @php
                     // PERFORMANCE: Usa attributi calcolati in query con withVisibilityFlags() (evita N+1)
@@ -497,6 +346,14 @@ table.table td,
                     data-militare-id="{{ $m->id }}" 
                     data-update-url="{{ route('anagrafica.update-field', $m->id) }}"
                     data-read-only="{{ $isReadOnly ? 'true' : 'false' }}"
+                    data-compagnia-id="{{ $m->compagnia_id ?? '' }}"
+                    data-plotone-id="{{ $m->plotone_id ?? '' }}"
+                    data-grado-id="{{ $m->grado_id ?? '' }}"
+                    data-polo-id="{{ $m->polo_id ?? '' }}"
+                    data-mansione-id="{{ $m->mansione_id ?? '' }}"
+                    data-nos-status="{{ $m->nos_status ?? '' }}"
+                    data-email="{{ $m->email_istituzionale ? '1' : '0' }}"
+                    data-telefono="{{ $m->telefono ? '1' : '0' }}"
                     @if($isAcquired) title="Militare acquisito - Sola lettura" @endif>
                     @foreach($campiCustom as $campo)
                         @include('militare.partials._campo_anagrafica', [
@@ -528,17 +385,7 @@ table.table td,
                      </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="14" class="text-center py-5">
-                        <div class="d-flex flex-column align-items-center empty-state">
-                            <i class="fas fa-search fa-3x mb-3 text-muted"></i>
-                            <p class="lead mb-3">Nessun militare trovato.</p>
-                            <a href="{{ route('anagrafica.index') }}" class="btn btn-outline-primary mt-2">
-                                <i class="fas fa-times-circle me-1"></i> Rimuovi tutti i filtri
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                @include('components.no-results', ['showButton' => $hasActiveFilters, 'buttonUrl' => route('anagrafica.index')])
             @endforelse
         </tbody>
     </table>
@@ -615,7 +462,7 @@ function confirmDelete(militareId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Forza l'inizializzazione dei filtri se non giÃ  fatto
+    // Forza l'inizializzazione dei filtri se non già fatto
     if (window.SUGECO && window.SUGECO.Filters) {
         window.SUGECO.Filters.init();
     }
@@ -625,29 +472,319 @@ document.addEventListener('DOMContentLoaded', function() {
         window.SUGECO.Search.init();
     }
     
-    // Export Excel
+    // ============================
+    // GESTIONE FILTRI AJAX
+    // ============================
+    
+    const compagniaSelect = document.getElementById('filter_compagnia');
+    const plotoneSelect = document.getElementById('filter_plotone_id');
+    const allFilterSelects = document.querySelectorAll('.filter-ajax');
+    const militariTableBody = document.getElementById('militariTableBody');
+    
+    // Funzione per filtrare i plotoni in base alla compagnia selezionata
+    function updatePlotoniFilter(compagniaId) {
+        const options = plotoneSelect.querySelectorAll('option');
+        let hasVisibleOptions = false;
+        
+        options.forEach(option => {
+            if (option.value === '') {
+                // Aggiorna il placeholder
+                if (!compagniaId) {
+                    option.textContent = 'Seleziona prima una compagnia';
+                } else {
+                    option.textContent = 'Tutti i plotoni';
+                }
+                option.style.display = '';
+                return;
+            }
+            
+            const optionCompagniaId = option.getAttribute('data-compagnia-id');
+            
+            if (!compagniaId || optionCompagniaId == compagniaId) {
+                option.style.display = '';
+                hasVisibleOptions = true;
+            } else {
+                option.style.display = 'none';
+            }
+        });
+        
+        // Abilita/disabilita il select
+        plotoneSelect.disabled = !compagniaId;
+        
+        // Se il plotone selezionato non appartiene alla compagnia, resetta
+        if (compagniaId && plotoneSelect.value) {
+            const selectedOption = plotoneSelect.querySelector(`option[value="${plotoneSelect.value}"]`);
+            if (selectedOption && selectedOption.getAttribute('data-compagnia-id') != compagniaId) {
+                plotoneSelect.value = '';
+            }
+        }
+    }
+    
+    // Listener per cambio compagnia
+    if (compagniaSelect) {
+        compagniaSelect.addEventListener('change', function() {
+            updatePlotoniFilter(this.value);
+            applyFiltersClientSide();
+        });
+        
+        // Inizializza stato plotoni al caricamento
+        updatePlotoniFilter(compagniaSelect.value);
+    }
+    
+    // Funzione per applicare i filtri lato client (usa data-attributes)
+    function applyFiltersClientSide() {
+        const rows = militariTableBody.querySelectorAll('tr.militare-row');
+        const filters = {};
+        
+        // Raccogli tutti i filtri attivi
+        allFilterSelects.forEach(select => {
+            const name = select.name;
+            const value = select.value;
+            if (value) {
+                filters[name] = value;
+            }
+        });
+        
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            let show = true;
+            
+            // Filtro Compagnia (usa data-attribute)
+            if (show && filters.compagnia) {
+                if (row.dataset.compagniaId !== filters.compagnia) {
+                    show = false;
+                }
+            }
+            
+            // Filtro Plotone (usa data-attribute)
+            if (show && filters.plotone_id) {
+                if (row.dataset.plotoneId !== filters.plotone_id) {
+                    show = false;
+                }
+            }
+            
+            // Filtro Grado (usa data-attribute)
+            if (show && filters.grado_id) {
+                if (row.dataset.gradoId !== filters.grado_id) {
+                    show = false;
+                }
+            }
+            
+            // Filtro Ufficio/Polo (usa data-attribute)
+            if (show && filters.polo_id) {
+                if (row.dataset.poloId !== filters.polo_id) {
+                    show = false;
+                }
+            }
+            
+            // Filtro Incarico/Mansione (usa data-attribute)
+            if (show && filters.mansione_id) {
+                if (row.dataset.mansioneId !== filters.mansione_id) {
+                    show = false;
+                }
+            }
+            
+            // Filtro NOS (usa data-attribute)
+            if (show && filters.nos_status) {
+                if (row.dataset.nosStatus !== filters.nos_status) {
+                    show = false;
+                }
+            }
+            
+            // Filtro Email Istituzionale (usa data-attribute)
+            if (show && filters.email_istituzionale) {
+                const hasEmail = row.dataset.email === '1';
+                if (filters.email_istituzionale === 'registrata' && !hasEmail) {
+                    show = false;
+                } else if (filters.email_istituzionale === 'non_registrata' && hasEmail) {
+                    show = false;
+                }
+            }
+            
+            // Filtro Telefono (usa data-attribute)
+            if (show && filters.telefono) {
+                const hasTel = row.dataset.telefono === '1';
+                if (filters.telefono === 'registrato' && !hasTel) {
+                    show = false;
+                } else if (filters.telefono === 'non_registrato' && hasTel) {
+                    show = false;
+                }
+            }
+            
+            row.style.display = show ? '' : 'none';
+            if (show) visibleCount++;
+        });
+        
+        // Mostra/nascondi riga "nessun risultato"
+        let noResultsRow = militariTableBody.querySelector('.no-results-row');
+        if (visibleCount === 0) {
+            if (!noResultsRow) {
+                noResultsRow = document.createElement('tr');
+                noResultsRow.className = 'no-results-row';
+                noResultsRow.innerHTML = `
+                    <td colspan="20" class="text-center py-5">
+                        <div class="d-flex flex-column align-items-center empty-state">
+                            <i class="fas fa-users-slash fa-3x mb-3 text-muted"></i>
+                            <p class="lead mb-3">Nessun militare trovato</p>
+                            <p class="text-muted mb-3">Prova a modificare i criteri di ricerca o i filtri applicati.</p>
+                            <button type="button" class="btn btn-outline-primary mt-2" onclick="resetAllFilters()">
+                                Rimuovi tutti i filtri
+                            </button>
+                        </div>
+                    </td>
+                `;
+                militariTableBody.appendChild(noResultsRow);
+            }
+            noResultsRow.style.display = '';
+        } else {
+            if (noResultsRow) {
+                noResultsRow.style.display = 'none';
+            }
+        }
+        
+        // Aggiorna URL senza ricaricare
+        updateUrlParams(filters);
+        
+        // Aggiorna UI filtri (clear buttons, applied class, rimuovi tutti)
+        updateFiltersUI();
+    }
+    
+    // Funzione per aggiornare l'URL con i parametri dei filtri
+    function updateUrlParams(filters) {
+        const url = new URL(window.location);
+        
+        // Rimuovi tutti i parametri dei filtri
+        ['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email_istituzionale', 'telefono'].forEach(param => {
+            url.searchParams.delete(param);
+        });
+        
+        // Aggiungi i filtri attivi
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) {
+                url.searchParams.set(key, value);
+            }
+        });
+        
+        window.history.replaceState({}, '', url);
+    }
+    
+    // Funzione per aggiornare la UI dei filtri attivi
+    function updateFiltersUI() {
+        let activeCount = 0;
+        
+        allFilterSelects.forEach(select => {
+            const wrapper = select.closest('.select-wrapper');
+            const clearBtn = wrapper?.querySelector('.clear-filter');
+            
+            if (select.value) {
+                activeCount++;
+                select.classList.add('applied');
+                if (clearBtn) clearBtn.style.display = '';
+            } else {
+                select.classList.remove('applied');
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+        });
+        
+        // Aggiorna pulsante "Rimuovi tutti"
+        const removeAllBtn = document.querySelector('.reset-all-filters');
+        if (removeAllBtn) {
+            if (activeCount > 0) {
+                removeAllBtn.style.display = '';
+                removeAllBtn.textContent = `Rimuovi tutti i filtri (${activeCount})`;
+            } else {
+                removeAllBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    // Funzione globale per resettare i filtri
+    window.resetAllFilters = function() {
+        allFilterSelects.forEach(select => {
+            select.value = '';
+            select.classList.remove('applied');
+        });
+        updatePlotoniFilter('');
+        applyFiltersClientSide();
+    };
+    
+    // Listener per tutti i filtri
+    allFilterSelects.forEach(select => {
+        if (select.id !== 'filter_compagnia') { // Compagnia già gestita
+            select.addEventListener('change', applyFiltersClientSide);
+        }
+    });
+    
+    // Listener per clear buttons singoli
+    document.querySelectorAll('#filtroForm .clear-filter').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const filterName = this.dataset.filter;
+            const select = document.getElementById('filter_' + filterName) || 
+                          document.querySelector(`[name="${filterName}"]`);
+            
+            if (select) {
+                select.value = '';
+                select.classList.remove('applied');
+                
+                // Se è compagnia, reset anche plotone
+                if (filterName === 'compagnia') {
+                    updatePlotoniFilter('');
+                }
+                
+                applyFiltersClientSide();
+            }
+            
+            this.style.display = 'none';
+        });
+    });
+    
+    // Listener per pulsante "Rimuovi tutti i filtri"
+    const removeAllBtn = document.querySelector('.reset-all-filters');
+    if (removeAllBtn) {
+        removeAllBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            resetAllFilters();
+        });
+    }
+    
+    // Previeni submit del form
+    const filtroForm = document.getElementById('filtroForm');
+    if (filtroForm) {
+        filtroForm.addEventListener('submit', e => e.preventDefault());
+    }
+    
+    // Inizializza UI filtri al caricamento
+    updateFiltersUI();
+    
+    // Export Excel con filtri attivi - esporta solo righe visibili
     const exportExcelBtn = document.getElementById('exportExcelBtn');
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Raccoglie tutti i parametri del form attuale
-            const form = document.getElementById('filtroForm');
-            const formData = new FormData(form);
-            const params = new URLSearchParams();
+            // Raccoglie gli ID dei militari attualmente visibili
+            const visibleRows = militariTableBody.querySelectorAll('tr.militare-row:not([style*="display: none"])');
+            const militareIds = [];
             
-            // Aggiunge tutti i parametri del form
-            for (let [key, value] of formData.entries()) {
-                if (value) {
-                    params.append(key, value);
-                }
+            visibleRows.forEach(row => {
+                const id = row.getAttribute('data-militare-id');
+                if (id) militareIds.push(id);
+            });
+            
+            const baseUrl = '{{ route("anagrafica.export-excel") }}';
+            const totalRows = militariTableBody.querySelectorAll('tr.militare-row').length;
+            
+            // Se ci sono filtri attivi (meno righe visibili del totale), passa gli IDs
+            if (militareIds.length > 0 && militareIds.length < totalRows) {
+                window.location.href = baseUrl + '?ids=' + militareIds.join(',');
+            } else {
+                // Nessun filtro attivo, esporta tutto
+                window.location.href = baseUrl;
             }
-            
-            // Crea l'URL per l'export
-            const exportUrl = '{{ route("anagrafica.export-excel") }}?' + params.toString();
-            
-            // Redirect per scaricare il file (stesso meccanismo del CPT)
-            window.location.href = exportUrl;
         });
     }
     

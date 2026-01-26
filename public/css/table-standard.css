@@ -1,0 +1,635 @@
+/**
+ * SUGECO Tables - Single source of truth
+ * Tutti gli stili per tabelle scrollabili orizzontalmente e verticalmente
+ * QUESTO FILE GESTISCE LO SCROLL DI TUTTE LE TABELLE
+ */
+
+/* ============================================
+   WRAPPER TABELLE - Scroll orizzontale e verticale
+   Classe principale: .sugeco-table-wrapper
+   Design professionale con bordi arrotondati
+   ============================================ */
+.sugeco-table-wrapper {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    max-height: calc(100vh - 280px);
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(10, 35, 66, 0.3) rgba(0, 0, 0, 0.05);
+    /* Design professionale */
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    background: white;
+}
+
+/* Alias per retrocompatibilità */
+.table-container,
+.table-container-ruolini,
+.table-responsive {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    max-height: calc(100vh - 280px);
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+/* ============================================
+   CONTAINER NAV - Assicura che il wrapper funzioni
+   Full width senza padding che riduce la larghezza
+   ============================================ */
+.sugeco-table-nav-container {
+    position: relative;
+    width: 100%;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.sugeco-table-nav-container .sugeco-table-wrapper {
+    width: 100%;
+    overflow-x: scroll !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(10, 35, 66, 0.3) rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================
+   TABELLA BASE
+   Design professionale con colonne dinamiche
+   ============================================ */
+.sugeco-table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    background-color: #ffffff;
+    font-size: 0.9rem;
+    color: var(--gray-800);
+    table-layout: auto;
+    width: 100%;
+    min-width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   TABELLA SCROLLABILE - La tabella occupa
+   tutta la larghezza disponibile e si espande
+   se necessario per il contenuto
+   ============================================ */
+.sugeco-table-wrapper .sugeco-table,
+.sugeco-table-nav-container .sugeco-table,
+.table-container .sugeco-table,
+.table-container-ruolini .sugeco-table,
+.table-responsive .sugeco-table {
+    width: 100% !important;
+    min-width: max-content !important;
+    table-layout: auto !important;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* ============================================
+   HEADER TABELLA (sticky top durante scroll verticale)
+   ============================================ */
+.sugeco-table thead {
+    background-color: var(--table-header-bg);
+    color: #ffffff;
+}
+
+.sugeco-table th {
+    background: linear-gradient(135deg, var(--table-header-bg, #0a2342) 0%, #1a3a5c 100%);
+    color: #ffffff;
+    padding: 14px 16px;
+    text-align: center;
+    font-weight: 700;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border: none;
+    border-bottom: 3px solid var(--gold, #d4af37);
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    white-space: nowrap;
+    /* Larghezza dinamica - si adatta al contenuto */
+    width: auto;
+    min-width: fit-content;
+}
+
+.sugeco-table th.weekend,
+th.weekend {
+    background-color: #dc3545 !important;
+    background: #dc3545 !important;
+    border-top-color: #dc3545;
+    color: #FFFFFF !important;
+}
+
+/* Weekend header - stesso stile dimensionale delle altre celle giorno */
+.sugeco-table thead th.weekend,
+.sugeco-table thead th.today {
+    padding: 4px 2px !important;
+}
+
+/* ============================================
+   CELLE GIORNO (CPT, Pianificazione, Servizi)
+   Stili specifici per celle con date - NON sovrascrivere
+   Header e body devono avere stesse dimensioni per allineamento
+   ============================================ */
+
+/* Header giorno - stesse dimensioni delle celle body */
+.sugeco-table th[style*="width: 60px"],
+th[style*="width: 60px"] {
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    padding: 4px 2px !important;
+    box-sizing: border-box !important;
+}
+
+/* Body celle giorno */
+.giorno-cell,
+td.giorno-cell,
+.sugeco-table td.giorno-cell {
+    /* Dimensioni fisse per celle giorno - ALLINEATE con header */
+    width: 60px !important;
+    min-width: 60px !important;
+    max-width: 60px !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    box-sizing: border-box !important;
+}
+
+.giorno-cell:hover,
+td.giorno-cell:hover {
+    background-color: #e9ecef !important;
+}
+
+/* Weekend columns (body cells) - sfondo rosso semitrasparente */
+td.weekend-column:not(.has-impegno),
+.sugeco-table td.weekend-column:not(.has-impegno) {
+    background-color: rgba(255, 0, 0, 0.12) !important;
+}
+
+/* Weekend header */
+th.weekend-column,
+.sugeco-table th.weekend-column {
+    background-color: #dc3545 !important;
+    background: #dc3545 !important;
+}
+
+/* Holiday columns - sfondo rosso semitrasparente */
+td.holiday-column:not(.has-impegno),
+.sugeco-table td.holiday-column:not(.has-impegno) {
+    background-color: rgba(255, 0, 0, 0.12) !important;
+}
+
+/* Today column (body cells) - sfondo giallo semitrasparente */
+td.today-column:not(.has-impegno),
+.sugeco-table td.today-column:not(.has-impegno) {
+    background-color: rgba(255, 220, 0, 0.20) !important;
+}
+
+/* Today header - sfondo navy con testo bianco */
+th.today,
+.sugeco-table th.today,
+.sugeco-table thead th.today {
+    background: #0A2342 !important;
+    background-color: #0A2342 !important;
+    color: #FFFFFF !important;
+    border-bottom-color: #D4AF37 !important;
+}
+
+/* Badge nelle celle giorno */
+.giorno-cell span.badge,
+.giorno-cell span.codice-badge,
+td.giorno-cell span.badge,
+td.giorno-cell span.codice-badge {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 100% !important;
+    min-height: 100% !important;
+    font-size: 9px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 2px !important;
+}
+
+/* Giorno vuoto */
+.giorno-cell span.giorno-vuoto,
+td.giorno-cell span.giorno-vuoto {
+    width: auto !important;
+    height: auto !important;
+    font-size: 14px !important;
+    color: #ccc !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-block !important;
+}
+
+/* Colori CPT */
+.cpt-rosso { background-color: #ff0000 !important; color: white !important; }
+.cpt-verde { background-color: #28a745 !important; color: white !important; }
+.cpt-giallo { background-color: #ffc107 !important; color: #212529 !important; }
+.cpt-blu { background-color: #007bff !important; color: white !important; }
+.cpt-arancione { background-color: #fd7e14 !important; color: white !important; }
+.cpt-viola { background-color: #6f42c1 !important; color: white !important; }
+.cpt-grigio { background-color: #6c757d !important; color: white !important; }
+
+/* Date badge nel header */
+.date-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* ============================================
+   RIGHE E CELLE
+   ============================================ */
+.sugeco-table tbody tr {
+    background-color: #ffffff;
+}
+
+.sugeco-table tbody tr:nth-of-type(even) {
+    background-color: var(--gray-100);
+}
+
+.sugeco-table tbody tr:hover {
+    background-color: rgba(10, 35, 66, 0.06);
+}
+
+/* Mantieni i colori dei badge all'hover della riga */
+.sugeco-table tbody tr:hover .badge,
+.sugeco-table tbody tr:hover [class*="bg-"],
+.sugeco-table tbody tr:hover .scadenza-valido,
+.sugeco-table tbody tr:hover .scadenza-in-scadenza,
+.sugeco-table tbody tr:hover .scadenza-scaduto,
+.sugeco-table tbody tr:hover .scadenza-mancante,
+.sugeco-table tbody tr:hover .scadenza-prenotato,
+table tbody tr:hover .badge,
+table tbody tr:hover [class*="bg-"] {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+.sugeco-table td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    border: none;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    border-right: 1px solid var(--border-color, #e2e8f0);
+    text-align: center;
+    white-space: nowrap;
+    /* Larghezza dinamica - NO troncamento */
+    width: auto;
+    min-width: fit-content;
+}
+
+/* ============================================
+   STILI INPUT/SELECT NELLE TABELLE
+   ============================================ */
+.sugeco-table td .form-select,
+.sugeco-table td select {
+    min-width: 130px;
+    width: 100%;
+}
+
+.sugeco-table td input.form-control,
+.sugeco-table td input[type="text"],
+.sugeco-table td input[type="email"],
+.sugeco-table td input[type="tel"] {
+    min-width: 140px;
+    width: 100%;
+}
+
+.sugeco-table td input[type="email"] {
+    min-width: 200px;
+}
+
+.sugeco-table td input[type="date"] {
+    min-width: 140px;
+}
+
+/* ============================================
+   CELLE SCADENZE (SPP, Idoneità, Poligoni, Approntamenti)
+   Design professionale con colori e effetti
+   ============================================ */
+.scadenza-cell {
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    font-weight: 600;
+    font-size: 0.85rem;
+    /* Larghezza dinamica */
+    width: auto;
+    min-width: fit-content;
+    padding: 10px 14px !important;
+}
+
+.scadenza-cell:hover {
+    transform: scale(1.03);
+    box-shadow: inset 0 0 0 2px rgba(10, 35, 66, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 5;
+}
+
+/* ============================================
+   Classi colori scadenze
+   Design moderno con gradients e bordi
+   ============================================ */
+.scadenza-valido {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+    color: #155724 !important;
+    border-left: 4px solid #28a745 !important;
+    font-weight: 600;
+}
+
+.scadenza-in-scadenza {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%) !important;
+    color: #856404 !important;
+    border-left: 4px solid #ffc107 !important;
+    font-weight: 600;
+}
+
+.scadenza-scaduto {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+    color: #721c24 !important;
+    border-left: 4px solid #dc3545 !important;
+    font-weight: 600;
+}
+
+.scadenza-mancante {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    color: #6c757d !important;
+    border-left: 4px solid #adb5bd !important;
+    font-style: italic;
+}
+
+.scadenza-prenotato {
+    background: linear-gradient(135deg, #cce5ff 0%, #b8daff 100%) !important;
+    color: #004085 !important;
+    border-left: 4px solid #007bff !important;
+    font-weight: 600;
+}
+
+/* ============================================
+   Badge Legenda Scadenze - Design Moderno
+   ============================================ */
+.badge-legenda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.badge-legenda:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.badge-legenda i {
+    font-size: 0.75rem;
+}
+
+.badge-legenda-valido {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: #ffffff;
+    border-color: #1e7e34;
+}
+
+.badge-legenda-in-scadenza {
+    background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+    color: #212529;
+    border-color: #e0a800;
+}
+
+.badge-legenda-scaduto {
+    background: linear-gradient(135deg, #dc3545 0%, #e4606d 100%);
+    color: #ffffff;
+    border-color: #c82333;
+}
+
+.badge-legenda-prenotato {
+    background: linear-gradient(135deg, #007bff 0%, #339af0 100%);
+    color: #ffffff;
+    border-color: #0069d9;
+}
+
+.badge-legenda-mancante {
+    background: linear-gradient(135deg, #6c757d 0%, #868e96 100%);
+    color: #ffffff;
+    border-color: #5a6268;
+}
+
+/* Container per i badge legenda */
+.legenda-scadenze {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ============================================
+   NAVIGAZIONE SCROLL TABELLE
+   Frecce laterali + indicatori posizione
+   (Stile organigramma riutilizzabile)
+   ============================================ */
+
+/* Frecce di navigazione */
+.table-nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    color: var(--navy, #0a2342);
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+    opacity: 0.9;
+    border: 2px solid var(--gray-200, #e9ecef);
+}
+
+.table-nav-arrow:hover {
+    background-color: var(--navy, #0a2342);
+    color: white;
+    transform: translateY(-50%) scale(1.05);
+    opacity: 1;
+    box-shadow: 0 6px 20px rgba(10, 35, 66, 0.25);
+}
+
+.table-nav-arrow.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.table-nav-prev {
+    left: 0;
+}
+
+.table-nav-next {
+    right: 0;
+}
+
+/* Indicatore di posizione scroll */
+.table-scroll-indicator {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
+    gap: 6px;
+}
+
+.table-indicator-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--gray-300, #dee2e6);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.table-indicator-dot:hover {
+    background-color: var(--gray-500, #adb5bd);
+    transform: scale(1.1);
+}
+
+.table-indicator-dot.active {
+    background-color: var(--gold, #d4af37);
+    transform: scale(1.3);
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+/* Progress bar alternativa agli indicatori */
+.table-scroll-progress {
+    width: 100%;
+    max-width: 300px;
+    height: 4px;
+    background-color: var(--gray-200, #e9ecef);
+    border-radius: 2px;
+    margin: 12px auto 0;
+    overflow: hidden;
+}
+
+.table-scroll-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--navy, #0a2342) 0%, var(--gold, #d4af37) 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* Scrollbar stilizzata per webkit */
+.sugeco-table-nav-container .sugeco-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+
+.sugeco-table-nav-container .sugeco-table-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(10, 35, 66, 0.3);
+    border-radius: 4px;
+}
+
+.sugeco-table-nav-container .sugeco-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(10, 35, 66, 0.5);
+}
+
+/* Responsive: nascondi frecce su mobile */
+@media (max-width: 768px) {
+    .sugeco-table-nav-container {
+        padding: 0 35px;
+    }
+    
+    .table-nav-arrow {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+}
+
+/* ============================================
+   LINK MILITARE con effetto gold underline
+   Design professionale
+   ============================================ */
+.link-name {
+    color: #0a2342;
+    text-decoration: none;
+    position: relative;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.link-name:hover {
+    color: #1a3a5c;
+    text-decoration: none;
+}
+
+.link-name::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -2px;
+    left: 0;
+    background: linear-gradient(90deg, #d4af37, #f4d03f);
+    transition: width 0.3s ease;
+    border-radius: 1px;
+}
+
+.link-name:hover::after {
+    width: 100%;
+}
+
+/* ============================================
+   RIGHE TABELLA - Design alternato elegante
+   ============================================ */
+.sugeco-table tbody tr {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+.sugeco-table tbody tr:nth-of-type(even) {
+    background-color: #fafbfc;
+}
+
+.sugeco-table tbody tr:hover {
+    background-color: #f0f4f8;
+}
+
+/* ============================================
+   COLONNE SPECIALI - Prima colonna e azioni
+   ============================================ */
+.sugeco-table td:first-child,
+.sugeco-table th:first-child {
+    border-left: none;
+}
+
+.sugeco-table td:last-child,
+.sugeco-table th:last-child {
+    border-right: none;
+}

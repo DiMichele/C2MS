@@ -1,11 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * Configuration file for JavaScript modules
- * 
- * Centralizes configuration settings for the application
- * 
- * @version 1.0
- * @author Michele Di Gennaro
+ * SUGECO Config - Centralized application configuration
  */
 
 // Global configuration object

@@ -74,13 +74,13 @@
 
     <!-- Tabella Corsi -->
     <div class="table-container-ruolini" style="max-width: 1200px; margin: 0 auto;">
-        <table class="table table-hover mb-0 ruolini-table" id="corsiTable">
+        <table class="sugeco-table" id="corsiTable">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Nome Corso</th>
-                    <th style="width: 20%; text-align: center;">Tipo</th>
-                    <th style="width: 20%; text-align: center;">Durata (anni)</th>
-                    <th style="width: 20%; text-align: center;">Azioni</th>
+                    <th>Nome Corso</th>
+                    <th>Tipo</th>
+                    <th>Durata (anni)</th>
+                    <th>Azioni</th>
                 </tr>
             </thead>
             <tbody id="corsiTableBody">
@@ -89,14 +89,14 @@
                     data-nome="{{ $corso->nome_corso }}"
                     data-tipo="{{ $corso->tipo }}">
                     <td><strong>{{ $corso->nome_corso }}</strong></td>
-                    <td style="text-align: center;">
+                    <td>
                         @if($corso->tipo === 'formazione')
                             Formazione
                         @else
                             Accordo Stato Regione
                         @endif
                     </td>
-                    <td style="text-align: center;">
+                    <td>
                         <input type="number" 
                                class="form-control durata-input" 
                                data-corso-id="{{ $corso->id }}"
@@ -108,7 +108,7 @@
                         <small class="text-muted d-block">Nessuna scadenza</small>
                         @endif
                     </td>
-                    <td style="text-align: center;">
+                    <td>
                         <button class="btn btn-sm btn-primary edit-corso-btn" 
                                 data-corso-id="{{ $corso->id }}"
                                 data-nome="{{ $corso->nome_corso }}"
@@ -572,36 +572,13 @@
 })();
 </script>
 
-<style>
+{{-- 
 .table-container-ruolini {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     margin: 0;
-}
-
-.ruolini-table {
-    margin-bottom: 0 !important;
-}
-
-.ruolini-table thead {
-    background-color: #0a2342;
-    color: white;
-}
-
-.ruolini-table thead th {
-    font-weight: 600;
-    padding: 1rem;
-    border-bottom: none;
-}
-
-.ruolini-table tbody tr {
-    transition: all 0.2s;
-}
-
-.ruolini-table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.05);
 }
 
 .badge-cpt {
@@ -635,6 +612,6 @@
     background-color: #28a745;
     border-color: #28a745;
 }
-</style>
+--}}
 @endsection
 

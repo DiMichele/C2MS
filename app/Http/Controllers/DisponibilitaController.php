@@ -6,6 +6,8 @@ use App\Models\Militare;
 use App\Models\PianificazioneGiornaliera;
 use App\Models\PianificazioneMensile;
 use App\Models\Polo;
+use App\Models\Plotone;
+use App\Models\Compagnia;
 use App\Models\AssegnazioneTurno;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -28,9 +30,17 @@ class DisponibilitaController extends Controller
         $anno = $request->input('anno', Carbon::now()->year);
         $mese = $request->input('mese', Carbon::now()->month);
         $poloId = $request->input('polo_id');
+        $compagniaId = $request->input('compagnia_id');
+        $plotoneId = $request->input('plotone_id');
         
-        // Ottieni tutti i poli
+        // Ottieni tutti i poli (uffici)
         $poli = Polo::orderBy('nome')->get();
+        
+        // Ottieni tutte le compagnie
+        $compagnie = Compagnia::orderBy('nome')->get();
+        
+        // Ottieni tutti i plotoni
+        $plotoni = Plotone::with('compagnia')->orderBy('nome')->get();
         
         // Calcola i giorni del mese
         $giorniNelMese = Carbon::create($anno, $mese)->daysInMonth;
@@ -63,14 +73,9 @@ class DisponibilitaController extends Controller
             ->where('anno', $anno)
             ->first();
         
-        // Ottieni tutti i militari raggruppati per polo
-        $militariQuery = Militare::with(['polo', 'grado', 'compagnia']);
-        
-        if ($poloId) {
-            $militariQuery->where('polo_id', $poloId);
-        }
-        
-        $militari = $militariQuery->orderBy('polo_id')
+        // Ottieni TUTTI i militari (senza filtri server-side, il filtraggio avviene lato client)
+        $militari = Militare::with(['polo', 'grado', 'compagnia', 'plotone'])
+            ->orderBy('polo_id')
             ->orderByGradoENome()
             ->get();
         
@@ -123,14 +128,64 @@ class DisponibilitaController extends Controller
             9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre'
         ];
         
+        // Prepara dati militari per il filtraggio lato client
+        $militariData = [];
+        
+        // Ottieni tutti gli impegni CPT del mese
+        $impegniCpt = [];
+        if ($pianificazioneMensile) {
+            $impegniCptQuery = PianificazioneGiornaliera::where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                ->whereNotNull('tipo_servizio_id')
+                ->get();
+            
+            foreach ($impegniCptQuery as $impegno) {
+                $key = $impegno->militare_id . '_' . $impegno->giorno;
+                $impegniCpt[$key] = true;
+            }
+        }
+        
+        // Ottieni tutti gli impegni turno del mese
+        $impegniTurno = [];
+        $dataInizio = Carbon::create($anno, $mese, 1)->startOfDay();
+        $dataFine = Carbon::create($anno, $mese, $giorniNelMese)->endOfDay();
+        
+        $turniQuery = AssegnazioneTurno::whereBetween('data_servizio', [$dataInizio, $dataFine])->get();
+        foreach ($turniQuery as $turno) {
+            $giorno = Carbon::parse($turno->data_servizio)->day;
+            $key = $turno->militare_id . '_' . $giorno;
+            $impegniTurno[$key] = true;
+        }
+        
+        foreach ($militari as $militare) {
+            $impegniGiorni = [];
+            for ($g = 1; $g <= $giorniNelMese; $g++) {
+                $keyCpt = $militare->id . '_' . $g;
+                $keyTurno = $militare->id . '_' . $g;
+                $impegniGiorni[$g] = isset($impegniCpt[$keyCpt]) || isset($impegniTurno[$keyTurno]);
+            }
+            
+            $militariData[] = [
+                'id' => $militare->id,
+                'polo_id' => $militare->polo_id,
+                'compagnia_id' => $militare->compagnia_id,
+                'plotone_id' => $militare->plotone_id,
+                'impegni' => $impegniGiorni
+            ];
+        }
+        
         return view('disponibilita.index', compact(
             'anno',
             'mese',
             'poli',
             'poloId',
+            'compagnie',
+            'compagniaId',
+            'plotoni',
+            'plotoneId',
             'giorniMese',
             'disponibilitaPerPolo',
-            'nomiMesi'
+            'nomiMesi',
+            'militariData'
         ));
     }
     

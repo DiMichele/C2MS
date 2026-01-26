@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TipoPoligono;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Controller per la gestione della configurazione dei tipi di poligono
@@ -18,22 +19,98 @@ use Illuminate\Support\Facades\Log;
 class GestionePoligoniController extends Controller
 {
     /**
+     * Codici dei 3 tipi standard iniziali (creati automaticamente se la tabella è vuota)
+     */
+    private const CODICI_STANDARD = [
+        'teatro_operativo',
+        'mantenimento_arma_lunga',
+        'mantenimento_arma_corta',
+    ];
+    
+    /**
      * Visualizza la pagina di gestione poligoni
+     * Mostra tutti i tipi di poligono attivi
      */
     public function index(Request $request)
     {
-        // Recupera tutti i tipi di poligono ordinati
-        $query = TipoPoligono::query();
+        try {
+            // Verifica se la tabella esiste
+            if (!Schema::hasTable('tipi_poligono')) {
+                return view('gestione-poligoni.index', [
+                    'poligoni' => collect()
+                ])->with('error', 'La tabella tipi_poligono non esiste. Eseguire le migration: php artisan migrate');
+            }
+            
+            // Se la tabella è vuota, crea i tipi standard
+            if (TipoPoligono::count() === 0) {
+                $this->creaPoligoniStandard();
+            }
+            
+            // Mostra tutti i tipi attivi
+            $poligoni = TipoPoligono::where('attivo', true)
+                ->ordinati()
+                ->get();
 
-        // Filtra per stato attivo se richiesto
-        if ($request->filled('attivo')) {
-            $attivo = $request->attivo === '1';
-            $query->where('attivo', $attivo);
+            return view('gestione-poligoni.index', compact('poligoni'));
+            
+        } catch (\Exception $e) {
+            Log::error('Errore caricamento gestione poligoni', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return view('gestione-poligoni.index', [
+                'poligoni' => collect()
+            ])->with('error', 'Errore durante il caricamento: ' . $e->getMessage());
         }
-
-        $poligoni = $query->ordinati()->get();
-
-        return view('gestione-poligoni.index', compact('poligoni'));
+    }
+    
+    /**
+     * Crea i 3 tipi di poligono standard se la tabella è vuota
+     */
+    private function creaPoligoniStandard(): void
+    {
+        $tipiStandard = [
+            [
+                'codice' => 'teatro_operativo',
+                'nome' => 'Teatro Operativo',
+                'descrizione' => 'Qualifica per teatro operativo',
+                'punteggio_minimo' => 60,
+                'punteggio_massimo' => 100,
+                'durata_mesi' => 6,
+                'ordine' => 1,
+                'attivo' => true
+            ],
+            [
+                'codice' => 'mantenimento_arma_lunga',
+                'nome' => 'Mantenimento Arma Lunga',
+                'descrizione' => 'Mantenimento qualifica con arma lunga (fucile)',
+                'punteggio_minimo' => 55,
+                'punteggio_massimo' => 100,
+                'durata_mesi' => 6,
+                'ordine' => 2,
+                'attivo' => true
+            ],
+            [
+                'codice' => 'mantenimento_arma_corta',
+                'nome' => 'Mantenimento Arma Corta',
+                'descrizione' => 'Mantenimento qualifica con arma corta (pistola)',
+                'punteggio_minimo' => 50,
+                'punteggio_massimo' => 100,
+                'durata_mesi' => 6,
+                'ordine' => 3,
+                'attivo' => true
+            ],
+        ];
+        
+        foreach ($tipiStandard as $tipo) {
+            TipoPoligono::updateOrCreate(
+                ['codice' => $tipo['codice']],
+                $tipo
+            );
+        }
+        
+        Log::info('Creati tipi di poligono standard automaticamente');
     }
 
     /**
@@ -42,7 +119,7 @@ class GestionePoligoniController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:tipi_poligono,nome',
+            'nome' => 'required|string|max:255',
             'descrizione' => 'nullable|string',
             'durata_mesi' => 'required|integer|min:0',
             'punteggio_minimo' => 'nullable|integer|min:0',
@@ -50,6 +127,23 @@ class GestionePoligoniController extends Controller
         ]);
 
         try {
+            // Verifica se esiste già un tipo attivo con questo nome
+            $esistente = TipoPoligono::where('nome', $validated['nome'])
+                ->where('attivo', true)
+                ->first();
+            
+            if ($esistente) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Esiste già un tipo di poligono con questo nome'
+                    ], 422);
+                }
+                return redirect()->back()
+                    ->withErrors(['nome' => 'Esiste già un tipo di poligono con questo nome'])
+                    ->withInput();
+            }
+            
             // Genera codice univoco
             $codice = \Str::slug($validated['nome'], '_');
             
@@ -200,23 +294,28 @@ class GestionePoligoniController extends Controller
     }
 
     /**
-     * Elimina un tipo di poligono
+     * Elimina un tipo di poligono e tutte le scadenze associate
      */
     public function destroy(Request $request, $id)
     {
         try {
             $poligono = TipoPoligono::findOrFail($id);
+            $nome = $poligono->nome;
             
-            // Verifica se ci sono scadenze associate
-            $countScadenze = $poligono->scadenzePoligoni()->count();
-            
-            if ($countScadenze > 0) {
-                // Disattiva invece di eliminare se ci sono dati associati
-                $poligono->update(['attivo' => false]);
-                $message = 'Tipo di poligono disattivato (ci sono ' . $countScadenze . ' scadenze associate)';
+            // Elimina prima le scadenze associate (se la tabella esiste)
+            if (Schema::hasTable('scadenze_poligoni')) {
+                $countScadenze = $poligono->scadenzePoligoni()->count();
+                $poligono->scadenzePoligoni()->delete();
             } else {
-                $poligono->delete();
-                $message = 'Tipo di poligono eliminato con successo';
+                $countScadenze = 0;
+            }
+            
+            // Elimina il tipo di poligono
+            $poligono->delete();
+            
+            $message = 'Tipo di poligono "' . $nome . '" eliminato con successo';
+            if ($countScadenze > 0) {
+                $message .= ' (rimosse anche ' . $countScadenze . ' scadenze associate)';
             }
 
             if ($request->expectsJson()) {

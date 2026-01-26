@@ -37,7 +37,6 @@ class ScadenzaApprontamento extends Model
      * Le colonne marcate come 'fonte' => 'scadenze_militari' leggono dalla tabella condivisa
      */
     public const COLONNE = [
-        'teatro_operativo' => ['label' => 'Teatro Operativo', 'fonte' => 'approntamenti'],
         // Colonne condivise con SPP (Corsi di Formazione)
         'idoneita_to' => ['label' => 'Idoneità T.O.', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'idoneita_to'],
         'bls' => ['label' => 'BLS', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'blsd'],
@@ -238,5 +237,16 @@ class ScadenzaApprontamento extends Model
             $labels[$campo] = $config['label'];
         }
         return $labels;
+    }
+
+    /**
+     * Ottiene solo le colonne delle cattedre (escluso teatro_operativo e colonne condivise)
+     */
+    public static function getColonneCattedre(): array
+    {
+        return array_filter(self::COLONNE, function($config, $campo) {
+            // Escludi le colonne condivise e teatro_operativo
+            return ($config['fonte'] ?? '') === 'approntamenti' && $campo !== 'teatro_operativo';
+        }, ARRAY_FILTER_USE_BOTH);
     }
 }

@@ -290,7 +290,7 @@
 </div>
 
                     <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-sm table-hover">
+                        <table class="sugeco-table">
                             <thead class="table-light sticky-top">
                                 <tr>
                                     <th width="40"><input type="checkbox" id="selectAllCheck" checked></th>
@@ -539,7 +539,7 @@ $(document).ready(function() {
                 if (!noResultsMsg) {
                     noResultsMsg = document.createElement('div');
                     noResultsMsg.className = 'militari-no-results';
-                    noResultsMsg.innerHTML = '<i class="fas fa-search"></i><br>Nessun militare trovato';
+                    noResultsMsg.innerHTML = '<i class="fas fa-users-slash"></i><br>Nessun militare trovato';
                     listContainerModal.appendChild(noResultsMsg);
                 }
             } else {

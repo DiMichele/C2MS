@@ -7,9 +7,8 @@ use App\Models\ScadenzaMilitare;
 use App\Models\ConfigurazioneCorsoSpp;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
+use App\Services\ExcelStyleService;
 use Illuminate\Support\Facades\Log;
 
 class RsppController extends Controller
@@ -66,32 +65,58 @@ class RsppController extends Controller
      */
     public function updateSingola(Request $request, Militare $militare)
     {
-        $request->validate([
-            'corso_id' => 'required|exists:configurazione_corsi_spp,id',
-            'data' => 'nullable|date',
-        ]);
-        
-        $corsoId = $request->corso_id;
-        $data = $request->data;
-        
-        // Trova o crea la scadenza per questo militare e corso
-        $scadenzaCorso = \App\Models\ScadenzaCorsoSpp::updateOrCreate(
-            [
+        try {
+            $request->validate([
+                'corso_id' => 'required|exists:configurazione_corsi_spp,id',
+                'data' => 'nullable|date',
+            ]);
+            
+            $corsoId = $request->corso_id;
+            $data = $request->data;
+            
+            // Usa una transazione per evitare race conditions
+            return \DB::transaction(function () use ($militare, $corsoId, $data) {
+                // Cerca con lock per evitare race conditions
+                $scadenzaCorso = \App\Models\ScadenzaCorsoSpp::lockForUpdate()
+                    ->where('militare_id', $militare->id)
+                    ->where('configurazione_corso_spp_id', $corsoId)
+                    ->first();
+                
+                if (!$scadenzaCorso) {
+                    $scadenzaCorso = new \App\Models\ScadenzaCorsoSpp();
+                    $scadenzaCorso->militare_id = $militare->id;
+                    $scadenzaCorso->configurazione_corso_spp_id = $corsoId;
+                }
+                
+                $scadenzaCorso->data_conseguimento = $data;
+                $scadenzaCorso->save();
+                
+                // Calcola e restituisci la nuova scadenza
+                $scadenzaCalcolata = $scadenzaCorso->calcolaScadenza();
+                
+                return response()->json([
+                    'success' => true,
+                    'scadenza' => $scadenzaCalcolata,
+                ]);
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dati non validi: ' . implode(', ', $e->errors()['data'] ?? ['errore sconosciuto'])
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento scadenza SPP', [
                 'militare_id' => $militare->id,
-                'configurazione_corso_spp_id' => $corsoId,
-            ],
-            [
-                'data_conseguimento' => $data,
-            ]
-        );
-        
-        // Calcola e restituisci la nuova scadenza
-        $scadenzaCalcolata = $scadenzaCorso->calcolaScadenza();
-        
-        return response()->json([
-            'success' => true,
-            'scadenza' => $scadenzaCalcolata,
-        ]);
+                'corso_id' => $request->corso_id ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante il salvataggio. Riprova.'
+            ], 500);
+        }
     }
     
     /**
@@ -136,45 +161,42 @@ class RsppController extends Controller
     public function exportExcel(Request $request)
     {
         try {
-            $spreadsheet = new Spreadsheet();
+            // Usa il servizio per stili Excel
+            $excelService = new ExcelStyleService();
+            $spreadsheet = $excelService->createSpreadsheet('Scadenze RSPP - Sicurezza sul Lavoro');
             $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('RSPP');
             
-            // Ottieni tutti i militari con le loro scadenze
-            $militari = Militare::with(['grado', 'compagnia', 'scadenza'])
-                ->orderByGradoENome()
-                ->get();
+            // Ottieni i militari con le loro scadenze
+            $query = Militare::with(['grado', 'compagnia', 'scadenza']);
             
-            // Stile header
-            $headerStyle = [
-                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0a2342']],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-            ];
+            // Se sono stati passati ID specifici (export filtrato), filtra per questi
+            if ($request->filled('ids')) {
+                $ids = explode(',', $request->ids);
+                $query->whereIn('id', $ids);
+            }
             
-            // Titolo
-            $sheet->setCellValue('A1', 'SCADENZE RSPP - SICUREZZA SUL LAVORO');
-            $sheet->mergeCells('A1:P1');
-            $sheet->getStyle('A1')->applyFromArray($headerStyle);
-            $sheet->getRowDimension('1')->setRowHeight(25);
+            $militari = $query->orderByGradoENome()->get();
             
-            // Header colonne
-            $headers = ['N.', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 
-                        'LAV. 4H CONS.', 'LAV. 4H SCAD.', 'LAV. 8H CONS.', 'LAV. 8H SCAD.', 
-                        'PREPOSTO CONS.', 'PREPOSTO SCAD.', 'DIRIGENTE CONS.', 'DIRIGENTE SCAD.',
-                        'ANTINCENDIO CONS.', 'ANTINCENDIO SCAD.', 'BLSD CONS.', 'BLSD SCAD.',
-                        'P.S. AZIENDALE CONS.', 'P.S. AZIENDALE SCAD.'];
+            // Titolo principale
+            $excelService->applyTitleStyle($sheet, 'A1:S1', 'SCADENZE RSPP - SICUREZZA SUL LAVORO');
+            
+            // Header colonne (riga 2)
+            $headers = ['N.', 'COMP.', 'GRADO', 'COGNOME', 'NOME', 
+                        'LAV.4H C.', 'LAV.4H S.', 'LAV.8H C.', 'LAV.8H S.', 
+                        'PREP. C.', 'PREP. S.', 'DIRIG. C.', 'DIRIG. S.',
+                        'ANTINC. C.', 'ANTINC. S.', 'BLSD C.', 'BLSD S.',
+                        'PS AZ. C.', 'PS AZ. S.'];
             
             $col = 'A';
             foreach ($headers as $header) {
                 $sheet->setCellValue($col . '2', $header);
-                $sheet->getStyle($col . '2')->applyFromArray($headerStyle);
-                $sheet->getStyle($col . '2')->getAlignment()->setWrapText(true);
                 $col++;
             }
-            $sheet->getRowDimension('2')->setRowHeight(40);
+            $excelService->applyHeaderStyle($sheet, 'A2:S2');
+            $sheet->getRowDimension('2')->setRowHeight(35);
             
-            // Dati militari
+            // Dati militari (riga 3 in poi)
             $row = 3;
             $num = 1;
             
@@ -182,65 +204,63 @@ class RsppController extends Controller
                 $scadenza = $militare->scadenza;
                 
                 $sheet->setCellValue('A' . $row, $num++);
-                $sheet->setCellValue('B' . $row, $militare->compagnia->nome ?? '');
+                $sheet->setCellValue('B' . $row, $militare->compagnia->nome ?? '-');
                 $sheet->setCellValue('C' . $row, $militare->grado->sigla ?? '');
                 $sheet->setCellValue('D' . $row, strtoupper($militare->cognome));
                 $sheet->setCellValue('E' . $row, strtoupper($militare->nome));
                 
-                // Lavoratore 4h
-                $this->addScadenzaToSheet($sheet, $row, 'F', $scadenza?->lavoratore_4h_data_conseguimento, 4);
+                // Lavoratore 4h (4 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'F', $scadenza?->lavoratore_4h_data_conseguimento, 4);
                 
-                // Lavoratore 8h
-                $this->addScadenzaToSheet($sheet, $row, 'H', $scadenza?->lavoratore_8h_data_conseguimento, 4);
+                // Lavoratore 8h (4 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'H', $scadenza?->lavoratore_8h_data_conseguimento, 4);
                 
-                // Preposto
-                $this->addScadenzaToSheet($sheet, $row, 'J', $scadenza?->preposto_data_conseguimento, 2);
+                // Preposto (2 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'J', $scadenza?->preposto_data_conseguimento, 2);
                 
-                // Dirigente
-                $this->addScadenzaToSheet($sheet, $row, 'L', $scadenza?->dirigenti_data_conseguimento, 4);
+                // Dirigente (4 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'L', $scadenza?->dirigenti_data_conseguimento, 4);
                 
-                // Antincendio
-                $this->addScadenzaToSheet($sheet, $row, 'N', $scadenza?->antincendio_data_conseguimento, 1);
+                // Antincendio (1 anno)
+                $excelService->addScadenzaRow($sheet, $row, 'N', $scadenza?->antincendio_data_conseguimento, 1);
                 
-                // BLSD
-                $this->addScadenzaToSheet($sheet, $row, 'P', $scadenza?->blsd_data_conseguimento, 2);
+                // BLSD (2 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'P', $scadenza?->blsd_data_conseguimento, 2);
                 
-                // Primo Soccorso Aziendale
-                $this->addScadenzaToSheet($sheet, $row, 'R', $scadenza?->primo_soccorso_aziendale_data_conseguimento, 2);
-                
-                // Bordi
-                $sheet->getStyle('A' . $row . ':S' . $row)->applyFromArray([
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-                ]);
+                // Primo Soccorso Aziendale (2 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'R', $scadenza?->primo_soccorso_aziendale_data_conseguimento, 2);
                 
                 $row++;
             }
             
+            // Stile dati generali
+            if ($row > 3) {
+                $excelService->applyDataStyle($sheet, 'A3:E' . ($row - 1));
+            }
+            
             // Larghezze colonne
             $sheet->getColumnDimension('A')->setWidth(6);   // N.
-            $sheet->getColumnDimension('B')->setWidth(25);  // Compagnia
-            $sheet->getColumnDimension('C')->setWidth(12);  // Grado
-            $sheet->getColumnDimension('D')->setWidth(20);  // Cognome
-            $sheet->getColumnDimension('E')->setWidth(20);  // Nome
+            $sheet->getColumnDimension('B')->setWidth(16);  // Compagnia
+            $sheet->getColumnDimension('C')->setWidth(14);  // Grado
+            $sheet->getColumnDimension('D')->setWidth(18);  // Cognome
+            $sheet->getColumnDimension('E')->setWidth(16);  // Nome
             
-            // Date - larghezza aumentata per intestazioni lunghe tipo "P.S. AZIENDALE"
-            $sheet->getColumnDimension('F')->setWidth(22);  // LAV. 4H CONS.
-            $sheet->getColumnDimension('G')->setWidth(22);  // LAV. 4H SCAD.
-            $sheet->getColumnDimension('H')->setWidth(22);  // LAV. 8H CONS.
-            $sheet->getColumnDimension('I')->setWidth(22);  // LAV. 8H SCAD.
-            $sheet->getColumnDimension('J')->setWidth(22);  // PREPOSTO CONS.
-            $sheet->getColumnDimension('K')->setWidth(22);  // PREPOSTO SCAD.
-            $sheet->getColumnDimension('L')->setWidth(22);  // DIRIGENTE CONS.
-            $sheet->getColumnDimension('M')->setWidth(22);  // DIRIGENTE SCAD.
-            $sheet->getColumnDimension('N')->setWidth(25);  // ANTINCENDIO CONS.
-            $sheet->getColumnDimension('O')->setWidth(25);  // ANTINCENDIO SCAD.
-            $sheet->getColumnDimension('P')->setWidth(18);  // BLSD CONS.
-            $sheet->getColumnDimension('Q')->setWidth(18);  // BLSD SCAD.
-            $sheet->getColumnDimension('R')->setWidth(26);  // P.S. AZIENDALE CONS.
-            $sheet->getColumnDimension('S')->setWidth(26);  // P.S. AZIENDALE SCAD.
+            // Date colonne
+            for ($i = ord('F'); $i <= ord('S'); $i++) {
+                $sheet->getColumnDimension(chr($i))->setWidth(13);
+            }
+            
+            // Legenda
+            $excelService->addLegenda($sheet, $row + 1);
+            
+            // Data generazione
+            $excelService->addGenerationInfo($sheet, $row + 3);
+            
+            // Freeze header
+            $excelService->freezeHeader($sheet, 2);
             
             // Salva
-            $filename = 'Scadenze_RSPP_' . date('Y-m-d') . '.xlsx';
+            $filename = 'Scadenze_RSPP_' . date('Y-m-d_His') . '.xlsx';
             $tempFile = tempnam(sys_get_temp_dir(), 'rspp_');
             $writer = new Xlsx($spreadsheet);
             $writer->save($tempFile);
@@ -252,55 +272,10 @@ class RsppController extends Controller
         } catch (\Exception $e) {
             Log::error('Errore export Excel RSPP', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->back()->with('error', 'Errore durante l\'esportazione Excel.');
         }
-    }
-    
-    /**
-     * Aggiunge una scadenza al foglio Excel con colori
-     */
-    private function addScadenzaToSheet($sheet, $row, $colCons, $dataConseguimento, $durata)
-    {
-        $colScad = chr(ord($colCons) + 1);
-        
-        if (!$dataConseguimento) {
-            $sheet->setCellValue($colCons . $row, '');
-            $sheet->setCellValue($colScad . $row, '');
-            // Sfondo grigio per mancante
-            $sheet->getStyle($colCons . $row . ':' . $colScad . $row)->applyFromArray([
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'CCCCCC']],
-            ]);
-            return;
-        }
-        
-        $data = Carbon::parse($dataConseguimento);
-        $scadenza = $data->copy()->addYears($durata);
-        
-        $sheet->setCellValue($colCons . $row, $data->format('d/m/Y'));
-        $sheet->setCellValue($colScad . $row, $scadenza->format('d/m/Y'));
-        
-        // Calcola stato
-        $oggi = Carbon::now();
-        $giorniRimanenti = $oggi->diffInDays($scadenza, false);
-        
-        $coloreFondo = 'FFFFFF'; // Default bianco
-        if ($giorniRimanenti < 0) {
-            $coloreFondo = 'FF6B6B'; // Rosso - scaduto
-        } elseif ($giorniRimanenti <= 30) {
-            $coloreFondo = 'FFD93D'; // Giallo - in scadenza
-        } else {
-            $coloreFondo = '6BCF7F'; // Verde - valido
-        }
-        
-        $sheet->getStyle($colScad . $row)->applyFromArray([
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $coloreFondo]],
-        ]);
-        
-        // Allineamento
-        $sheet->getStyle($colCons . $row . ':' . $colScad . $row)->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
     }
 }

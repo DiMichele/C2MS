@@ -1,9 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * Toast notification system
- * 
- * @version 1.0
- * @author Michele Di Gennaro
+ * SUGECO Toast - Notification system
  */
 
 // Ensure SUGECO namespace exists

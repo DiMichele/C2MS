@@ -210,7 +210,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
+                        <table class="sugeco-table">
                             <thead class="table-light">
                                 <tr>
                                     <th width="12%">Giorno</th>
@@ -279,7 +279,7 @@
 @endsection
 
 @push('styles')
-<style>
+{{-- 
 .badge-categoria-u { background-color: #0d6efd !important; }
 .badge-categoria-su { background-color: #198754 !important; }
 .badge-categoria-grad { background-color: #ffc107 !important; color: #000 !important; }
@@ -291,5 +291,5 @@
 .table-warning {
     background-color: #fff3cd !important;
 }
-</style>
+--}}
 @endpush

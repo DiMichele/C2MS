@@ -472,8 +472,9 @@ class MilitareService
     public function getFormOptions()
     {
         return [
-            'gradi' => Grado::orderBy('ordine')->get(),
-            'plotoni' => Plotone::orderBy('nome')->get(),
+            // Gradi ordinati dal più alto (ordine maggiore) al più basso
+            'gradi' => Grado::orderByDesc('ordine')->get(),
+            'plotoni' => Plotone::with('compagnia')->orderBy('nome')->get(),
             'poli' => Polo::orderBy('nome')->get(),
             'ruoli' => Ruolo::orderBy('nome')->get(),
             'mansioni' => Mansione::orderBy('nome')->get()
@@ -624,7 +625,13 @@ class MilitareService
         // Lo scope withVisibilityFlags() aggiunge is_owner e is_acquired calcolati
         // direttamente in SQL per evitare N+1 nelle liste.
         $query = Militare::withVisibilityFlags()
-            ->with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti']);
+            ->with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti', 'compagnia']);
+        
+        // Filtro per IDs specifici (usato per export Excel filtrato)
+        if ($request->filled('ids')) {
+            $ids = is_array($request->ids) ? $request->ids : explode(',', $request->ids);
+            $query->whereIn('id', $ids);
+        }
         
         // Filtri
         if ($request->filled('grado_id')) {
@@ -686,10 +693,6 @@ class MilitareService
             }
         }
         
-        if ($request->filled('ruolo_id')) {
-            $query->where('ruolo_id', $request->ruolo_id);
-        }
-        
         // Filtro per email istituzionale
         if ($request->filled('email_istituzionale')) {
             if ($request->email_istituzionale === 'registrata') {
@@ -743,8 +746,9 @@ class MilitareService
         $militari = $query->orderByGradoENome()->get();
         
         // Dati per i filtri
-        $gradi = Grado::orderBy('ordine')->get();
-        $plotoni = Plotone::orderBy('nome')->get();
+        // Gradi ordinati dal più alto (ordine maggiore) al più basso
+        $gradi = Grado::orderByDesc('ordine')->get();
+        $plotoni = Plotone::with('compagnia')->orderBy('nome')->get();
         $poli = Polo::orderBy('nome')->get();
         $mansioni = Mansione::orderBy('nome')->get();
         $ruoli = Ruolo::orderBy('nome')->get();
@@ -759,7 +763,6 @@ class MilitareService
             'polo_id', 
             'mansione_id', 
             'nos_status', 
-            'ruolo_id', 
             'email_istituzionale', 
             'telefono',
             'presenza',

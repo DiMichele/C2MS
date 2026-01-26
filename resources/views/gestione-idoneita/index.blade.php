@@ -26,28 +26,27 @@
 
     <!-- Tabella Tipi Idoneità -->
     <div class="table-container-ruolini" style="max-width: 1200px; margin: 0 auto;">
-        <table class="table table-hover mb-0 ruolini-table" id="idoneitaTable">
+        <table class="sugeco-table" id="idoneitaTable">
             <thead>
                 <tr>
-                    <th style="width: 40%;">Nome Tipo Idoneità</th>
-                    <th style="width: 20%; text-align: center;">Durata (mesi)</th>
-                    <th style="width: 20%; text-align: center;">Stato</th>
-                    <th style="width: 20%; text-align: center;">Azioni</th>
+                    <th>Nome Tipo Idoneità</th>
+                    <th>Durata (mesi)</th>
+                    <th>Stato</th>
+                    <th>Azioni</th>
                 </tr>
             </thead>
             <tbody id="idoneitaTableBody">
                 @forelse($idoneita as $tipo)
                 <tr data-idoneita-id="{{ $tipo->id }}" 
                     data-nome="{{ $tipo->nome }}"
-                    data-attivo="{{ $tipo->attivo ? '1' : '0' }}"
-                    class="{{ !$tipo->attivo ? 'table-secondary' : '' }}">
+                    data-attivo="{{ $tipo->attivo ? '1' : '0' }}">
                     <td>
                         <strong>{{ $tipo->nome }}</strong>
                         @if($tipo->descrizione)
                         <br><small class="text-muted">{{ $tipo->descrizione }}</small>
                         @endif
                     </td>
-                    <td style="text-align: center;">
+                    <td>
                         <input type="number" 
                                class="form-control durata-input" 
                                data-idoneita-id="{{ $tipo->id }}"
@@ -59,14 +58,14 @@
                         <small class="text-muted d-block">Nessuna scadenza</small>
                         @endif
                     </td>
-                    <td style="text-align: center;">
+                    <td>
                         @if($tipo->attivo)
                             <span class="badge bg-success">Attivo</span>
                         @else
                             <span class="badge bg-secondary">Inattivo</span>
                         @endif
                     </td>
-                    <td style="text-align: center;">
+                    <td>
                         <button class="btn btn-sm btn-primary edit-idoneita-btn" 
                                 data-idoneita-id="{{ $tipo->id }}"
                                 data-nome="{{ $tipo->nome }}"
@@ -523,36 +522,13 @@
 })();
 </script>
 
-<style>
+{{-- 
 .table-container-ruolini {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
     margin: 0;
-}
-
-.ruolini-table {
-    margin-bottom: 0 !important;
-}
-
-.ruolini-table thead {
-    background-color: #0a2342;
-    color: white;
-}
-
-.ruolini-table thead th {
-    font-weight: 600;
-    padding: 1rem;
-    border-bottom: none;
-}
-
-.ruolini-table tbody tr {
-    transition: all 0.2s;
-}
-
-.ruolini-table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.05);
 }
 
 .durata-input {
@@ -566,6 +542,6 @@
     border-color: #0a2342;
     box-shadow: 0 0 0 0.2rem rgba(10, 35, 66, 0.25);
 }
-</style>
+--}}
 @endsection
 

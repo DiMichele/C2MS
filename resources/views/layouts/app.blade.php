@@ -28,14 +28,14 @@
     
     <!-- CSS Sistema - Caricati nell'ordine corretto delle dipendenze -->
     <link rel="stylesheet" href="{{ asset('css/global.css') }}?v={{ config('app.asset_version', time()) }}">
-    <link rel="stylesheet" href="{{ asset('css/common.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/components.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/filters.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/tooltips.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/layout.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/toast-system.css') }}?v={{ config('app.asset_version', time()) }}">
-    <link href="{{ asset('css/dashboard.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
-    <link href="{{ asset('css/militari-selector.css') }}?v={{ config('app.asset_version', time()) }}" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/table-standard.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/militari-selector.css') }}?v={{ config('app.asset_version', time()) }}">
     
     @yield('styles')
 </head>
@@ -130,6 +130,12 @@
                     </a>
                 </li>
                 
+                <li class="nav-menu-item {{ request()->is('impieghi-personale*') ? 'active' : '' }}">
+                    <a href="{{ route('impieghi-personale.index') }}">
+                        Organici
+                    </a>
+                </li>
+                
                 <li class="nav-menu-item {{ request()->is('approntamenti*') ? 'active' : '' }}">
                     <a href="{{ route('approntamenti.index') }}">
                         Approntamenti
@@ -162,7 +168,7 @@
                     </a>
                     <ul class="nav-dropdown">
                         <li class="nav-dropdown-item {{ request()->is('servizi/turni*') ? 'active' : '' }}">
-                            <a href="{{ route('servizi.turni.index') }}">Turni Settimanali</a>
+                            <a href="{{ route('servizi.turni.index') }}">Servizi</a>
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('trasparenza*') ? 'active' : '' }}">
                             <a href="{{ route('trasparenza.index') }}">Trasparenza Servizi</a>
@@ -264,11 +270,12 @@
     <!-- Scripts Sistema - Caricati nell'ordine corretto delle dipendenze -->
     <script src="{{ asset('js/sugeco-core.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/toast-system.js') }}?v={{ time() }}"></script>
-    <script src="{{ asset('js/filters.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/sugeco-filters.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/search-fixed.js') }}?v={{ time() }}&bust={{ rand(1000,9999) }}&debug=true"></script>
     <script src="{{ asset('js/autosave.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/certificate-tooltips.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/militare.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/table-navigation.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/main.js') }}?v={{ time() }}"></script>
     
     <!-- Script per gestione filtri -->

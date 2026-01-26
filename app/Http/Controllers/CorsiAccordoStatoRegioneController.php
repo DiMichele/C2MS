@@ -7,9 +7,8 @@ use App\Models\ScadenzaMilitare;
 use App\Models\ConfigurazioneCorsoSpp;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\{Alignment, Border, Fill};
+use App\Services\ExcelStyleService;
 use Illuminate\Support\Facades\Log;
 
 class CorsiAccordoStatoRegioneController extends Controller
@@ -66,32 +65,58 @@ class CorsiAccordoStatoRegioneController extends Controller
      */
     public function updateSingola(Request $request, Militare $militare)
     {
-        $request->validate([
-            'corso_id' => 'required|exists:configurazione_corsi_spp,id',
-            'data' => 'nullable|date',
-        ]);
-        
-        $corsoId = $request->corso_id;
-        $data = $request->data;
-        
-        // Trova o crea la scadenza per questo militare e corso
-        $scadenzaCorso = \App\Models\ScadenzaCorsoSpp::updateOrCreate(
-            [
+        try {
+            $request->validate([
+                'corso_id' => 'required|exists:configurazione_corsi_spp,id',
+                'data' => 'nullable|date',
+            ]);
+            
+            $corsoId = $request->corso_id;
+            $data = $request->data;
+            
+            // Usa una transazione per evitare race conditions
+            return \DB::transaction(function () use ($militare, $corsoId, $data) {
+                // Cerca con lock per evitare race conditions
+                $scadenzaCorso = \App\Models\ScadenzaCorsoSpp::lockForUpdate()
+                    ->where('militare_id', $militare->id)
+                    ->where('configurazione_corso_spp_id', $corsoId)
+                    ->first();
+                
+                if (!$scadenzaCorso) {
+                    $scadenzaCorso = new \App\Models\ScadenzaCorsoSpp();
+                    $scadenzaCorso->militare_id = $militare->id;
+                    $scadenzaCorso->configurazione_corso_spp_id = $corsoId;
+                }
+                
+                $scadenzaCorso->data_conseguimento = $data;
+                $scadenzaCorso->save();
+                
+                // Calcola e restituisci la nuova scadenza
+                $scadenzaCalcolata = $scadenzaCorso->calcolaScadenza();
+                
+                return response()->json([
+                    'success' => true,
+                    'scadenza' => $scadenzaCalcolata,
+                ]);
+            });
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dati non validi: ' . implode(', ', $e->errors()['data'] ?? ['errore sconosciuto'])
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento scadenza Corsi Accordo Stato Regione', [
                 'militare_id' => $militare->id,
-                'configurazione_corso_spp_id' => $corsoId,
-            ],
-            [
-                'data_conseguimento' => $data,
-            ]
-        );
-        
-        // Calcola e restituisci la nuova scadenza
-        $scadenzaCalcolata = $scadenzaCorso->calcolaScadenza();
-        
-        return response()->json([
-            'success' => true,
-            'scadenza' => $scadenzaCalcolata,
-        ]);
+                'corso_id' => $request->corso_id ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante il salvataggio. Riprova.'
+            ], 500);
+        }
     }
     
     /**
@@ -136,50 +161,47 @@ class CorsiAccordoStatoRegioneController extends Controller
     public function exportExcel(Request $request)
     {
         try {
-            $spreadsheet = new Spreadsheet();
+            // Usa il servizio per stili Excel
+            $excelService = new ExcelStyleService();
+            $spreadsheet = $excelService->createSpreadsheet('Corsi Accordo Stato Regione');
             $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Corsi ASR');
             
-            // Ottieni tutti i militari con le loro scadenze
-            $militari = Militare::with(['grado', 'compagnia', 'scadenza'])
-                ->orderByGradoENome()
-                ->get();
+            // Ottieni i militari con le loro scadenze
+            $query = Militare::with(['grado', 'compagnia', 'scadenza']);
             
-            // Stile header
-            $headerStyle = [
-                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0a2342']],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-            ];
+            // Se sono stati passati ID specifici (export filtrato), filtra per questi
+            if ($request->filled('ids')) {
+                $ids = explode(',', $request->ids);
+                $query->whereIn('id', $ids);
+            }
             
-            // Titolo
-            $sheet->setCellValue('A1', 'CORSI ACCORDO STATO REGIONE');
-            $sheet->mergeCells('A1:P1');
-            $sheet->getStyle('A1')->applyFromArray($headerStyle);
-            $sheet->getRowDimension('1')->setRowHeight(25);
+            $militari = $query->orderByGradoENome()->get();
             
-            // Header colonne
+            // Titolo principale
+            $excelService->applyTitleStyle($sheet, 'A1:S1', 'CORSI ACCORDO STATO REGIONE');
+            
+            // Header colonne (riga 2)
             $headers = [
-                'N.', 'COMPAGNIA', 'GRADO', 'COGNOME', 'NOME',
-                'TRATTORI CONS.', 'TRATTORI SCAD.',
+                'N.', 'COMP.', 'GRADO', 'COGNOME', 'NOME',
+                'TRATT. CONS.', 'TRATT. SCAD.',
                 'MMT CONS.', 'MMT SCAD.',
-                'MULETTO CONS.', 'MULETTO SCAD.',
+                'MULET. CONS.', 'MULET. SCAD.',
                 'PLE CONS.', 'PLE SCAD.',
-                'MOTOSEGA CONS.', 'MOTOSEGA SCAD.',
-                'FUNI/CATENE CONS.', 'FUNI/CATENE SCAD.',
+                'MOTOS. CONS.', 'MOTOS. SCAD.',
+                'FUNI C.', 'FUNI S.',
                 'RLS CONS.', 'RLS SCAD.'
             ];
             
             $col = 'A';
             foreach ($headers as $header) {
                 $sheet->setCellValue($col . '2', $header);
-                $sheet->getStyle($col . '2')->applyFromArray($headerStyle);
-                $sheet->getStyle($col . '2')->getAlignment()->setWrapText(true);
                 $col++;
             }
-            $sheet->getRowDimension('2')->setRowHeight(40);
+            $excelService->applyHeaderStyle($sheet, 'A2:S2');
+            $sheet->getRowDimension('2')->setRowHeight(35);
             
-            // Dati militari
+            // Dati militari (riga 3 in poi)
             $row = 3;
             $num = 1;
             
@@ -187,54 +209,63 @@ class CorsiAccordoStatoRegioneController extends Controller
                 $scadenza = $militare->scadenza;
                 
                 $sheet->setCellValue('A' . $row, $num++);
-                $sheet->setCellValue('B' . $row, $militare->compagnia->nome ?? '');
+                $sheet->setCellValue('B' . $row, $militare->compagnia->nome ?? '-');
                 $sheet->setCellValue('C' . $row, $militare->grado->sigla ?? '');
                 $sheet->setCellValue('D' . $row, strtoupper($militare->cognome));
                 $sheet->setCellValue('E' . $row, strtoupper($militare->nome));
                 
-                // Abilitazione Trattori
-                $this->addScadenzaToSheet($sheet, $row, 'F', $scadenza?->abilitazione_trattori_data_conseguimento, 5);
+                // Abilitazione Trattori (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'F', $scadenza?->abilitazione_trattori_data_conseguimento, 5);
                 
-                // Abilitazione MMT
-                $this->addScadenzaToSheet($sheet, $row, 'H', $scadenza?->abilitazione_mmt_data_conseguimento, 5);
+                // Abilitazione MMT (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'H', $scadenza?->abilitazione_mmt_data_conseguimento, 5);
                 
-                // Abilitazione Muletto
-                $this->addScadenzaToSheet($sheet, $row, 'J', $scadenza?->abilitazione_muletto_data_conseguimento, 5);
+                // Abilitazione Muletto (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'J', $scadenza?->abilitazione_muletto_data_conseguimento, 5);
                 
-                // Abilitazione PLE
-                $this->addScadenzaToSheet($sheet, $row, 'L', $scadenza?->abilitazione_ple_data_conseguimento, 5);
+                // Abilitazione PLE (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'L', $scadenza?->abilitazione_ple_data_conseguimento, 5);
                 
-                // Corso Motosega
-                $this->addScadenzaToSheet($sheet, $row, 'N', $scadenza?->corso_motosega_data_conseguimento, 5);
+                // Corso Motosega (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'N', $scadenza?->corso_motosega_data_conseguimento, 5);
                 
-                // Addetti Funi e Catene
-                $this->addScadenzaToSheet($sheet, $row, 'P', $scadenza?->addetti_funi_catene_data_conseguimento, 5);
+                // Addetti Funi e Catene (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'P', $scadenza?->addetti_funi_catene_data_conseguimento, 5);
                 
-                // Corso RLS
-                $this->addScadenzaToSheet($sheet, $row, 'R', $scadenza?->corso_rls_data_conseguimento, 5);
-                
-                // Bordi
-                $sheet->getStyle('A' . $row . ':S' . $row)->applyFromArray([
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-                ]);
+                // Corso RLS (5 anni)
+                $excelService->addScadenzaRow($sheet, $row, 'R', $scadenza?->corso_rls_data_conseguimento, 5);
                 
                 $row++;
             }
             
+            // Stile dati generali
+            if ($row > 3) {
+                $excelService->applyDataStyle($sheet, 'A3:E' . ($row - 1));
+            }
+            
             // Larghezze colonne
             $sheet->getColumnDimension('A')->setWidth(6);   // N.
-            $sheet->getColumnDimension('B')->setWidth(25);  // Compagnia
-            $sheet->getColumnDimension('C')->setWidth(12);  // Grado
-            $sheet->getColumnDimension('D')->setWidth(20);  // Cognome
-            $sheet->getColumnDimension('E')->setWidth(20);  // Nome
+            $sheet->getColumnDimension('B')->setWidth(16);  // Compagnia
+            $sheet->getColumnDimension('C')->setWidth(14);  // Grado
+            $sheet->getColumnDimension('D')->setWidth(18);  // Cognome
+            $sheet->getColumnDimension('E')->setWidth(16);  // Nome
             
             // Date colonne
             for ($i = ord('F'); $i <= ord('S'); $i++) {
-                $sheet->getColumnDimension(chr($i))->setWidth(18);
+                $sheet->getColumnDimension(chr($i))->setWidth(13);
             }
             
+            // Legenda
+            $excelService->addLegenda($sheet, $row + 1);
+            
+            // Data generazione
+            $excelService->addGenerationInfo($sheet, $row + 3);
+            
+            // Freeze header
+            $excelService->freezeHeader($sheet, 2);
+            
             // Salva
-            $filename = 'Corsi_Accordo_Stato_Regione_' . date('Y-m-d') . '.xlsx';
+            $filename = 'Corsi_Accordo_Stato_Regione_' . date('Y-m-d_His') . '.xlsx';
             $tempFile = tempnam(sys_get_temp_dir(), 'corsi_');
             $writer = new Xlsx($spreadsheet);
             $writer->save($tempFile);
@@ -246,55 +277,10 @@ class CorsiAccordoStatoRegioneController extends Controller
         } catch (\Exception $e) {
             Log::error('Errore export Excel Corsi Accordo Stato Regione', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->back()->with('error', 'Errore durante l\'esportazione Excel.');
         }
-    }
-    
-    /**
-     * Aggiunge una scadenza al foglio Excel con colori
-     */
-    private function addScadenzaToSheet($sheet, $row, $colCons, $dataConseguimento, $durata)
-    {
-        $colScad = chr(ord($colCons) + 1);
-        
-        if (!$dataConseguimento) {
-            $sheet->setCellValue($colCons . $row, '');
-            $sheet->setCellValue($colScad . $row, '');
-            // Sfondo grigio per mancante
-            $sheet->getStyle($colCons . $row . ':' . $colScad . $row)->applyFromArray([
-                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'CCCCCC']],
-            ]);
-            return;
-        }
-        
-        $data = Carbon::parse($dataConseguimento);
-        $scadenza = $data->copy()->addYears($durata);
-        
-        $sheet->setCellValue($colCons . $row, $data->format('d/m/Y'));
-        $sheet->setCellValue($colScad . $row, $scadenza->format('d/m/Y'));
-        
-        // Calcola stato
-        $oggi = Carbon::now();
-        $giorniRimanenti = $oggi->diffInDays($scadenza, false);
-        
-        $coloreFondo = 'FFFFFF'; // Default bianco
-        if ($giorniRimanenti < 0) {
-            $coloreFondo = 'FF6B6B'; // Rosso - scaduto
-        } elseif ($giorniRimanenti <= 30) {
-            $coloreFondo = 'FFD93D'; // Giallo - in scadenza
-        } else {
-            $coloreFondo = '6BCF7F'; // Verde - valido
-        }
-        
-        $sheet->getStyle($colScad . $row)->applyFromArray([
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $coloreFondo]],
-        ]);
-        
-        // Allineamento
-        $sheet->getStyle($colCons . $row . ':' . $colScad . $row)->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-            ->setVertical(Alignment::VERTICAL_CENTER);
     }
 }

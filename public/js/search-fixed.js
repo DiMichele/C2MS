@@ -1,6 +1,5 @@
 /**
- * Modulo di ricerca unificato SUGECO
- * Sistema con logiche specifiche per dashboard, organigramma e tabelle
+ * SUGECO Search - Unified search module
  */
 window.SUGECO = window.SUGECO || {};
 window.SUGECO.Search = {
@@ -168,17 +167,14 @@ window.SUGECO.Search = {
             `;
             
             suggestionItem.innerHTML = `
-                <div class="suggestion-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #007bff; color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: bold;">
+                <div class="suggestion-avatar" style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #0A2342 0%, #1A3A5F 100%); color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: 600; font-size: 0.85em;">
                     ${militare.nome.charAt(0)}${militare.cognome.charAt(0)}
                 </div>
                 <div class="suggestion-info" style="flex: 1;">
-                    <div style="font-weight: 600; color: #333;">${militare.grado ? militare.grado.nome : ''} ${militare.cognome} ${militare.nome}</div>
-                    <div style="font-size: 0.85em; color: #666;">
+                    <div style="font-weight: 600; color: #0A2342;">${militare.grado ? militare.grado.abbreviazione || militare.grado.nome : ''} ${militare.cognome} ${militare.nome}</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">
                         ${militare.plotone ? militare.plotone.nome : 'N/A'} • ${militare.polo ? militare.polo.nome : 'N/A'}
                     </div>
-                </div>
-                <div class="suggestion-action" style="color: #007bff;">
-                    <i class="fas fa-arrow-right"></i>
                 </div>
             `;
 
@@ -585,15 +581,12 @@ window.SUGECO.Search = {
             `;
             
             item.innerHTML = `
-                <div class="militare-avatar" style="width: 36px; height: 36px; border-radius: 50%; background: #007bff; color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: bold; font-size: 0.8em;">
+                <div class="militare-avatar" style="width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #0A2342 0%, #1A3A5F 100%); color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-weight: 600; font-size: 0.8em;">
                     ${this.getInitials(militare.data.nome)}
                 </div>
                 <div class="militare-details" style="flex: 1;">
-                    <div style="font-weight: 600; color: #333; margin-bottom: 2px;">${militare.data.nome}</div>
-                    <div style="font-size: 0.8em; color: #666;">${militare.data.unita}</div>
-                </div>
-                <div class="militare-action" style="color: #007bff;">
-                    <i class="fas fa-crosshairs"></i>
+                    <div style="font-weight: 600; color: #0A2342; margin-bottom: 2px;">${militare.data.nome}</div>
+                    <div style="font-size: 0.8em; color: #6c757d;">${militare.data.unita}</div>
                 </div>
             `;
 

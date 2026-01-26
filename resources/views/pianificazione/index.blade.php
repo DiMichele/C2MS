@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'CPT')
 
@@ -16,7 +16,6 @@ window.pageData = {
 };
 </script>
 <script src="{{ asset('js/pianificazione.js') }}?v={{ time() }}"></script>
-<script src="{{ asset('js/filtro-plotoni-compagnia.js') }}?v={{ time() }}"></script>
 
 <div class="container-fluid" style="position: relative; z-index: 1;">
     <!-- Header con controlli -->
@@ -68,24 +67,15 @@ window.pageData = {
         @php
             // Check if any filters are active
             $activeFilters = [];
-            foreach(['compagnia', 'grado_id', 'plotone_id', 'patente', 'approntamento_id', 'impegno', 'stato_impegno', 'compleanno', 'giorno'] as $filter) {
+            foreach(['compagnia', 'grado_id', 'plotone_id', 'ufficio_id', 'patente', 'approntamento_id', 'impegno', 'stato_impegno', 'compleanno', 'giorno'] as $filter) {
                 if(request()->filled($filter)) $activeFilters[] = $filter;
             }
             $hasActiveFilters = count($activeFilters) > 0;
         @endphp
 
-        <div class="d-flex justify-content-between align-items-center mb-3" style="background: transparent;">
-        
-            <div>
-                <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
-                    <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
-                    <span id="toggleFiltersText">
-                        {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
-                    </span>
-                </button>
-            </div>
-            
-            <div class="search-container" style="position: relative; width: 320px;">
+        <!-- Barra di ricerca centrata sotto il titolo -->
+        <div class="d-flex justify-content-center mb-3">
+            <div class="search-container" style="position: relative; width: 400px;">
                 <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
                 <input type="text" 
                        id="searchMilitare" 
@@ -96,7 +86,17 @@ window.pageData = {
                        data-search-type="militare"
                        data-target-container="pianificazioneTable">
             </div>
-            
+        </div>
+        
+        <div class="d-flex justify-content-start align-items-center mb-3" style="background: transparent;">
+            <div>
+                <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
+                    <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
+                    <span id="toggleFiltersText">
+                        {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
+                    </span>
+                </button>
+            </div>
         </div>
 
         <!-- Filtri con sezione migliorata -->
@@ -105,90 +105,80 @@ window.pageData = {
         </div>
         
         <div class="card-body p-0">
-            <div class="table-container" style="border: 1px solid #dee2e6;">
-                <!-- Header fisso -->
-            <div class="table-header-fixed">
-                <table class="table table-sm table-bordered mb-0" style="width: 3172px; min-width: 3172px; table-layout: fixed;">
-                        <thead class="table-dark">
+            <!-- Tabella unica con header sticky (stile pagina Servizi) -->
+            <div class="sugeco-table-wrapper cpt-wrapper">
+                <table class="sugeco-table" id="pianificazioneTable">
+                    <thead>
                         <tr>
                             <!-- Colonne fisse per info militare -->
-                        <th class="bg-dark text-white" style="width: 160px;">Compagnia</th>
-                        <th class="bg-dark text-white" style="width: 200px;">Grado</th>
-                        <th class="bg-dark text-white" style="width: 230px;">Cognome</th>
-                        <th class="bg-dark text-white" style="width: 170px;">Nome</th>
-                            <th class="bg-dark text-white" style="width: 120px;">Plotone</th>
-                            <th class="bg-dark text-white" style="width: 140px;">Ufficio</th>
-                            <th class="bg-dark text-white" style="width: 112px;">Patente</th>
-                            <th class="bg-dark text-white" style="width: 120px;">Teatro Operativo</th>
+                            <th>Compagnia</th>
+                            <th>Grado</th>
+                            <th>Cognome</th>
+                            <th>Nome</th>
+                            <th>Plotone</th>
+                            <th>Ufficio</th>
+                            <th>Patente</th>
+                            <th>Teatro Op.</th>
                             
-                            <!-- Colonne per ogni giorno del mese -->
+                            <!-- Colonne per ogni giorno del mese - TUTTE con larghezza FISSA identica -->
                             @foreach($giorniMese as $giorno)
                                 @php
                                     $isWeekend = $giorno['is_weekend'];
                                     $isHoliday = $giorno['is_holiday'];
                                     $isToday = $giorno['is_today'];
-                                    $headerStyle = "width: 60px; padding: 4px 2px;";
-                                    
-                                    // Colori inline per intestazione
-                                    $textColor = '';
-                                    if ($isWeekend || $isHoliday) {
-                                        $textColor = 'color: #dc3545 !important;';
-                                    } elseif ($isToday) {
-                                        $textColor = 'color: #ff8c00 !important;';
-                                    }
+                                    // Nomi giorni completi maiuscolo (identico a pagina Servizi)
+                                    $mappaGiorni = ['Dom' => 'DOMENICA', 'Lun' => 'LUNEDI', 'Mar' => 'MARTEDI', 'Mer' => 'MERCOLEDI', 'Gio' => 'GIOVEDI', 'Ven' => 'VENERDI', 'Sab' => 'SABATO'];
+                                    $nomeGiornoCompleto = $mappaGiorni[$giorno['nome_giorno']] ?? strtoupper($giorno['nome_giorno']);
                                 @endphp
-                                <th class="text-center {{ $isWeekend ? 'weekend-column' : '' }} {{ $isHoliday ? 'holiday-column' : '' }} {{ $isToday ? 'today-column' : '' }}" 
-                                style="{{ $headerStyle }}">
-                                    <div class="d-flex flex-column align-items-center">
-                                        <div class="fw-bold" style="font-size: 12px; {{ $textColor }} font-weight: 700 !important; opacity: 1 !important;">{{ $giorno['giorno'] }}</div>
-                                        <div style="font-size: 9px; {{ $textColor }} font-weight: 700 !important; opacity: 1 !important;">{{ substr($giorno['nome_giorno'], 0, 1) }}</div>
-                                    </div>
+                                <th class="giorno-header {{ $isWeekend || $isHoliday ? 'weekend' : '' }} {{ $isToday ? 'today' : '' }}" style="width: 95px; min-width: 95px; max-width: 95px;">
+                                    <div>{{ $nomeGiornoCompleto }}</div>
+                                    <div class="date-badge">{{ $giorno['data']->format('d/m') }}</div>
                                 </th>
                             @endforeach
                         </tr>
-                        </thead>
-                    </table>
-                </div>
-                
-                <!-- Body scrollabile -->
-                <div class="table-body-scroll" style="max-height: 60vh; overflow: auto;">
-                    <table class="table table-sm table-bordered mb-0" id="pianificazioneTable" style="width: 3172px; min-width: 3172px; table-layout: fixed;">
-                        <tbody>
+                    </thead>
+                    <tbody>
                         @forelse($militariConPianificazione as $index => $item)
-                            <tr class="militare-row" data-militare-id="{{ $item['militare']->id }}">
-                                <!-- Info militare (colonne fisse) -->
-                                <td class="fw-bold text-center" style="width: 160px; padding: 4px 6px;">
-                                    {{ $item['militare']->compagnia->numero ?? '-' }}
-                                </td>
-                                <td class="fw-bold" style="width: 200px; padding: 4px 6px;">
-                                    <span title="{{ $item['militare']->grado->nome ?? '-' }}">
-                                        {{ $item['militare']->grado->sigla ?? '-' }}
-                                    </span>
-                                </td>
-                                <td style="width: 230px; padding: 4px 6px;">
-                                    <a href="{{ route('anagrafica.show', $item['militare']->id) }}"
-                                       class="link-name">
+                            @php
+                                $patentiArray = $item['militare']->patenti->pluck('categoria')->toArray();
+                                $impegniGiorni = [];
+                                foreach($item['pianificazioni'] as $giornoPian => $pian) {
+                                    if ($pian && $pian->tipoServizio) {
+                                        $impegniGiorni[$giornoPian] = $pian->tipoServizio->codice;
+                                    }
+                                }
+                                // Ottieni gli ID dei teatri operativi assegnati al militare
+                                $teatriOperativiIds = $item['militare']->teatriOperativi->pluck('id')->toArray();
+                                $teatriOperativiIdsStr = implode(',', $teatriOperativiIds);
+                            @endphp
+                            <tr class="militare-row" 
+                                data-militare-id="{{ $item['militare']->id }}"
+                                data-compagnia-id="{{ $item['militare']->compagnia_id ?? '' }}"
+                                data-grado-id="{{ $item['militare']->grado_id ?? '' }}"
+                                data-plotone-id="{{ $item['militare']->plotone_id ?? '' }}"
+                                data-ufficio-id="{{ $item['militare']->polo_id ?? '' }}"
+                                data-patenti="{{ implode(',', $patentiArray) }}"
+                                data-approntamento-id="{{ $teatriOperativiIdsStr }}"
+                                data-impegni="{{ json_encode($impegniGiorni) }}"
+                                data-data-nascita="{{ $item['militare']->data_nascita ?? '' }}">
+                                <!-- Info militare -->
+                                <td class="text-center">{{ $item['militare']->compagnia->numero ?? '-' }}</td>
+                                <td title="{{ $item['militare']->grado->nome ?? '-' }}">{{ $item['militare']->grado->sigla ?? '-' }}</td>
+                                <td>
+                                    <a href="{{ route('anagrafica.show', $item['militare']->id) }}" class="link-name">
                                         {{ $item['militare']->cognome }}
                                     </a>
                                 </td>
-                                <td style="width: 170px; padding: 4px 6px;">
-                                    {{ $item['militare']->nome }}
-                                </td>
-                                <td class="text-center" style="width: 120px; padding: 4px 6px;">
-                                    {{ str_replace(['° Plotone', 'Plotone'], ['°', ''], $item['militare']->plotone->nome ?? '-') }}
-                                </td>
-                                <td class="text-center" style="width: 140px; padding: 4px 6px; font-size: 0.85rem;">
-                                    {{ $item['militare']->polo->nome ?? '-' }}
-                                </td>
-                                <td class="text-center" style="width: 112px; padding: 4px 2px; font-size: 0.85rem;">
+                                <td>{{ $item['militare']->nome }}</td>
+                                <td class="text-center">{{ str_replace(['° Plotone', 'Plotone'], ['°', ''], $item['militare']->plotone->nome ?? '-') }}</td>
+                                <td class="text-center">{{ $item['militare']->polo->nome ?? '-' }}</td>
+                                <td class="text-center">
                                     @php
                                         $patenti = $item['militare']->patenti->pluck('categoria')->toArray();
                                     @endphp
                                     {{ !empty($patenti) ? implode(' ', $patenti) : '-' }}
                                 </td>
-                                <td style="width: 120px; padding: 4px 6px;">
-                                    <small>{{ $item['militare']->approntamentoPrincipale->nome ?? '-' }}</small>
-                                </td>
+                                <td><small>{{ $item['militare']->scadenzaApprontamento->teatro_operativo ?? ($item['militare']->approntamentoPrincipale->nome ?? '-') }}</small></td>
                                 
                                 <!-- Celle per ogni giorno -->
                                 @foreach($giorniMese as $giorno)
@@ -198,6 +188,45 @@ window.pageData = {
                                         $coloreBadge = null;
                                         $tooltip = 'Nessuna pianificazione';
                                         
+                                        // MAPPA COLORI CPT - Fallback per codici senza colore nel database
+                                        $mappaColoriCpt = [
+                                            // ASSENTE - Giallo
+                                            'LS' => '#ffff00', 'LO' => '#ffff00', 'LM' => '#ffff00',
+                                            'P' => '#ffff00', 'TIR' => '#ffff00', 'TRAS' => '#ffff00',
+                                            // PROVVEDIMENTI MEDICO SANITARI - Rosso
+                                            'RMD' => '#ff0000', 'LC' => '#ff0000', 'IS' => '#ff0000',
+                                            // SERVIZIO - Verde
+                                            'S-G1' => '#00b050', 'S-G2' => '#00b050', 'S-SA' => '#00b050',
+                                            'S-CD1' => '#00b050', 'S-CD2' => '#00b050', 'S-CD3' => '#00b050', 'S-CD4' => '#00b050',
+                                            'S-SG' => '#00b050', 'S-CG' => '#00b050', 'S-UI' => '#00b050', 'S-UP' => '#00b050',
+                                            'S-AE' => '#00b050', 'S-ARM' => '#00b050', 'SI-GD' => '#00b050',
+                                            'SI' => '#00b050', 'S-VM' => '#00b050', 'S-PI' => '#00b050',
+                                            'S.I.' => '#00b050', 'RIP' => '#00b050',
+                                            // Codici turni e servizi vari
+                                            'G1' => '#00b050', 'G2' => '#00b050', 'SG' => '#00b050',
+                                            'CD1' => '#00b050', 'CD2' => '#00b050',
+                                            'PDT1' => '#00b050', 'PDT2' => '#00b050',
+                                            'AE' => '#00b050', 'A-A' => '#00b050',
+                                            'CETLI' => '#00b050', 'LCC' => '#00b050', 'CENTURIA' => '#00b050',
+                                            'TIROCINIO' => '#00b050',
+                                            // SERVIZI TURNO - Verde
+                                            'G-BTG' => '#00b050', 'NVA' => '#00b050', 'CG' => '#00b050',
+                                            'NS-DA' => '#00b050', 'PDT' => '#00b050', 'AA' => '#00b050',
+                                            'VS-CETLI' => '#00b050', 'CORR' => '#00b050', 'NDI' => '#00b050',
+                                            // FORMAZIONE/CATTEDRA - Verde
+                                            'Cattedra' => '#00b050', 'CATTEDRA' => '#00b050', 'cattedra' => '#00b050',
+                                            'APS1' => '#00b050', 'APS2' => '#00b050', 'APS3' => '#00b050', 'APS4' => '#00b050',
+                                            'AL-ELIX' => '#00b050', 'AL-MCM' => '#00b050', 'AL-BLS' => '#00b050',
+                                            'AL-CIED' => '#00b050', 'AL-SM' => '#00b050', 'AL-RM' => '#00b050',
+                                            'AL-RSPP' => '#00b050', 'AL-LEG' => '#00b050', 'AL-SEA' => '#00b050',
+                                            'AL-MI' => '#00b050', 'AL-PO' => '#00b050', 'AL-PI' => '#00b050',
+                                            'AP-M' => '#00b050', 'AP-A' => '#00b050', 'AC-SW' => '#00b050',
+                                            'AC' => '#00b050', 'PEFO' => '#00b050', 'EXE' => '#00b050',
+                                            'SMO' => '#00b050', 'smo' => '#00b050',
+                                            // OPERAZIONE - Arancione
+                                            'TO' => '#ffc000', 'T.O.' => '#ffc000', 'MCM' => '#ffc000', 'KOSOVO' => '#ffc000',
+                                        ];
+                                        
                                         if ($pianificazione) {
                                             if ($pianificazione->tipoServizio) {
                                                 $codice = $pianificazione->tipoServizio->codice;
@@ -205,8 +234,10 @@ window.pageData = {
                                                 // Usa la mappa dei codici per nome e colore
                                                 $tooltip = $pianificazione->tipoServizio->nome ?? $codice;
                                                 
-                                                // USA IL COLORE DAL DATABASE invece del match hardcoded
-                                                $coloreBadge = $gerarchia->colore_badge ?? null;
+                                                // USA IL COLORE: prima dalla gerarchia, poi dal tipoServizio stesso, poi fallback hardcoded
+                                                $coloreBadge = $gerarchia?->colore_badge 
+                                                    ?? $pianificazione->tipoServizio->colore_badge 
+                                                    ?? ($mappaColoriCpt[$codice] ?? null);
                                             } else {
                                                 // Pianificazione esiste ma senza tipo servizio (Nessun impegno)
                                                 $codice = '';
@@ -233,16 +264,19 @@ window.pageData = {
                                     @endphp
                                     
                                     @php
-                                        // Stili base cella
-                                        $cellStyle = "width: 60px; height: 32px; cursor: pointer; font-size: 10px; font-weight: 600; padding: 0;";
+                                        // Stili base cella - LARGHEZZA FISSA 95px come header
+                                        $cellStyle = "width: 95px; min-width: 95px; max-width: 95px; height: 32px; cursor: pointer; font-size: 10px; font-weight: 600; padding: 4px 2px; box-sizing: border-box;";
                                         
                                         // COLORA LA CELLA usando il colore dal database
-                                        if ($codice && $coloreBadge) {
-                                            // Usa il colore dal database
+                                        // Verifica esplicita che il colore sia una stringa non vuota
+                                        $hasValidColor = $coloreBadge && is_string($coloreBadge) && strlen(trim($coloreBadge)) > 0;
+                                        
+                                        if ($codice && $hasValidColor) {
+                                            // Usa il colore dal database/mappa
                                             $textColor = $isLightColor($coloreBadge) ? '#000000' : '#ffffff';
                                             $cellStyle .= " background-color: {$coloreBadge} !important; color: {$textColor} !important;";
                                         } elseif ($codice) {
-                                            // Fallback: se non c'è colore nel database, usa verde di default
+                                            // Fallback: se c'è un codice ma non c'è colore valido, usa verde di default
                                             $cellStyle .= " background-color: #00b050 !important; color: #ffffff !important;";
                                         } else {
                                             // Celle vuote - sfondo weekend/festivi/oggi
@@ -253,7 +287,7 @@ window.pageData = {
                                             }
                                         }
                                     @endphp
-                                    <td class="text-center giorno-cell {{ $giorno['is_weekend'] ? 'weekend-column' : '' }} {{ $giorno['is_holiday'] ? 'holiday-column' : '' }} {{ $giorno['is_today'] ? 'today-column' : '' }}"
+                                    <td class="text-center giorno-cell {{ $codice ? 'has-impegno' : '' }} {{ $giorno['is_weekend'] ? 'weekend-column' : '' }} {{ $giorno['is_holiday'] ? 'holiday-column' : '' }} {{ $giorno['is_today'] ? 'today-column' : '' }}"
                                         data-giorno="{{ $giorno['giorno'] }}"
                                         data-militare-id="{{ $item['militare']->id }}"
                                         data-tipo-servizio-id="{{ $pianificazione->tipo_servizio_id ?? '' }}"
@@ -266,19 +300,17 @@ window.pageData = {
                                     onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openEditModal(this); }"
                                     @php
                                         $tooltipText = '';
-                                        if ($pianificazione) {
+                                        if ($pianificazione && $pianificazione->tipoServizio) {
+                                            // Ha un tipo servizio attivo
                                             if ($pianificazione->note) {
-                                                // Se ci sono note (da board), mostra le note
-                                                $tooltipText = $pianificazione->note;
-                                            } elseif ($pianificazione->tipoServizio) {
+                                                // Se ci sono note (da board), mostra note + servizio
+                                                $tooltipText = $pianificazione->tipoServizio->codice . ' - ' . $pianificazione->tipoServizio->nome . ' (' . $pianificazione->note . ')';
+                                            } else {
                                                 // Impegno standard: mostra codice + nome completo
                                                 $tooltipText = $pianificazione->tipoServizio->codice . ' - ' . $pianificazione->tipoServizio->nome;
-                                            } else {
-                                                // Pianificazione esiste ma senza tipo servizio
-                                                $tooltipText = 'Nessun impegno - Clicca per modificare';
                                             }
                                         } else {
-                                            // Nessuna pianificazione
+                                            // Nessuna pianificazione o pianificazione senza tipo servizio
                                             $tooltipText = 'Nessuna pianificazione - Clicca per aggiungere';
                                         }
                                     @endphp
@@ -286,19 +318,17 @@ window.pageData = {
                                     @else
                                     @php
                                         $tooltipTextView = '';
-                                        if ($pianificazione) {
+                                        if ($pianificazione && $pianificazione->tipoServizio) {
+                                            // Ha un tipo servizio attivo
                                             if ($pianificazione->note) {
-                                                // Se ci sono note (da board), mostra le note
-                                                $tooltipTextView = $pianificazione->note;
-                                            } elseif ($pianificazione->tipoServizio) {
+                                                // Se ci sono note (da board), mostra note + servizio
+                                                $tooltipTextView = $pianificazione->tipoServizio->codice . ' - ' . $pianificazione->tipoServizio->nome . ' (' . $pianificazione->note . ')';
+                                            } else {
                                                 // Impegno standard: mostra codice + nome completo
                                                 $tooltipTextView = $pianificazione->tipoServizio->codice . ' - ' . $pianificazione->tipoServizio->nome;
-                                            } else {
-                                                // Pianificazione esiste ma senza tipo servizio
-                                                $tooltipTextView = 'Nessun impegno';
                                             }
                                         } else {
-                                            // Nessuna pianificazione
+                                            // Nessuna pianificazione o pianificazione senza tipo servizio
                                             $tooltipTextView = 'Nessuna pianificazione';
                                         }
                                     @endphp
@@ -310,15 +340,7 @@ window.pageData = {
                                 @endforeach
                             </tr>
                         @empty
-                            <tr>
-                                <td colspan="100" class="text-center py-5">
-                                    <div class="text-muted">
-                                        <i class="fas fa-search fa-3x mb-3"></i>
-                                        <h5>Nessun militare soddisfa questi requisiti</h5>
-                                        <p class="mb-0">Prova a modificare i filtri di ricerca</p>
-                                    </div>
-                                </td>
-                            </tr>
+                            @include('components.no-results')
                         @endforelse
                         </tbody>
                     </table>
@@ -343,7 +365,7 @@ window.pageData = {
                     <input type="hidden" id="editPianificazioneMensileId" name="pianificazione_mensile_id" value="{{ $pianificazioneMensile->id }}">
                     
                     <div class="mb-3">
-                        <label for="editMilitareNome" class="form-label">Militare</label>
+                        <label for="editMilitareNome" class="form-label">Nominativo</label>
                         <input type="text" class="form-control" id="editMilitareNome" readonly>
                     </div>
                     
@@ -393,46 +415,70 @@ window.pageData = {
 
 @push('styles')
 <style id="cpt-custom-styles-{{ time() }}">
-/* Stili per la tabella con header fisso */
-.table-container {
-    display: flex;
-    flex-direction: column;
-    height: 60vh;
+/* ========================================
+   CPT - Stili IDENTICI alla pagina Servizi
+   ======================================== */
+
+/* Wrapper CPT - stesso stile di sugeco-table-wrapper */
+.cpt-wrapper {
+    max-height: 70vh;
+    overflow: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
 }
 
-.table-header-fixed {
-    position: relative;
+/* Tabella CPT - layout fisso per colonne uniformi */
+.cpt-wrapper .sugeco-table {
+    width: 100%;
+    min-width: 3800px; /* 830px colonne fisse + 31 giorni x 95px */
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+/* Header sticky - IDENTICO alla pagina Servizi */
+.cpt-wrapper .sugeco-table thead th {
+    position: sticky;
+    top: 0;
     z-index: 10;
-    background: white;
-    border-bottom: 2px solid #dee2e6;
-    overflow: hidden;
+    background: #0a2342;
+    color: white;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    border: none;
 }
 
-.table-header-fixed::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+/* Date badge nell'header - IDENTICO alla pagina Servizi */
+.date-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    display: inline-block;
+    margin-top: 6px;
+    font-family: 'Roboto', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.5px;
 }
 
-/* Sfondo alternato per la tabella */
-.table tbody tr {
-    background-color: #fafafa;
+/* Weekend header - IDENTICO alla pagina Servizi */
+.cpt-wrapper .sugeco-table th.weekend {
+    background-color: #dc3545 !important;
 }
 
-.table tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
+/* Today header */
+.cpt-wrapper .sugeco-table th.today {
+    background-color: #0A2342 !important;
 }
 
-/* Hover effect */
-.table tbody tr:hover {
-    background-color: rgba(10, 35, 66, 0.12) !important;
-}
-
-.table tbody tr:hover td {
-    background-color: transparent !important;
-}
-
-/* Bordi leggermente più scuri dell'hover */
-.table-bordered > :not(caption) > * > * {
-    border-color: rgba(10, 35, 66, 0.20) !important;
+.cpt-wrapper .sugeco-table th.today .date-badge {
+    background: #ff8c00;
+    color: white;
 }
 
 /* Stili per i link con sottolineatura d'oro */
@@ -462,89 +508,68 @@ window.pageData = {
     width: 100%;
 }
 
-.table-body-scroll {
-    flex: 1;
-    overflow: auto;
-    position: relative;
-    width: 100%;
-    overflow-x: auto;
+/* Celle del body - IDENTICO alla pagina Servizi */
+.cpt-wrapper .sugeco-table tbody td {
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 0.85rem;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
 }
 
-/* Larghezza fissa per le tabelle */
-.table-header-fixed table,
-.table-body-scroll table {
-    table-layout: fixed;
-    width: 3032px; /* Larghezza fissa per garantire scroll */
-    min-width: 3032px;
-    border-collapse: separate;
-    border-spacing: 0;
+/* Righe alternate */
+.cpt-wrapper .sugeco-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
 }
 
-/* Allineamento perfetto tra header e body */
-.table-header-fixed,
-.table-body-scroll {
-    font-family: monospace;
-    font-size: 11px;
+.cpt-wrapper .sugeco-table tbody tr:hover {
+    background-color: rgba(10, 35, 66, 0.05);
 }
 
-/* Larghezza specifica per ogni colonna per allineamento perfetto (header/body) */
-.table-header-fixed table th:nth-child(1), .table-body-scroll table td:nth-child(1) { width: 160px; min-width: 160px; max-width: 160px; } /* Compagnia */
-.table-header-fixed table th:nth-child(2), .table-body-scroll table td:nth-child(2) { width: 200px; min-width: 200px; max-width: 200px; } /* Grado */
-.table-header-fixed table th:nth-child(3), .table-body-scroll table td:nth-child(3) { width: 230px; min-width: 230px; max-width: 230px; } /* Cognome */
-.table-header-fixed table th:nth-child(4), .table-body-scroll table td:nth-child(4) { width: 170px; min-width: 170px; max-width: 170px; } /* Nome */
-.table-header-fixed table th:nth-child(5), .table-body-scroll table td:nth-child(5) { width: 120px; min-width: 120px; max-width: 120px; } /* Plotone */
-.table-header-fixed table th:nth-child(6), .table-body-scroll table td:nth-child(6) { width: 112px; min-width: 112px; max-width: 112px; } /* Patente */
-.table-header-fixed table th:nth-child(7), .table-body-scroll table td:nth-child(7) { width: 120px; min-width: 120px; max-width: 120px; } /* Teatro Operativo */
+/* Colonne info militare - larghezze fisse */
+.cpt-wrapper .sugeco-table th:nth-child(1),
+.cpt-wrapper .sugeco-table td:nth-child(1) { width: 100px; } /* Compagnia */
+.cpt-wrapper .sugeco-table th:nth-child(2),
+.cpt-wrapper .sugeco-table td:nth-child(2) { width: 80px; } /* Grado */
+.cpt-wrapper .sugeco-table th:nth-child(3),
+.cpt-wrapper .sugeco-table td:nth-child(3) { width: 150px; text-align: left !important; } /* Cognome */
+.cpt-wrapper .sugeco-table th:nth-child(4),
+.cpt-wrapper .sugeco-table td:nth-child(4) { width: 120px; text-align: left !important; } /* Nome */
+.cpt-wrapper .sugeco-table th:nth-child(5),
+.cpt-wrapper .sugeco-table td:nth-child(5) { width: 80px; } /* Plotone */
+.cpt-wrapper .sugeco-table th:nth-child(6),
+.cpt-wrapper .sugeco-table td:nth-child(6) { width: 120px; } /* Ufficio */
+.cpt-wrapper .sugeco-table th:nth-child(7),
+.cpt-wrapper .sugeco-table td:nth-child(7) { width: 80px; } /* Patente */
+.cpt-wrapper .sugeco-table th:nth-child(8),
+.cpt-wrapper .sugeco-table td:nth-child(8) { width: 100px; } /* Teatro Operativo */
 
-/* Colonne giorni - larghezza fissa */
-.table-header-fixed table th:nth-child(n+8), .table-body-scroll table td:nth-child(n+8) { 
-    width: 60px; 
-    min-width: 60px; 
-    max-width: 60px;
-}
-
-/* Container delle tabelle deve avere overflow */
-.table-body-scroll {
-    width: 100%;
-    overflow-x: auto;
-}
-
-/* Stile compatto per la tabella pianificazione */
-#pianificazioneTable {
-    font-size: 11px;
+/* Colonne giorni - TUTTE UGUALI, larghezza FISSA OBBLIGATORIA */
+.cpt-wrapper .sugeco-table th.giorno-header,
+.cpt-wrapper .sugeco-table td.giorno-cell {
+    width: 95px !important;
+    min-width: 95px !important;
+    max-width: 95px !important;
+    padding: 6px 4px;
+    box-sizing: border-box;
 }
 
 /* ========================================================================
-   CELLE GIORNO CPT - Centratura perfetta dei badge
+   CELLE GIORNO CPT
    ======================================================================== */
    
-/* TD celle giorno - container per badge full-size */
-table.table tbody tr td.giorno-cell,
-#pianificazioneTable tbody tr td.giorno-cell,
-tbody tr td.giorno-cell,
-tr td.giorno-cell,
-td.giorno-cell,
-.giorno-cell {
-    /* Dimensioni fisse */
-    width: 60px !important;
-    min-width: 60px !important;
-    max-width: 60px !important;
-    min-height: 32px !important;
-    height: 32px !important;
-    
-    /* NESSUN padding - il badge riempie tutto */
-    padding: 0 !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    
-    /* FLEX per centrare perfettamente */
-    display: flex !important;
-    align-items: stretch !important;
-    justify-content: stretch !important;
-    
-    /* Altri stili */
-    cursor: pointer !important;
-    vertical-align: middle !important;
+/* TD celle giorno */
+.cpt-wrapper .sugeco-table .giorno-cell {
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    transition: background-color 0.2s;
+}
+
+.cpt-wrapper .sugeco-table .giorno-cell:hover {
+    filter: brightness(0.9);
 }
 
 /* Filtri - usa CSS esterno filters.css */
@@ -580,121 +605,14 @@ td.giorno-cell,
     transition: transform 0.3s ease !important;
 }
 
-#pianificazioneTable th {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 6px 4px;
+/* Colonne weekend nel body */
+.cpt-wrapper .sugeco-table .weekend-column {
+    background-color: rgba(220, 53, 69, 0.1);
 }
 
-#pianificazioneTable td {
-    padding: 0;
-    vertical-align: middle;
-}
-
-/* Padding per elementi specifici che lo necessitano */
-.badge, .btn, .form-control, .search-container input, .counter-badge {
-    padding: 6px 12px;
-}
-
-.badge {
-    padding: 4px 8px;
-}
-
-.btn-sm {
-    padding: 4px 8px;
-}
-
-/* ========================================================================
-   OVERRIDE BADGE CELLE GIORNO - DOPO regole .badge generiche
-   ======================================================================== */
-table.table tbody tr td.giorno-cell span.badge,
-table.table tbody tr td.giorno-cell span.codice-badge,
-#pianificazioneTable tbody tr td.giorno-cell span.badge,
-#pianificazioneTable tbody tr td.giorno-cell span.codice-badge,
-tbody tr td.giorno-cell span.badge,
-tbody tr td.giorno-cell span.codice-badge,
-tr td.giorno-cell span.badge,
-tr td.giorno-cell span.codice-badge,
-td.giorno-cell span.badge,
-td.giorno-cell span.codice-badge,
-.giorno-cell span.badge,
-.giorno-cell span.codice-badge {
-    /* BADGE FULL-SIZE - riempie tutta la cella */
-    width: 100% !important;
-    height: 100% !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
-    
-    /* Font e dimensioni */
-    font-size: 9px !important;
-    font-weight: 600 !important;
-    line-height: 32px !important;  /* Centra verticalmente con line-height = height cella */
-    
-    /* NESSUN padding - il testo è centrato con line-height */
-    padding: 0 !important;
-    margin: 0 !important;
-    
-    /* Testo centrato */
-    text-align: center !important;
-    vertical-align: middle !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    
-    /* Box model */
-    box-sizing: border-box !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    
-    /* Rimuovi bordi arrotondati per riempire perfettamente */
-    border-radius: 0 !important;
-    
-    /* Flex */
-    flex-shrink: 0 !important;
-    flex-grow: 1 !important;
-}
-
-/* Celle senza badge (giorno vuoto) - NON espandere, resta centrato */
-table.table tbody tr td.giorno-cell span.giorno-vuoto,
-#pianificazioneTable tbody tr td.giorno-cell span.giorno-vuoto,
-tbody tr td.giorno-cell span.giorno-vuoto,
-tr td.giorno-cell span.giorno-vuoto,
-td.giorno-cell span.giorno-vuoto,
-.giorno-cell span.giorno-vuoto {
-    width: auto !important;
-    height: auto !important;
-    font-size: 14px !important;
-    color: #ccc !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: inline-block !important;
-    line-height: 1 !important;
-}
-/* ======================================================================== */
-
-        /* RIGHE ALTERNATE SEMPLICI */
-        .table tbody tr.militare-row:nth-child(even) {
-            background-color: #f8f9fa !important;
-        }
-        
-        .table tbody tr.militare-row:nth-child(odd) {
-            background-color: #ffffff !important;
-        }
-
-.today-column {
-    background-color: #fff3cd !important;
-}
-
-.giorno-cell {
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.giorno-cell:hover {
-    background-color: #e9ecef !important;
+/* Colonna oggi nel body */
+.cpt-wrapper .sugeco-table .today-column {
+    background-color: rgba(255, 193, 7, 0.15);
 }
 
 
@@ -772,113 +690,11 @@ body, html {
     z-index: 1 !important;
 }
 
-/* Rimuovi bordi arrotondati dalle celle della tabella - bordi dritti minimal */
-.table-bordered td,
-.table-bordered th,
-table.table td,
-table.table th,
-#pianificazioneTable td,
-#pianificazioneTable th,
-.table-header-fixed table td,
-.table-header-fixed table th,
-.table td,
-.table th,
-tbody td,
-tbody th {
-    border-radius: 0 !important;
-    -webkit-border-radius: 0 !important;
-    -moz-border-radius: 0 !important;
+/* Rimuovi bordi arrotondati dalle celle */
+.cpt-wrapper .sugeco-table td,
+.cpt-wrapper .sugeco-table th {
+    border-radius: 0;
 }
-
-/* Rimuovi border-radius anche dai bordi interni */
-.table > :not(caption) > * > * {
-    border-radius: 0 !important;
-}
-
-.table-bordered > :not(caption) > * {
-    border-radius: 0 !important;
-}
-
-.table-bordered > :not(caption) > * > * {
-    border-radius: 0 !important;
-}
-
-/* Rimosso - duplicato spostato più in alto */
-
-/* 2. Sfondo weekend/festivi - rosso semitrasparente */
-table.table tbody td.weekend-column,
-table.table tbody td.holiday-column {
-    background-color: rgba(255, 0, 0, 0.12) !important;
-    color: #495057 !important;
-}
-
-/* Header weekend/festivi - numero e lettera in rosso */
-table.table thead th.weekend-column,
-table.table thead th.holiday-column,
-.table-header-fixed th.weekend-column,
-.table-header-fixed th.holiday-column {
-    background-color: transparent !important;
-}
-
-table.table thead th.weekend-column .fw-bold,
-table.table thead th.holiday-column .fw-bold,
-table.table thead th.weekend-column .opacity-75,
-table.table thead th.holiday-column .opacity-75,
-table.table thead th.weekend-column div,
-table.table thead th.holiday-column div,
-.table-header-fixed th.weekend-column .fw-bold,
-.table-header-fixed th.holiday-column .fw-bold,
-.table-header-fixed th.weekend-column .opacity-75,
-.table-header-fixed th.holiday-column .opacity-75,
-.table-header-fixed th.weekend-column div,
-.table-header-fixed th.holiday-column div {
-    color: #dc3545 !important;
-    font-weight: 700 !important;
-    opacity: 1 !important;
-}
-
-/* Sfondo oggi - giallo semitrasparente */
-table.table tbody td.today-column {
-    background-color: rgba(255, 220, 0, 0.20) !important;
-}
-
-/* Header oggi - numero e lettera in giallo/arancione scuro (per visibilità) */
-table.table thead th.today-column,
-.table-header-fixed th.today-column {
-    background-color: transparent !important;
-}
-
-table.table thead th.today-column .fw-bold,
-table.table thead th.today-column .opacity-75,
-table.table thead th.today-column div,
-.table-header-fixed th.today-column .fw-bold,
-.table-header-fixed th.today-column .opacity-75,
-.table-header-fixed th.today-column div {
-    color: #ff8c00 !important;
-    font-weight: 700 !important;
-    opacity: 1 !important;
-}
-
-/* 3. HOVER SU TUTTA LA RIGA - Come in Forza Effettiva */
-/* Specificity massima per sovrascrivere qualsiasi altro stile */
-#pianificazioneTable tbody tr.militare-row:hover td {
-    background-color: rgba(10, 35, 66, 0.15) !important;
-    transition: background-color 0.15s ease;
-}
-
-/* Weekend/festivi durante hover - stile coerente con hover normale */
-#pianificazioneTable tbody tr.militare-row:hover td.weekend-column,
-#pianificazioneTable tbody tr.militare-row:hover td.holiday-column,
-#pianificazioneTable tbody tr.militare-row:hover td.today-column {
-    background-color: rgba(10, 35, 66, 0.15) !important;
-}
-
-/* I badge DENTRO le celle devono mantenere il loro colore durante l'hover */
-#pianificazioneTable tbody tr.militare-row:hover td .badge {
-    /* Non modificare i colori dei badge durante l'hover */
-}
-
-/* Usa gli stili Bootstrap standard per i selettori */
 
 /* Stili minimal per l'anteprima del range */
 #rangePreview {
@@ -926,76 +742,123 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    // ===== GESTIONE HOVER RIGHE =====
-    const table = document.getElementById('pianificazioneTable');
-    if (!table) return;
-    
-    const rows = table.querySelectorAll('tbody tr.militare-row');
-    const hoverColor = 'rgba(10, 35, 66, 0.15)';
-    
-    rows.forEach(row => {
-        row.addEventListener('mouseenter', function() {
-            const cells = this.querySelectorAll('td');
-            cells.forEach(cell => {
-                // NON applicare hover alle celle con impegni (celle colorate CPT)
-                // Le celle CPT hanno colori specifici: giallo (#ffff00), rosso (#ff0000), verde (#00b050)
-                const currentBg = cell.style.backgroundColor || '';
-                const hasImpegno = currentBg.includes('rgb(255, 255, 0)') || // giallo
-                                    currentBg.includes('rgb(255, 0, 0)') || // rosso
-                                    currentBg.includes('rgb(0, 176, 80)') || // verde
-                                    currentBg.includes('#ffff00') ||
-                                    currentBg.includes('#ff0000') ||
-                                    currentBg.includes('#00b050');
-                
-                if (!hasImpegno) {
-                    // Salva il colore originale inline (se presente)
-                    if (!cell.dataset.originalBg) {
-                        cell.dataset.originalBg = currentBg;
-                    }
-                    // Applica l'hover SOLO alle celle senza impegni
-                    cell.style.backgroundColor = hoverColor;
-                }
-            });
-        });
-        
-        row.addEventListener('mouseleave', function() {
-            const cells = this.querySelectorAll('td');
-            cells.forEach(cell => {
-                // Ripristina SOLO se non è una cella con impegno
-                if (cell.dataset.originalBg !== undefined) {
-                    const hasImpegno = cell.style.backgroundColor.includes('rgb(255, 255, 0)') ||
-                                        cell.style.backgroundColor.includes('rgb(255, 0, 0)') ||
-                                        cell.style.backgroundColor.includes('rgb(0, 176, 80)');
-                    
-                    if (!hasImpegno) {
-                        cell.style.backgroundColor = cell.dataset.originalBg;
-                    }
-                }
-            });
-        });
-    });
+    // ===== HOVER GESTITO VIA CSS =====
+    // La classe .has-impegno viene aggiunta/rimossa dinamicamente
+    // Il CSS usa #pianificazioneTable tbody tr.militare-row:hover td:not(.has-impegno)
+    // per applicare l'hover solo alle celle senza impegno
     
     // Gestione export Excel con filtri
+    // IMPORTANTE: I filtri sono client-side, quindi dobbiamo raccoglierli dai select, non dall'URL
     const exportBtn = document.getElementById('exportExcel');
     if (exportBtn) {
         exportBtn.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Costruisci URL con parametri correnti (inclusi filtri + mese e anno)
-            const urlParams = new URLSearchParams(window.location.search);
+            // Costruisci URL con parametri dai select dei filtri (non dall'URL che potrebbe essere vuoto)
+            const urlParams = new URLSearchParams();
             
-            // Assicurati che mese e anno siano presenti
-            if (!urlParams.has('mese')) {
-                urlParams.set('mese', '{{ $mese }}');
-            }
-            if (!urlParams.has('anno')) {
-                urlParams.set('anno', '{{ $anno }}');
+            // Mese e anno sempre presenti
+            urlParams.set('mese', '{{ $mese }}');
+            urlParams.set('anno', '{{ $anno }}');
+            
+            // Raccogli valori da tutti i filtri client-side
+            const filtroForm = document.getElementById('filtroForm');
+            if (filtroForm) {
+                const selects = filtroForm.querySelectorAll('select');
+                selects.forEach(select => {
+                    const name = select.name || select.id;
+                    const value = select.value;
+                    if (name && value) {
+                        urlParams.set(name, value);
+                    }
+                });
             }
             
             const exportUrl = '{{ route("pianificazione.export-excel") }}?' + urlParams.toString();
             
             // Redirect per scaricare il file
             window.location.href = exportUrl;
+        });
+    }
+    
+    // ===== FILTRAGGIO CLIENT-SIDE (usa modulo riutilizzabile) =====
+    // Registra i filtri speciali per questa pagina
+    if (window.ClientSideFilters) {
+        // Filtro Impegno (con supporto per giorno specifico)
+        window.ClientSideFilters.registerSpecialFilter('impegno', function(row, filterValue) {
+            const impegni = row.dataset.impegni ? JSON.parse(row.dataset.impegni) : {};
+            const giornoFilter = document.getElementById('giorno')?.value || '';
+            
+            if (filterValue === 'libero') {
+                return Object.keys(impegni).length === 0;
+            }
+            
+            // Se è specificato anche il giorno, verifica quel giorno specifico
+            if (giornoFilter) {
+                return impegni[giornoFilter] === filterValue;
+            }
+            
+            // Altrimenti cerca l'impegno in qualsiasi giorno
+            return Object.values(impegni).includes(filterValue);
+        });
+        
+        // Filtro Compleanno
+        window.ClientSideFilters.registerSpecialFilter('compleanno', function(row, filterValue) {
+            const dataNascita = row.dataset.dataNascita;
+            if (!dataNascita) return false;
+            
+            const oggi = new Date();
+            const nascita = new Date(dataNascita);
+            const giornoNascita = nascita.getDate();
+            const meseNascita = nascita.getMonth() + 1;
+            
+            switch (filterValue) {
+                case 'oggi':
+                    return giornoNascita === oggi.getDate() && meseNascita === (oggi.getMonth() + 1);
+                case 'ultimi_2':
+                    for (let i = 0; i <= 2; i++) {
+                        const d = new Date(oggi);
+                        d.setDate(d.getDate() - i);
+                        if (giornoNascita === d.getDate() && meseNascita === (d.getMonth() + 1)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                case 'prossimi_2':
+                    for (let i = 0; i <= 2; i++) {
+                        const d = new Date(oggi);
+                        d.setDate(d.getDate() + i);
+                        if (giornoNascita === d.getDate() && meseNascita === (d.getMonth() + 1)) {
+                            return true;
+                        }
+                    }
+                    return false;
+            }
+            return true;
+        });
+        
+        // Filtro Disponibile (basato su oggi)
+        window.ClientSideFilters.registerSpecialFilter('disponibile', function(row, filterValue) {
+            const impegni = row.dataset.impegni ? JSON.parse(row.dataset.impegni) : {};
+            const oggi = new Date();
+            const impegnoOggi = impegni[oggi.getDate()] || null;
+            
+            // Codici che indicano assenza (NON_DISPONIBILE)
+            const codiciAssenza = ['LS', 'LO', 'LM', 'LC', 'RMD', 'IS', 'TIR', 'TRAS', 'TO'];
+            
+            if (filterValue === 'si') {
+                return !impegnoOggi || !codiciAssenza.includes(impegnoOggi);
+            } else if (filterValue === 'no') {
+                return impegnoOggi && codiciAssenza.includes(impegnoOggi);
+            }
+            return true;
+        });
+        
+        // Inizializza il modulo con configurazione specifica per CPT
+        window.ClientSideFilters.init({
+            tableSelector: '#pianificazioneTable',
+            rowSelector: 'tr.militare-row',
+            debug: false
         });
     }
 });

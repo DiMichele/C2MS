@@ -15,6 +15,10 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use App\Services\ExcelStyleService;
 
 /**
  * Controller per la gestione della pianificazione mensile
@@ -63,6 +67,8 @@ class PianificazioneController extends Controller
                 'mansione',
                 'ruolo', 
                 'approntamentoPrincipale',
+                'scadenzaApprontamento',
+                'teatriOperativi',
                 'patenti',
                 'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
                     $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
@@ -81,6 +87,10 @@ class PianificazioneController extends Controller
 
         if ($request->filled('plotone_id')) {
             $militariQuery->where('plotone_id', $request->plotone_id);
+        }
+
+        if ($request->filled('ufficio_id')) {
+            $militariQuery->where('polo_id', $request->ufficio_id);
         }
 
         if ($request->filled('patente')) {
@@ -124,22 +134,56 @@ class PianificazioneController extends Controller
             }
         }
 
-        // FILTRO APPRONTAMENTI DISABILITATO - Tabella militare_approntamenti rimossa
-        // if ($request->filled('approntamento_id')) {
-        //     if ($request->approntamento_id === 'libero') {
-        //         $militariQuery->doesntHave('approntamenti');
-        //     } else {
-        //         $militariQuery->whereHas('approntamenti', function($query) use ($request) {
-        //             $query->where('approntamento_id', $request->approntamento_id);
-        //         });
-        //     }
-        // }
+        // Filtro Teatro Operativo (usa la tabella teatro_operativo_militare)
+        if ($request->filled('approntamento_id')) {
+            if ($request->approntamento_id === 'libero') {
+                // Militari NON assegnati a nessun teatro operativo
+                $militariQuery->whereDoesntHave('teatriOperativi');
+            } else {
+                // Militari assegnati a un teatro operativo specifico
+                // Usa una subquery diretta per maggiore affidabilità
+                $militariQuery->whereIn('id', function($query) use ($request) {
+                    $query->select('militare_id')
+                          ->from('teatro_operativo_militare')
+                          ->where('teatro_operativo_id', $request->approntamento_id);
+                });
+            }
+        }
 
-        if ($request->filled('impegno')) {
+        // Filtro combinato impegno + giorno
+        if ($request->filled('impegno') && $request->filled('giorno')) {
+            // Se sono specificati ENTRAMBI, filtra per impegno in quel giorno specifico
+            $giornoFiltro = $request->giorno;
+            if ($request->impegno === 'libero') {
+                // Militari senza impegno nel giorno specificato
+                $militariQuery->where(function($q) use ($pianificazioneMensile, $giornoFiltro) {
+                    $q->whereDoesntHave('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $giornoFiltro) {
+                        $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                              ->where('giorno', $giornoFiltro);
+                    })
+                    ->orWhereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $giornoFiltro) {
+                        $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                              ->where('giorno', $giornoFiltro)
+                              ->whereNull('tipo_servizio_id');
+                    });
+                });
+            } else {
+                // Militari con l'impegno specifico nel giorno specificato
+                $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($request, $pianificazioneMensile, $giornoFiltro) {
+                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                          ->where('giorno', $giornoFiltro)
+                          ->whereHas('tipoServizio', function($q) use ($request) {
+                              $q->where('codice', $request->impegno);
+                          });
+                });
+            }
+        } elseif ($request->filled('impegno')) {
+            // Solo filtro impegno (qualsiasi giorno del mese)
             if ($request->impegno === 'libero') {
                 // Filtra militari senza impegni nel mese corrente
                 $militariQuery->whereDoesntHave('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile) {
-                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id);
+                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                          ->whereNotNull('tipo_servizio_id');
                 });
             } else {
                 $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($request, $pianificazioneMensile) {
@@ -150,22 +194,17 @@ class PianificazioneController extends Controller
                 });
             }
         }
+        // NOTA: Se specificato solo 'giorno' senza 'impegno', mostra tutti i militari
+        // (il giorno viene usato solo in combinazione con impegno)
 
-        if ($request->filled('giorno')) {
-            $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($request, $pianificazioneMensile) {
-                $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
-                      ->where('giorno', $request->giorno);
-            });
-        }
-
-        // Filtro stato_impegno per oggi (PRESENTI = libero, ASSENTI = impegnato)
-        if ($request->filled('stato_impegno')) {
+        // Filtro disponibile per oggi (SI = libero o presente, NO = assente)
+        if ($request->filled('disponibile')) {
             $oggi = Carbon::today();
             
-            if ($request->stato_impegno === 'libero') {
-                // PRESENTI: Militari SENZA impegno per oggi
+            if ($request->disponibile === 'si') {
+                // DISPONIBILE (Si): Militari liberi o con impegno che li rende presenti
                 $militariQuery->where(function($q) use ($pianificazioneMensile, $oggi) {
-                    // O non hanno pianificazioni per oggi
+                    // Non hanno pianificazioni per oggi
                     $q->whereDoesntHave('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
                         $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                               ->where('giorno', $oggi->day);
@@ -175,14 +214,26 @@ class PianificazioneController extends Controller
                         $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                               ->where('giorno', $oggi->day)
                               ->whereNull('tipo_servizio_id');
+                    })
+                    // O hanno impegno che li rende presenti (PRESENTE_SERVIZIO o DISPONIBILE)
+                    ->orWhereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
+                        $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                              ->where('giorno', $oggi->day)
+                              ->whereNotNull('tipo_servizio_id')
+                              ->whereHas('tipoServizio.codiceGerarchia', function($q) {
+                                  $q->whereIn('impiego', ['PRESENTE_SERVIZIO', 'DISPONIBILE']);
+                              });
                     });
                 });
-            } elseif ($request->stato_impegno === 'impegnato') {
-                // ASSENTI: Militari CON impegno per oggi
+            } elseif ($request->disponibile === 'no') {
+                // NON DISPONIBILE (No): Militari con impegno che li rende assenti
                 $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
                     $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                           ->where('giorno', $oggi->day)
-                          ->whereNotNull('tipo_servizio_id');
+                          ->whereNotNull('tipo_servizio_id')
+                          ->whereHas('tipoServizio.codiceGerarchia', function($q) {
+                              $q->where('impiego', 'NON_DISPONIBILE');
+                          });
                 });
             }
         }
@@ -334,7 +385,7 @@ class PianificazioneController extends Controller
             ->groupBy('macro_attivita');
         
         // Dati per i filtri
-        $gradi = \App\Models\Grado::orderBy('ordine', 'asc')->get(); // Ordine 1 = COL (più alto), ordine 23 = SOL (più basso)
+        $gradi = \App\Models\Grado::orderBy('ordine', 'desc')->get(); // Ordine 90 = COL (più alto), ordine 10 = SOL (più basso)
         
         // Carica compagnie dal database
         $compagnie = \App\Models\Compagnia::orderBy('nome')->get();
@@ -343,7 +394,7 @@ class PianificazioneController extends Controller
         $plotoni = \App\Models\Plotone::with('compagnia')->orderBy('nome')->get();
         
         $uffici = \App\Models\Polo::orderBy('nome')->get();
-        // $approntamenti = \App\Models\Approntamento::orderBy('nome')->get(); // DISABILITATO
+        $approntamenti = \App\Models\TeatroOperativo::attivi()->orderBy('nome')->get();
         $mansioni = \App\Models\Mansione::select('nome')->distinct()->orderBy('nome')->get();
         
         // Carica TUTTI i TipoServizio dal database (con ID NUMERICO corretto)
@@ -466,6 +517,7 @@ class PianificazioneController extends Controller
             'compagnie',
             'plotoni', 
             'uffici',
+            'approntamenti',
             'mansioni',
             'impegni',
             'impegniPerCategoria',
@@ -527,6 +579,7 @@ class PianificazioneController extends Controller
             'grado',
             'plotone',
             'approntamentoPrincipale',
+            'scadenzaApprontamento',
             'ultimoPoligono.tipoPoligono',
             'valutazioni' => function($query) {
                 $query->latest()->limit(5);
@@ -804,6 +857,7 @@ class PianificazioneController extends Controller
             'mansione',
             'ruolo',
             'approntamentoPrincipale',
+            'scadenzaApprontamento',
             'patenti',
             'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
                 $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
@@ -811,9 +865,9 @@ class PianificazioneController extends Controller
             }
         ]);
 
-        // Applica filtri (stessi della vista index)
+        // Applica filtri (IDENTICI alla vista index per coerenza export)
         if ($request->filled('compagnia')) {
-            $militariQuery->where('compagnia', $request->compagnia);
+            $militariQuery->where('compagnia_id', $request->compagnia);
         }
 
         if ($request->filled('grado_id')) {
@@ -824,28 +878,92 @@ class PianificazioneController extends Controller
             $militariQuery->where('plotone_id', $request->plotone_id);
         }
 
+        if ($request->filled('ufficio_id')) {
+            $militariQuery->where('polo_id', $request->ufficio_id);
+        }
+
         if ($request->filled('patente')) {
             $militariQuery->whereHas('patenti', function($q) use ($request) {
                 $q->where('categoria', $request->patente);
             });
         }
 
-        // FILTRO APPRONTAMENTI DISABILITATO - Tabella militare_approntamenti rimossa
-        // if ($request->filled('approntamento_id')) {
-        //     if ($request->approntamento_id === 'libero') {
-        //         $militariQuery->doesntHave('approntamenti');
-        //     } else {
-        //         $militariQuery->whereHas('approntamenti', function($query) use ($request) {
-        //             $query->where('approntamento_id', $request->approntamento_id);
-        //         });
-        //     }
-        // }
+        // Filtro compleanno (identico alla vista index)
+        if ($request->filled('compleanno')) {
+            $oggi = now();
+            
+            switch ($request->compleanno) {
+                case 'oggi':
+                    $militariQuery->whereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$oggi->day, $oggi->month]);
+                    break;
+                    
+                case 'ultimi_2':
+                    // Ultimi 2 giorni incluso oggi
+                    $militariQuery->where(function($q) use ($oggi) {
+                        for ($i = 0; $i <= 2; $i++) {
+                            $giorno = $oggi->copy()->subDays($i);
+                            $q->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$giorno->day, $giorno->month]);
+                        }
+                    });
+                    break;
+                    
+                case 'prossimi_2':
+                    // Prossimi 2 giorni incluso oggi
+                    $militariQuery->where(function($q) use ($oggi) {
+                        for ($i = 0; $i <= 2; $i++) {
+                            $giorno = $oggi->copy()->addDays($i);
+                            $q->orWhereRaw('DAY(data_nascita) = ? AND MONTH(data_nascita) = ?', [$giorno->day, $giorno->month]);
+                        }
+                    });
+                    break;
+            }
+        }
 
-        if ($request->filled('impegno')) {
+        // Filtro Teatro Operativo (usa la tabella teatro_operativo_militare)
+        if ($request->filled('approntamento_id')) {
+            if ($request->approntamento_id === 'libero') {
+                // Militari NON assegnati a nessun teatro operativo
+                $militariQuery->whereDoesntHave('teatriOperativi');
+            } else {
+                // Militari assegnati a un teatro operativo specifico
+                // Usa una subquery diretta per maggiore affidabilità
+                $militariQuery->whereIn('id', function($query) use ($request) {
+                    $query->select('militare_id')
+                          ->from('teatro_operativo_militare')
+                          ->where('teatro_operativo_id', $request->approntamento_id);
+                });
+            }
+        }
+
+        // Filtro combinato impegno + giorno (stesso della vista index)
+        if ($request->filled('impegno') && $request->filled('giorno')) {
+            $giornoFiltro = $request->giorno;
             if ($request->impegno === 'libero') {
-                // Filtra militari senza impegni nel mese corrente
+                $militariQuery->where(function($q) use ($pianificazioneMensile, $giornoFiltro) {
+                    $q->whereDoesntHave('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $giornoFiltro) {
+                        $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                              ->where('giorno', $giornoFiltro);
+                    })
+                    ->orWhereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $giornoFiltro) {
+                        $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                              ->where('giorno', $giornoFiltro)
+                              ->whereNull('tipo_servizio_id');
+                    });
+                });
+            } else {
+                $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($request, $pianificazioneMensile, $giornoFiltro) {
+                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                          ->where('giorno', $giornoFiltro)
+                          ->whereHas('tipoServizio', function($q) use ($request) {
+                              $q->where('codice', $request->impegno);
+                          });
+                });
+            }
+        } elseif ($request->filled('impegno')) {
+            if ($request->impegno === 'libero') {
                 $militariQuery->whereDoesntHave('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile) {
-                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id);
+                    $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                          ->whereNotNull('tipo_servizio_id');
                 });
             } else {
                 $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($request, $pianificazioneMensile) {
@@ -857,92 +975,148 @@ class PianificazioneController extends Controller
             }
         }
 
-        if ($request->filled('giorno')) {
-            $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($request, $pianificazioneMensile) {
-                $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
-                      ->where('giorno', $request->giorno);
-            });
-        }
-
-        // Filtro stato_impegno per oggi (PRESENTI = libero, ASSENTI = impegnato)
-        if ($request->filled('stato_impegno')) {
+        // Filtro stato_impegno per oggi
+        // Filtro disponibile per oggi (SI = libero o presente, NO = assente)
+        if ($request->filled('disponibile')) {
             $oggi = Carbon::today();
             
-            if ($request->stato_impegno === 'libero') {
-                // PRESENTI: Militari SENZA impegno per oggi
+            if ($request->disponibile === 'si') {
                 $militariQuery->where(function($q) use ($pianificazioneMensile, $oggi) {
-                    // O non hanno pianificazioni per oggi
                     $q->whereDoesntHave('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
                         $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                               ->where('giorno', $oggi->day);
                     })
-                    // O hanno pianificazione ma senza tipo_servizio_id
                     ->orWhereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
                         $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                               ->where('giorno', $oggi->day)
                               ->whereNull('tipo_servizio_id');
+                    })
+                    ->orWhereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
+                        $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                              ->where('giorno', $oggi->day)
+                              ->whereNotNull('tipo_servizio_id')
+                              ->whereHas('tipoServizio.codiceGerarchia', function($q) {
+                                  $q->whereIn('impiego', ['PRESENTE_SERVIZIO', 'DISPONIBILE']);
+                              });
                     });
                 });
-            } elseif ($request->stato_impegno === 'impegnato') {
-                // ASSENTI: Militari CON impegno per oggi
+            } elseif ($request->disponibile === 'no') {
                 $militariQuery->whereHas('pianificazioniGiornaliere', function($query) use ($pianificazioneMensile, $oggi) {
                     $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                           ->where('giorno', $oggi->day)
-                          ->whereNotNull('tipo_servizio_id');
+                          ->whereNotNull('tipo_servizio_id')
+                          ->whereHas('tipoServizio.codiceGerarchia', function($q) {
+                              $q->where('impiego', 'NON_DISPONIBILE');
+                          });
                 });
             }
         }
 
         $militari = $militariQuery->orderByGradoENome()->get();
 
+        // Usa il servizio per stili Excel
+        $excelService = new ExcelStyleService();
+        
         // Crea il file Excel usando PhpSpreadsheet
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = $excelService->createSpreadsheet('CPT - Controllo Presenze Turni');
         $sheet = $spreadsheet->getActiveSheet();
         
-        // Imposta header del foglio
-        $nomiMesi = ['', 'GENNAIO', 'FEBBRAIO', 'MARZO', 'APRILE', 'MAGGIO', 'GIUGNO',
-                    'LUGLIO', 'AGOSTO', 'SETTEMBRE', 'OTTOBRE', 'NOVEMBRE', 'DICEMBRE'];
+        // Nomi dei mesi
+        $nomiMesi = ['', 'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+                    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
         
         // Nome del foglio dinamico basato su mese e anno correnti
         $sheet->setTitle($nomiMesi[$mese] . ' ' . $anno);
         
-        $sheet->setCellValue('A1', $nomiMesi[$mese] . ' ' . $anno);
-        $sheet->mergeCells('A1:AJ1');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-        $sheet->getStyle('A1')->getAlignment()->setHorizontal('center');
-
-        // Header delle colonne (riga 3)
-        $headers = ['COMPAGNIA', 'GRADO', 'COGNOME', 'NOME', 'PLOTONE', 'PATENTE', 'APPRONTAMENTO'];
+        // Calcola giorni del mese
+        $giorniMese = Carbon::createFromDate($anno, $mese, 1)->daysInMonth;
         
-        // Aggiungi giorni del mese
-        $giorniMese = \Carbon\Carbon::createFromDate($anno, $mese, 1)->daysInMonth;
+        // SINGLE SOURCE OF TRUTH: Colonne fisse identiche alla vista web
+        // Se modifichi qui, aggiorna anche resources/views/pianificazione/index.blade.php
+        $colonneBase = [
+            'compagnia' => ['header' => 'Compagnia', 'width' => 12],
+            'grado' => ['header' => 'Grado', 'width' => 14],
+            'cognome' => ['header' => 'Cognome', 'width' => 18],
+            'nome' => ['header' => 'Nome', 'width' => 16],
+            'plotone' => ['header' => 'Plotone', 'width' => 14],
+            'ufficio' => ['header' => 'Ufficio', 'width' => 20],
+            'patente' => ['header' => 'Patente', 'width' => 12],
+            'teatro_operativo' => ['header' => 'Teatro Operativo', 'width' => 18],
+        ];
+        
+        $numColonneBase = count($colonneBase);
+        $lastColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($numColonneBase + $giorniMese);
+        
+        // Titolo principale (riga 1) - Solo mese e anno
+        $titolo = $nomiMesi[$mese] . ' ' . $anno;
+        $excelService->applyTitleStyle($sheet, 'A1:' . $lastColumn . '1', $titolo);
+
+        // Header delle colonne (riga 2) - Identici alla pagina web
+        $headers = array_column($colonneBase, 'header');
+        
+        // Aggiungi giorni del mese con giorno della settimana (come nella pagina web)
+        $giorniCompletiItaliani = ['DOMENICA', 'LUNEDI', 'MARTEDI', 'MERCOLEDI', 'GIOVEDI', 'VENERDI', 'SABATO'];
         for ($i = 1; $i <= $giorniMese; $i++) {
-            $headers[] = $i;
+            $dataGiorno = Carbon::createFromDate($anno, $mese, $i);
+            $giornoSettimana = $giorniCompletiItaliani[$dataGiorno->dayOfWeek];
+            $headers[] = $giornoSettimana . "\n" . str_pad($i, 2, '0', STR_PAD_LEFT) . '/' . str_pad($mese, 2, '0', STR_PAD_LEFT);
         }
 
         // Scrivi gli header
         $col = 'A';
         foreach ($headers as $header) {
-            $sheet->setCellValue($col . '3', $header);
-            $sheet->getStyle($col . '3')->getFont()->setBold(true);
-            $sheet->getStyle($col . '3')->getAlignment()->setHorizontal('center');
+            $sheet->setCellValue($col . '2', $header);
             $col++;
         }
+        $excelService->applyHeaderStyle($sheet, 'A2:' . $lastColumn . '2');
+        $sheet->getRowDimension('2')->setRowHeight(35);
+        // Wrap text per header con newline (giorni)
+        $sheet->getStyle('A2:' . $lastColumn . '2')->getAlignment()->setWrapText(true);
+        
+        // Colora le colonne weekend/festività nell'header
+        $festivitaPerAnno = $this->getFestivitaPerAnno($anno);
+        for ($giorno = 1; $giorno <= $giorniMese; $giorno++) {
+            $dataGiorno = Carbon::createFromDate($anno, $mese, $giorno);
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($numColonneBase + $giorno);
+            
+            $dataFormattata = $dataGiorno->format('m-d');
+            $isWeekend = $dataGiorno->isWeekend();
+            $isHoliday = isset($festivitaPerAnno[$dataFormattata]);
+            
+            if ($isWeekend || $isHoliday) {
+                $sheet->getStyle($colLetter . '2')->applyFromArray([
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => 'DC3545']
+                    ]
+                ]);
+            }
+        }
 
-        // Dati dei militari (inizia dalla riga 4)
-        $row = 4;
+        // Dati dei militari (inizia dalla riga 3)
+        $row = 3;
         foreach ($militari as $militare) {
-            $sheet->setCellValue('A' . $row, $militare->compagnia ? $militare->compagnia . 'a' : '');
-            $sheet->setCellValue('B' . $row, $militare->grado->sigla ?? '');  // Usa sigla invece di nome
-            $sheet->setCellValue('C' . $row, $militare->cognome);
-            $sheet->setCellValue('D' . $row, $militare->nome);
-            $sheet->setCellValue('E' . $row, str_replace(['° Plotone', 'Plotone'], ['°', ''], $militare->plotone->nome ?? ''));
+            // Compagnia - nome per esteso
+            $compagniaValue = '';
+            if ($militare->compagnia_id) {
+                $comp = $militare->compagnia;
+                $compagniaValue = $comp ? ($comp->numero ?? $comp->nome) : '';
+            }
+            
+            // Colonne base (identiche alla pagina web)
+            $sheet->setCellValue('A' . $row, $compagniaValue);
+            $sheet->setCellValue('B' . $row, $militare->grado->nome ?? ($militare->grado->sigla ?? '')); // Nome grado per esteso
+            $sheet->setCellValue('C' . $row, $militare->cognome); // Come nella pagina web, non in maiuscolo
+            $sheet->setCellValue('D' . $row, $militare->nome); // Come nella pagina web, non in maiuscolo
+            $sheet->setCellValue('E' . $row, $militare->plotone->nome ?? '-'); // Nome plotone per esteso
+            $sheet->setCellValue('F' . $row, $militare->polo->nome ?? '-'); // Ufficio (era mancante)
             
             // Patenti - mostra tutte le patenti separate da spazio
             $patenti = $militare->patenti->pluck('categoria')->toArray();
-            $sheet->setCellValue('F' . $row, !empty($patenti) ? implode(' ', $patenti) : '');
+            $sheet->setCellValue('G' . $row, !empty($patenti) ? implode(' ', $patenti) : '-');
             
-            $sheet->setCellValue('G' . $row, $militare->approntamentoPrincipale->nome ?? '');
+            // Teatro Operativo (era "APPRONT.")
+            $sheet->setCellValue('H' . $row, $militare->scadenzaApprontamento->teatro_operativo ?? ($militare->approntamentoPrincipale->nome ?? '-'));
 
             // Aggiungi i dati di pianificazione per ogni giorno
             $pianificazioniPerGiorno = [];
@@ -950,166 +1124,240 @@ class PianificazioneController extends Controller
                 $pianificazioniPerGiorno[$pianificazione->giorno] = $pianificazione;
             }
 
-            $col = 'H'; // Inizia dalla colonna H per i giorni
+            $colIndex = $numColonneBase + 1; // Inizia dopo le colonne base
             for ($giorno = 1; $giorno <= $giorniMese; $giorno++) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
                 $codice = '';
+                $pianificazione = null;
+                
                 if (isset($pianificazioniPerGiorno[$giorno])) {
-                    $tipoServizio = $pianificazioniPerGiorno[$giorno]->tipoServizio;
+                    $pianificazione = $pianificazioniPerGiorno[$giorno];
+                    $tipoServizio = $pianificazione->tipoServizio;
                     $codice = $tipoServizio->codice ?? '';
                 }
                 
-                $sheet->setCellValue($col . $row, $codice);
+                $sheet->setCellValue($colLetter . $row, $codice);
                 
-                // Applica colori CPT se il codice esiste
-                if ($codice && isset($pianificazioniPerGiorno[$giorno])) {
-                    $this->applicaColoreCPT($sheet, $col . $row, $codice);
+                // Applica colori CPT dal database se il codice esiste
+                if ($codice && $pianificazione) {
+                    $this->applicaColoreCPTDaDatabase($sheet, $colLetter . $row, $pianificazione);
                 }
                 
-                $col++;
+                $colIndex++;
             }
             
             $row++;
         }
 
-        // Stile generale della tabella
-        $lastColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(7 + $giorniMese);
+        // Stile generale dei dati
         $dataRange = 'A3:' . $lastColumn . ($row - 1);
-        
-        $sheet->getStyle($dataRange)->getBorders()->getAllBorders()
-            ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
-        
-        // Imposta larghezze colonne (aumentate per evitare troncamenti)
-        $sheet->getColumnDimension('A')->setWidth(12); // COMPAGNIA
-        $sheet->getColumnDimension('B')->setWidth(20); // GRADO (sigla)
-        $sheet->getColumnDimension('C')->setWidth(25); // COGNOME
-        $sheet->getColumnDimension('D')->setWidth(20); // NOME
-        $sheet->getColumnDimension('E')->setWidth(15); // PLOTONE
-        $sheet->getColumnDimension('F')->setWidth(15); // PATENTE
-        $sheet->getColumnDimension('G')->setWidth(25); // APPRONTAMENTO
-        
-        // Giorni del mese - larghezza fissa
-        for ($i = 0; $i < $giorniMese; $i++) {
-            $colIndex = 8 + $i; // Inizia dalla colonna H (8)
-            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
-            $sheet->getColumnDimension($colLetter)->setWidth(8);
+        if ($row > 3) {
+            $excelService->applyDataStyle($sheet, $dataRange);
         }
+        
+        // AUTO-SIZE: Larghezza colonne automatica in base al contenuto più lungo
+        // Colonne base (Compagnia, Grado, Cognome, Nome, Plotone, Ufficio, Patente, Teatro Operativo)
+        $colLetter = 'A';
+        foreach ($colonneBase as $config) {
+            $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+            $colLetter++;
+        }
+        
+        // Giorni del mese - larghezza sufficiente per "MERCOLEDI" (il più lungo) + data
+        for ($i = 0; $i < $giorniMese; $i++) {
+            $colIndex = $numColonneBase + 1 + $i;
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex);
+            $sheet->getColumnDimension($colLetter)->setWidth(14); // Larghezza per contenere "MERCOLEDI" + margine
+        }
+        
+        // Freeze header
+        $excelService->freezeHeader($sheet, 2);
+        
+        // Data generazione
+        $excelService->addGenerationInfo($sheet, $row + 1);
 
         // Prepara il download
         $fileName = 'CPT_' . $nomiMesi[$mese] . '_' . $anno . '.xlsx';
+        $tempFile = tempnam(sys_get_temp_dir(), 'cpt_');
         
-        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($tempFile);
         
-        // Headers per il download
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="' . $fileName . '"');
-        header('Cache-Control: max-age=0');
+        return response()->download($tempFile, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+    
+    /**
+     * Ottiene le festività per un anno specifico
+     */
+    private function getFestivitaPerAnno(int $anno): array
+    {
+        $festivitaPerAnno = [
+            2025 => [
+                '01-01' => 'Capodanno', '01-06' => 'Epifania', '04-20' => 'Pasqua',
+                '04-21' => 'Lunedì dell\'Angelo', '04-25' => 'Festa della Liberazione',
+                '05-01' => 'Festa del Lavoro', '06-02' => 'Festa della Repubblica',
+                '08-15' => 'Ferragosto', '11-01' => 'Ognissanti',
+                '12-08' => 'Immacolata Concezione', '12-25' => 'Natale', '12-26' => 'Santo Stefano'
+            ],
+            2026 => [
+                '01-01' => 'Capodanno', '01-06' => 'Epifania', '04-05' => 'Pasqua',
+                '04-06' => 'Lunedì dell\'Angelo', '04-25' => 'Festa della Liberazione',
+                '05-01' => 'Festa del Lavoro', '06-02' => 'Festa della Repubblica',
+                '08-15' => 'Ferragosto', '11-01' => 'Ognissanti',
+                '12-08' => 'Immacolata Concezione', '12-25' => 'Natale', '12-26' => 'Santo Stefano'
+            ]
+        ];
         
-        $writer->save('php://output');
-        exit;
+        return $festivitaPerAnno[$anno] ?? [];
     }
 
     /**
-     * Applica i colori CPT alla cella in base al codice (identici alla vista web)
+     * Applica i colori CPT alla cella leggendo dal database (SINGLE SOURCE OF TRUTH)
+     * Usa lo stesso ordine di priorità della vista web:
+     * 1. colore_badge dalla codiceGerarchia
+     * 2. colore_badge dal tipoServizio
+     * 3. Mappa fallback hardcoded
+     * 
+     * @param \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet
+     * @param string $cellAddress
+     * @param \App\Models\PianificazioneGiornaliera $pianificazione
+     */
+    private function applicaColoreCPTDaDatabase($sheet, string $cellAddress, $pianificazione): void
+    {
+        $tipoServizio = $pianificazione->tipoServizio;
+        if (!$tipoServizio) {
+            return;
+        }
+        
+        $codice = $tipoServizio->codice ?? '';
+        
+        // Priorità colori: gerarchia -> tipoServizio -> fallback
+        $coloreBadge = null;
+        
+        // 1. Colore dalla gerarchia (codici_servizio_gerarchia)
+        $gerarchia = $tipoServizio->codiceGerarchia;
+        if ($gerarchia && !empty($gerarchia->colore_badge)) {
+            $coloreBadge = $gerarchia->colore_badge;
+        }
+        
+        // 2. Colore dal tipo servizio
+        if (!$coloreBadge && !empty($tipoServizio->colore_badge)) {
+            $coloreBadge = $tipoServizio->colore_badge;
+        }
+        
+        // 3. Fallback hardcoded (identico alla vista web)
+        if (!$coloreBadge) {
+            $coloreBadge = $this->getColoreFallback($codice);
+        }
+        
+        // Se non c'è colore, usa verde default
+        if (!$coloreBadge) {
+            $coloreBadge = '#00b050';
+        }
+        
+        // Applica il colore
+        $hexColor = ltrim($coloreBadge, '#');
+        $textColor = $this->isColorChiaro($hexColor) ? '000000' : 'FFFFFF';
+        
+        $sheet->getStyle($cellAddress)->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()->setRGB($hexColor);
+        
+        $sheet->getStyle($cellAddress)->getFont()->getColor()->setRGB($textColor);
+        $sheet->getStyle($cellAddress)->getFont()->setBold(true);
+        $sheet->getStyle($cellAddress)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    }
+    
+    /**
+     * Mappa colori fallback per codici CPT (identica alla vista web)
+     * Usata solo se il colore non è presente nel database
+     * 
+     * @param string $codice
+     * @return string|null
+     */
+    private function getColoreFallback(string $codice): ?string
+    {
+        $mappaColori = [
+            // ASSENTE - Giallo
+            'LS' => '#ffff00', 'LO' => '#ffff00', 'LM' => '#ffff00',
+            'P' => '#ffff00', 'TIR' => '#ffff00', 'TRAS' => '#ffff00',
+            
+            // PROVVEDIMENTI MEDICO SANITARI - Rosso
+            'RMD' => '#ff0000', 'LC' => '#ff0000', 'IS' => '#ff0000',
+            
+            // SERVIZIO/PRESENTE - Verde
+            'RIP' => '#00b050', 'S.I.' => '#00b050', 'SI' => '#00b050',
+            'S-G1' => '#00b050', 'S-G2' => '#00b050', 'S-SA' => '#00b050',
+            'S-CD1' => '#00b050', 'S-CD2' => '#00b050', 'S-CD3' => '#00b050', 'S-CD4' => '#00b050',
+            'S-SG' => '#00b050', 'S-CG' => '#00b050', 'S-UI' => '#00b050', 'S-UP' => '#00b050',
+            'S-AE' => '#00b050', 'S-ARM' => '#00b050', 'SI-GD' => '#00b050',
+            'S-VM' => '#00b050', 'S-PI' => '#00b050',
+            'G1' => '#00b050', 'G2' => '#00b050', 'CD2' => '#00b050',
+            'PDT1' => '#00b050', 'PDT2' => '#00b050',
+            'AE' => '#00b050', 'A-A' => '#00b050',
+            'CETLI' => '#00b050', 'LCC' => '#00b050', 'CENTURIA' => '#00b050',
+            'TIROCINIO' => '#00b050',
+            'G-BTG' => '#00b050', 'NVA' => '#00b050', 'CG' => '#00b050',
+            'NS-DA' => '#00b050', 'PDT' => '#00b050', 'AA' => '#00b050',
+            'VS-CETLI' => '#00b050', 'CORR' => '#00b050', 'NDI' => '#00b050',
+            'Cattedra' => '#00b050', 'CATTEDRA' => '#00b050', 'cattedra' => '#00b050',
+            'APS1' => '#00b050', 'APS2' => '#00b050', 'APS3' => '#00b050', 'APS4' => '#00b050',
+            'AL-ELIX' => '#00b050', 'AL-MCM' => '#00b050', 'AL-BLS' => '#00b050',
+            'AL-CIED' => '#00b050', 'AL-SM' => '#00b050', 'AL-RM' => '#00b050',
+            'AL-RSPP' => '#00b050', 'AL-LEG' => '#00b050', 'AL-SEA' => '#00b050',
+            'AL-MI' => '#00b050', 'AL-PO' => '#00b050', 'AL-PI' => '#00b050',
+            'AP-M' => '#00b050', 'AP-A' => '#00b050', 'AC-SW' => '#00b050',
+            'AC' => '#00b050', 'PEFO' => '#00b050', 'EXE' => '#00b050',
+            'SMO' => '#00b050', 'smo' => '#00b050',
+            
+            // OPERAZIONE/T.O. - Arancione
+            'TO' => '#ffc000', 'T.O.' => '#ffc000', 'MCM' => '#ffc000', 'KOSOVO' => '#ffc000',
+        ];
+        
+        return $mappaColori[$codice] ?? null;
+    }
+    
+    /**
+     * Determina se un colore è chiaro (per decidere se usare testo nero o bianco)
+     * 
+     * @param string $hexColor Colore esadecimale senza #
+     * @return bool True se il colore è chiaro
+     */
+    private function isColorChiaro(string $hexColor): bool
+    {
+        $hexColor = str_pad($hexColor, 6, '0', STR_PAD_LEFT);
+        
+        $r = hexdec(substr($hexColor, 0, 2));
+        $g = hexdec(substr($hexColor, 2, 2));
+        $b = hexdec(substr($hexColor, 4, 2));
+        
+        // Formula per luminosità percepita (stessa della vista web)
+        $luminosita = ($r * 299 + $g * 587 + $b * 114) / 1000;
+        
+        return $luminosita > 128;
+    }
+    
+    /**
+     * DEPRECATO: Usa applicaColoreCPTDaDatabase invece
+     * Mantenuto per retrocompatibilità
      */
     private function applicaColoreCPT($sheet, $cellAddress, $codice)
     {
-        $colore = null;
-        $textColor = 'FF000000'; // Nero di default
-        
-        // Colori CPT esatti dalla vista
-        switch ($codice) {
-            // ASSENTE - Giallo
-            case 'LS':
-            case 'LO':
-            case 'LM':
-            case 'P':
-            case 'TIR':
-            case 'TRAS':
-                $colore = 'FFFFFF00'; // #ffff00
-                $textColor = 'FF000000'; // Nero
-                break;
-                
-            // PROVVEDIMENTI MEDICO SANITARI - Rosso
-            case 'RMD':
-            case 'LC':
-            case 'IS':
-                $colore = 'FFFF0000'; // #ff0000
-                $textColor = 'FFFFFFFF'; // Bianco
-                break;
-                
-            // VERDE - Presente Servizio, Addestramento, Supporto
-            case 'RIP':
-            case 'S-G1':
-            case 'S-G2':
-            case 'S-SA':
-            case 'S-CD1':
-            case 'S-CD2':
-            case 'S-CD3':
-            case 'S-CD4':
-            case 'S-SG':
-            case 'S-CG':
-            case 'S-UI':
-            case 'S-UP':
-            case 'S-AE':
-            case 'S-ARM':
-            case 'SI-GD':
-            case 'SI':
-            case 'S-VM':
-            case 'S-PI':
-            case 'G1':
-            case 'G2':
-            case 'CD2':
-            case 'PDT1':
-            case 'PDT2':
-            case 'AE':
-            case 'A-A':
-            case 'CETLI':
-            case 'LCC':
-            case 'CENTURIA':
-            case 'TIROCINIO':
-            case 'APS1':
-            case 'APS2':
-            case 'APS3':
-            case 'APS4':
-            case 'AL-ELIX':
-            case 'AL-MCM':
-            case 'AL-BLS':
-            case 'AL-CIED':
-            case 'AL-SM':
-            case 'AL-RM':
-            case 'AL-RSPP':
-            case 'AL-LEG':
-            case 'AL-SEA':
-            case 'AL-MI':
-            case 'AL-PO':
-            case 'AL-PI':
-            case 'AP-M':
-            case 'AP-A':
-            case 'AC-SW':
-            case 'AC':
-            case 'PEFO':
-            case 'EXE':
-                $colore = 'FF00B050'; // #00b050
-                $textColor = 'FFFFFFFF'; // Bianco
-                break;
-                
-            // OPERAZIONE - Arancione
-            case 'TO':
-            case 'MCM':
-            case 'KOSOVO':
-                $colore = 'FFFFC000'; // #ffc000
-                $textColor = 'FF000000'; // Nero
-                break;
-        }
+        $colore = $this->getColoreFallback($codice);
         
         if ($colore) {
-            $sheet->getStyle($cellAddress)->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
-                ->getStartColor()->setARGB($colore);
+            $hexColor = ltrim($colore, '#');
+            $textColor = $this->isColorChiaro($hexColor) ? '000000' : 'FFFFFF';
             
-            $sheet->getStyle($cellAddress)->getFont()->getColor()->setARGB($textColor);
+            $sheet->getStyle($cellAddress)->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setRGB($hexColor);
+            
+            $sheet->getStyle($cellAddress)->getFont()->getColor()->setRGB($textColor);
             $sheet->getStyle($cellAddress)->getFont()->setBold(true);
-            $sheet->getStyle($cellAddress)->getAlignment()->setHorizontal('center');
+            $sheet->getStyle($cellAddress)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
     }
 

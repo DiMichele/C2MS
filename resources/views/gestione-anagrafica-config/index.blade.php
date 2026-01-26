@@ -39,12 +39,12 @@
         <!-- TAB PLOTONI -->
         <div class="tab-pane fade show active" id="plotoni" role="tabpanel">
             <div class="table-container-ruolini" style="max-width: 1000px; margin: 0 auto;">
-                <table class="table table-hover mb-0 ruolini-table">
+                <table class="sugeco-table">
                     <thead>
                         <tr>
-                            <th style="width: 50%;">Nome Plotone</th>
-                            <th style="width: 30%;">Compagnia</th>
-                            <th style="width: 20%; text-align: center;">Azioni</th>
+                            <th>Nome Plotone</th>
+                            <th>Compagnia</th>
+                            <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -52,7 +52,7 @@
                         <tr>
                             <td><strong>{{ $plotone->nome }}</strong></td>
                             <td>{{ $plotone->compagnia->nome ?? 'N/A' }}</td>
-                            <td style="text-align: center;">
+                            <td>
                                 <button class="btn btn-sm btn-primary edit-plotone-btn" 
                                         data-id="{{ $plotone->id }}"
                                         data-nome="{{ $plotone->nome }}"
@@ -89,18 +89,18 @@
         <!-- TAB UFFICI -->
         <div class="tab-pane fade" id="uffici" role="tabpanel">
             <div class="table-container-ruolini" style="max-width: 800px; margin: 0 auto;">
-                <table class="table table-hover mb-0 ruolini-table">
+                <table class="sugeco-table">
                     <thead>
                         <tr>
-                            <th style="width: 70%;">Nome Ufficio</th>
-                            <th style="width: 30%; text-align: center;">Azioni</th>
+                            <th>Nome Ufficio</th>
+                            <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($uffici as $ufficio)
                         <tr>
                             <td><strong>{{ $ufficio->nome }}</strong></td>
-                            <td style="text-align: center;">
+                            <td>
                                 <button class="btn btn-sm btn-primary edit-ufficio-btn" 
                                         data-id="{{ $ufficio->id }}"
                                         data-nome="{{ $ufficio->nome }}"
@@ -136,18 +136,18 @@
         <!-- TAB INCARICHI -->
         <div class="tab-pane fade" id="incarichi" role="tabpanel">
             <div class="table-container-ruolini" style="max-width: 800px; margin: 0 auto;">
-                <table class="table table-hover mb-0 ruolini-table">
+                <table class="sugeco-table">
                     <thead>
                         <tr>
-                            <th style="width: 70%;">Nome Incarico</th>
-                            <th style="width: 30%; text-align: center;">Azioni</th>
+                            <th>Nome Incarico</th>
+                            <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($incarichi as $incarico)
                         <tr>
                             <td><strong>{{ $incarico->nome }}</strong></td>
-                            <td style="text-align: center;">
+                            <td>
                                 <button class="btn btn-sm btn-primary edit-incarico-btn" 
                                         data-id="{{ $incarico->id }}"
                                         data-nome="{{ $incarico->nome }}"
@@ -198,6 +198,11 @@
 @include('gestione-anagrafica-config.modals.incarichi')
 
 @endsection
+
+<style>
+/* Stili specifici per questa pagina */
+/* (Stili base tabelle in table-standard.css) */
+</style>
 
 @push('scripts')
 <script src="{{ asset('js/gestione-anagrafica-config.js') }}"></script>

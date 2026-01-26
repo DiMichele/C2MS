@@ -1,21 +1,5 @@
 /**
- * SUGECO: Sistema Unico di Gestione e Controllo
- * 
- * Stili per il sistema di notifiche toast.
- * Include animazioni, posizionamento e stili per i diversi tipi di notifica.
- * 
- * @package SUGECO
- * @subpackage Styles
- * @version 1.0
- * @since 1.0
- * @author Michele Di Gennaro
- * @copyright 2025 SUGECO
- * 
- * Sezioni:
- * - Toast Container: Contenitore principale per i toast
- * - Toast Types: Stili per i diversi tipi di toast (success, error, warning, info)
- * - Animations: Animazioni di entrata e uscita
- * - Responsive: Adattamenti per dispositivi mobili
+ * SUGECO Toast - Notification styles
  */
 
 /* ==========================================

@@ -6,6 +6,57 @@
         console.error('CSRF token not found!');
         return;
     }
+    
+    // Helper per ottenere il base URL
+    function getBaseUrl() {
+        // Cerca di usare l'URL base dalla pagina
+        const baseTag = document.querySelector('base');
+        if (baseTag) return baseTag.href.replace(/\/$/, '');
+        
+        // Fallback: costruisci l'URL base dal pathname
+        const path = window.location.pathname;
+        const match = path.match(/^(\/[^\/]+\/public)/);
+        return match ? match[1] : '';
+    }
+    
+    const baseUrl = getBaseUrl();
+    
+    // Helper per salvare e ripristinare il tab attivo
+    function saveActiveTab() {
+        const activeTab = document.querySelector('#configTabs .nav-link.active');
+        if (activeTab) {
+            localStorage.setItem('activeAnagraficaTab', activeTab.id);
+        }
+    }
+    
+    function restoreActiveTab() {
+        const savedTab = localStorage.getItem('activeAnagraficaTab');
+        if (savedTab) {
+            const tabButton = document.getElementById(savedTab);
+            if (tabButton && typeof bootstrap !== 'undefined') {
+                // Usa setTimeout per assicurarsi che Bootstrap sia pronto
+                setTimeout(() => {
+                    try {
+                        const tab = new bootstrap.Tab(tabButton);
+                        tab.show();
+                    } catch (e) {
+                        // Fallback: click manuale
+                        tabButton.click();
+                    }
+                }, 100);
+            }
+        }
+    }
+    
+    // Salva il tab quando cambia
+    document.querySelectorAll('#configTabs .nav-link').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function() {
+            localStorage.setItem('activeAnagraficaTab', this.id);
+        });
+    });
+    
+    // Ripristina il tab all'avvio
+    document.addEventListener('DOMContentLoaded', restoreActiveTab);
 
     // ==================== PLOTONI ====================
     
@@ -17,8 +68,10 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
+            
+            saveActiveTab();
 
-            fetch('/SUGECO/public/gestione-anagrafica-config/plotoni', {
+            fetch(baseUrl + '/gestione-anagrafica-config/plotoni', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -67,8 +120,10 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+            
+            saveActiveTab();
 
-            fetch(`/SUGECO/public/gestione-anagrafica-config/plotoni/${plotoneId}`, {
+            fetch(`${baseUrl}/gestione-anagrafica-config/plotoni/${plotoneId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -114,8 +169,10 @@
             const plotoneId = document.getElementById('delete_plotone_id').value;
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+            
+            saveActiveTab();
 
-            fetch(`/SUGECO/public/gestione-anagrafica-config/plotoni/${plotoneId}`, {
+            fetch(`${baseUrl}/gestione-anagrafica-config/plotoni/${plotoneId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -151,8 +208,10 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
+            
+            saveActiveTab();
 
-            fetch('/SUGECO/public/gestione-anagrafica-config/uffici', {
+            fetch(baseUrl + '/gestione-anagrafica-config/uffici', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -199,8 +258,10 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+            
+            saveActiveTab();
 
-            fetch(`/SUGECO/public/gestione-anagrafica-config/uffici/${ufficioId}`, {
+            fetch(`${baseUrl}/gestione-anagrafica-config/uffici/${ufficioId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -245,8 +306,10 @@
             const ufficioId = document.getElementById('delete_ufficio_id').value;
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+            
+            saveActiveTab();
 
-            fetch(`/SUGECO/public/gestione-anagrafica-config/uffici/${ufficioId}`, {
+            fetch(`${baseUrl}/gestione-anagrafica-config/uffici/${ufficioId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
@@ -282,8 +345,10 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
+            
+            saveActiveTab();
 
-            fetch('/SUGECO/public/gestione-anagrafica-config/incarichi', {
+            fetch(baseUrl + '/gestione-anagrafica-config/incarichi', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -330,8 +395,10 @@
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+            
+            saveActiveTab();
 
-            fetch(`/SUGECO/public/gestione-anagrafica-config/incarichi/${incaricoId}`, {
+            fetch(`${baseUrl}/gestione-anagrafica-config/incarichi/${incaricoId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -376,8 +443,10 @@
             const incaricoId = document.getElementById('delete_incarico_id').value;
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+            
+            saveActiveTab();
 
-            fetch(`/SUGECO/public/gestione-anagrafica-config/incarichi/${incaricoId}`, {
+            fetch(`${baseUrl}/gestione-anagrafica-config/incarichi/${incaricoId}`, {
                 method: 'DELETE',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
