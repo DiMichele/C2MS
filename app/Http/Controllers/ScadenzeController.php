@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Militare;
 use App\Models\ScadenzaMilitare;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -113,6 +114,16 @@ class ScadenzeController extends Controller
                 ])
             );
 
+            // Registra la modifica nel log di audit
+            AuditService::logUpdate(
+                $militare,
+                [],
+                $request->only([
+                    'pefo_data_conseguimento', 'idoneita_mans_data_conseguimento'
+                ]),
+                "Aggiornate scadenze del militare {$militare->cognome} {$militare->nome}"
+            );
+
             return response()->json([
                 'success' => true,
                 'message' => 'Scadenza aggiornata con successo',
@@ -174,6 +185,14 @@ class ScadenzeController extends Controller
             // Calcola i dati aggiornati
             $dataScadenza = $scadenza->calcolaScadenza($tipo);
             $stato = $scadenza->verificaStato($tipo);
+
+            // Registra la modifica nel log di audit
+            AuditService::log(
+                'update',
+                "Aggiornata scadenza '{$tipo}' del militare {$militare->cognome} {$militare->nome}",
+                $militare,
+                ['tipo_scadenza' => $tipo, 'nuova_data' => $data]
+            );
 
             return response()->json([
                 'success' => true,

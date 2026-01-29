@@ -70,7 +70,7 @@
                         </div>
                         <div class="col-12">
                             <small class="text-muted">Teatro Operativo</small>
-                            <div>{{ $militare->approntamentoPrincipale->nome ?? 'Nessuno' }}</div>
+                            <div>{{ $militare->getTeatroOperativoCodice() ?? ($militare->scadenzaApprontamento->teatro_operativo ?? 'Nessuno') }}</div>
                         </div>
                         @if($militare->nos_status)
                         <div class="col-12">
@@ -127,30 +127,43 @@
                 </div>
             </div>
 
-            <!-- Ultimo poligono -->
-            @if($militare->ultimoPoligono)
+            <!-- Scadenze Poligoni -->
+            @if($militare->scadenzePoligoni->isNotEmpty())
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-bullseye me-2"></i>
-                        Ultimo Poligono
+                        Poligoni
                     </h5>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
+                    @foreach($militare->scadenzePoligoni as $scadenzaPoligono)
+                    <div class="d-flex justify-content-between align-items-center {{ !$loop->last ? 'mb-2 pb-2 border-bottom' : '' }}">
                         <div>
-                            <div class="fw-bold">{{ $militare->ultimoPoligono->tipoPoligono->nome }}</div>
-                            <small class="text-muted">{{ $militare->ultimoPoligono->data_poligono->format('d/m/Y') }}</small>
+                            <div class="fw-bold">{{ $scadenzaPoligono->tipoPoligono->nome ?? 'N/A' }}</div>
+                            @if($scadenzaPoligono->data_conseguimento)
+                                <small class="text-muted">Fatto il: {{ $scadenzaPoligono->data_conseguimento->format('d/m/Y') }}</small>
+                            @endif
                         </div>
                         <div>
-                            <span class="badge bg-{{ $militare->ultimoPoligono->getColoreBadgeEsito() }}">
-                                {{ $militare->ultimoPoligono->getTestoEsito() }}
-                            </span>
-                            @if($militare->ultimoPoligono->punteggio)
-                                <div class="small text-muted mt-1">{{ $militare->ultimoPoligono->punteggio }}/100</div>
+                            @php
+                                $stato = $scadenzaPoligono->stato;
+                            @endphp
+                            @if($stato === 'scaduto')
+                                <span class="badge bg-danger">Scaduto</span>
+                            @elseif($stato === 'in_scadenza')
+                                <span class="badge bg-warning text-dark">In scadenza</span>
+                            @elseif($stato === 'valido')
+                                <span class="badge bg-success">Valido</span>
+                            @else
+                                <span class="badge bg-secondary">Mancante</span>
+                            @endif
+                            @if($scadenzaPoligono->data_scadenza)
+                                <div class="small text-muted mt-1">Scade: {{ $scadenzaPoligono->data_scadenza->format('d/m/Y') }}</div>
                             @endif
                         </div>
                     </div>
+                    @endforeach
                 </div>
             </div>
             @endif

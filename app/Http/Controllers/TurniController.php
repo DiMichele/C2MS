@@ -90,6 +90,121 @@ class TurniController extends Controller
     }
 
     /**
+     * API: Ottiene lista militari con disponibilità per una data specifica
+     * Restituisce due liste separate: disponibili e non disponibili
+     * Usato per mostrare automaticamente la disponibilità senza click aggiuntivi
+     */
+    public function getMilitariConDisponibilita(Request $request)
+    {
+        $request->validate([
+            'data' => 'required|date',
+            'exclude_activity_id' => 'nullable|exists:board_activities,id',
+        ]);
+
+        try {
+            // Ottieni tutti i militari dell'unità organizzativa corrente
+            // Il modello Militare usa CompagniaScope che filtra automaticamente
+            // per le compagnie visibili all'utente (basato sui ruoli)
+            $user = auth()->user();
+            $query = Militare::with(['grado', 'plotone']);
+            
+            // Se l'utente ha un'unità organizzativa assegnata, filtra per quella
+            if ($user->organizational_unit_id ?? null) {
+                $query->where('organizational_unit_id', $user->organizational_unit_id);
+            } elseif ($user->compagnia_id) {
+                // Fallback legacy: filtra per compagnia
+                $query->where('compagnia_id', $user->compagnia_id);
+            }
+            // Altrimenti lo scope CompagniaScope gestisce il filtro
+            
+            $militari = $query->orderBy('cognome')->get();
+
+            $disponibili = [];
+            $nonDisponibili = [];
+
+            // Funzione helper per classificare il grado
+            $classificaGrado = function($nomeGrado) {
+                $nomeGrado = strtolower(trim($nomeGrado ?? ''));
+                
+                // UFFICIALI
+                if ($nomeGrado === 'colonnello' || $nomeGrado === 'ten. col.' || $nomeGrado === 'tenente colonnello') return 'UFFICIALI';
+                if ($nomeGrado === 'maggiore' || $nomeGrado === 'magg.') return 'UFFICIALI';
+                if ($nomeGrado === 'capitano' || $nomeGrado === 'cap.') return 'UFFICIALI';
+                if (($nomeGrado === 'tenente' || $nomeGrado === 'ten.') && !str_contains($nomeGrado, 'luogo')) return 'UFFICIALI';
+                if ($nomeGrado === 'sottotenente' || $nomeGrado === 'sotten.') return 'UFFICIALI';
+                
+                // SOTTUFFICIALI
+                if (str_contains($nomeGrado, 'luogoten')) return 'SOTTUFFICIALI';
+                if (str_contains($nomeGrado, 'maresciall')) return 'SOTTUFFICIALI';
+                if (str_contains($nomeGrado, 'sergent')) return 'SOTTUFFICIALI';
+                if ($nomeGrado === 'mar.' || $nomeGrado === 'serg.' || str_contains($nomeGrado, 'serg.')) return 'SOTTUFFICIALI';
+                
+                // GRADUATI
+                if (str_contains($nomeGrado, 'graduato')) return 'GRADUATI';
+                if ($nomeGrado === 'grad.' || $nomeGrado === 'grad. sc.' || $nomeGrado === 'grad. ai.') return 'GRADUATI';
+                
+                // VOLONTARI
+                return 'VOLONTARI';
+            };
+
+            foreach ($militari as $militare) {
+                $check = $militare->isDisponibile($request->data, $request->exclude_activity_id);
+                
+                $dati = [
+                    'id' => $militare->id,
+                    'grado' => $militare->grado->sigla ?? '-',
+                    'grado_nome' => $militare->grado->nome ?? '',
+                    'grado_ordine' => $militare->grado->ordine ?? 0,
+                    'cognome' => $militare->cognome,
+                    'nome' => $militare->nome,
+                    'plotone' => $militare->plotone->nome ?? null,
+                    'categoria' => $classificaGrado($militare->grado->nome ?? ''),
+                ];
+
+                if ($check['disponibile']) {
+                    $disponibili[] = $dati;
+                } else {
+                    $dati['motivo'] = $check['motivo'];
+                    $dati['tipo'] = $check['tipo'];
+                    $dati['codice_impegno'] = $check['conflitto']->tipoServizio->codice ?? null;
+                    $nonDisponibili[] = $dati;
+                }
+            }
+
+            // Ordina per grado (decrescente) e cognome
+            $ordinaPerGrado = function($a, $b) {
+                if ($a['grado_ordine'] !== $b['grado_ordine']) {
+                    return $b['grado_ordine'] <=> $a['grado_ordine'];
+                }
+                return strcasecmp($a['cognome'], $b['cognome']);
+            };
+
+            usort($disponibili, $ordinaPerGrado);
+            usort($nonDisponibili, $ordinaPerGrado);
+
+            return response()->json([
+                'success' => true,
+                'disponibili' => $disponibili,
+                'non_disponibili' => $nonDisponibili,
+                'totale_disponibili' => count($disponibili),
+                'totale_non_disponibili' => count($nonDisponibili),
+                'data_formattata' => Carbon::parse($request->data)->format('d/m/Y'),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Errore getMilitariConDisponibilita', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore nel recupero della disponibilità.',
+            ], 500);
+        }
+    }
+
+    /**
      * API: Assegna un militare a un servizio
      */
     public function assegna(Request $request)

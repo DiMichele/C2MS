@@ -24,7 +24,17 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Qui puoi definire comandi schedulati (facoltativo)
+        // Pulizia automatica log di audit (ogni mese, il primo giorno alle 2:00)
+        // Mantiene solo gli ultimi X giorni (configurabile in config/audit.php) nel database
+        // I log più vecchi vengono archiviati in CSV prima di essere eliminati
+        $retentionDays = config('audit.retention_days', 365);
+        $archive = config('audit.archive_before_delete', true) ? 'true' : 'false';
+        
+        $schedule->command("audit:clean --days={$retentionDays} --archive={$archive} --force")
+            ->monthlyOn(1, '02:00')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->appendOutputTo(storage_path('logs/audit-cleanup.log'));
     }
 
     /**

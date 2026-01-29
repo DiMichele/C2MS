@@ -72,6 +72,18 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/ruoli/nuovo', [\App\Http\Controllers\AdminController::class, 'createRole'])->name('roles.create');
         Route::post('/ruoli', [\App\Http\Controllers\AdminController::class, 'storeRole'])->name('roles.store');
         Route::delete('/ruoli/{role}', [\App\Http\Controllers\AdminController::class, 'destroyRole'])->name('roles.destroy');
+        
+        // Gestione Visibilità Compagnie per Ruolo
+        Route::post('/ruoli/{role}/compagnie', [\App\Http\Controllers\AdminController::class, 'updateCompanyVisibility'])->name('roles.compagnie.update');
+
+        // =====================================================================
+        // Registro Attività (Audit Log)
+        // =====================================================================
+        Route::get('/registro-attivita', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/registro-attivita/esporta', [\App\Http\Controllers\AuditLogController::class, 'export'])->name('audit-logs.export');
+        Route::get('/registro-attivita/accessi', [\App\Http\Controllers\AuditLogController::class, 'accessLogs'])->name('audit-logs.access');
+        Route::get('/registro-attivita/utente/{user}', [\App\Http\Controllers\AuditLogController::class, 'userLogs'])->name('audit-logs.user');
+        Route::get('/registro-attivita/{auditLog}', [\App\Http\Controllers\AuditLogController::class, 'show'])->name('audit-logs.show');
     });
 
     /*
@@ -278,6 +290,7 @@ Route::prefix('servizi')->name('servizi.')->middleware('permission:servizi.view'
     Route::prefix('turni')->name('turni.')->middleware('permission:turni.view')->group(function () {
         Route::get('/', [\App\Http\Controllers\TurniController::class, 'index'])->name('index');
         Route::post('/check-disponibilita', [\App\Http\Controllers\TurniController::class, 'checkDisponibilita'])->name('check-disponibilita');
+        Route::post('/militari-disponibilita', [\App\Http\Controllers\TurniController::class, 'getMilitariConDisponibilita'])->name('militari-disponibilita');
         Route::post('/assegna', [\App\Http\Controllers\TurniController::class, 'assegna'])
             ->middleware('permission:turni.edit')
             ->name('assegna');
@@ -459,11 +472,61 @@ Route::prefix('approntamenti')->name('approntamenti.')->middleware('permission:s
         ->name('save-config-colonne');
     Route::get('/export-proposta', [\App\Http\Controllers\ApprontamentiController::class, 'exportProposta'])
         ->name('export-proposta');
+    
+    // =====================================================================
+    // MCM - Gestione ore e prenotazioni multi-giorno
+    // MCM richiede 40 ore totali (Lun-Gio: 8h, Ven: 4h)
+    // Requisiti: Idoneità SMI o T.O. valida
+    // =====================================================================
+    Route::post('/mcm/proponi-prenotazione', [\App\Http\Controllers\ApprontamentiController::class, 'proponiPrenotazioneMcm'])
+        ->middleware('permission:scadenze.edit')
+        ->name('mcm.proponi-prenotazione');
+    Route::post('/mcm/salva-prenotazione', [\App\Http\Controllers\ApprontamentiController::class, 'salvaPrenotazioneMcm'])
+        ->middleware('permission:scadenze.edit')
+        ->name('mcm.salva-prenotazione');
+    Route::get('/mcm/militare/{militare}', [\App\Http\Controllers\ApprontamentiController::class, 'getDettagliMcmMilitare'])
+        ->name('mcm.dettagli-militare');
+    Route::post('/mcm/conferma-sessione', [\App\Http\Controllers\ApprontamentiController::class, 'confermaSessioneMcm'])
+        ->middleware('permission:scadenze.edit')
+        ->name('mcm.conferma-sessione');
+    Route::post('/mcm/annulla-sessione', [\App\Http\Controllers\ApprontamentiController::class, 'annullaSessioneMcm'])
+        ->middleware('permission:scadenze.edit')
+        ->name('mcm.annulla-sessione');
+    Route::post('/mcm/calcola-ore', [\App\Http\Controllers\ApprontamentiController::class, 'calcolaOreMcm'])
+        ->name('mcm.calcola-ore');
+    
+    // Export Excel militari proposti per prenotazione
+    Route::get('/export-proposta-militari', [\App\Http\Controllers\ApprontamentiController::class, 'exportPropostaMilitari'])
+        ->name('export-proposta-militari');
+    
+    // =====================================================================
+    // Gestione Prenotazioni Attive
+    // =====================================================================
+    Route::get('/prenotazioni-attive', [\App\Http\Controllers\ApprontamentiController::class, 'getPrenotazioniAttive'])
+        ->name('prenotazioni-attive');
+    Route::post('/verifica-disponibilita', [\App\Http\Controllers\ApprontamentiController::class, 'verificaDisponibilita'])
+        ->name('verifica-disponibilita');
+    Route::post('/modifica-prenotazione-multipla', [\App\Http\Controllers\ApprontamentiController::class, 'modificaPrenotazioneMultipla'])
+        ->middleware('permission:scadenze.edit')
+        ->name('modifica-prenotazione-multipla');
+    Route::post('/conferma-prenotazione-multipla', [\App\Http\Controllers\ApprontamentiController::class, 'confermaPrenotazioneMultipla'])
+        ->middleware('permission:scadenze.edit')
+        ->name('conferma-prenotazione-multipla');
+    Route::post('/annulla-prenotazione', [\App\Http\Controllers\ApprontamentiController::class, 'annullaPrenotazione'])
+        ->middleware('permission:scadenze.edit')
+        ->name('annulla-prenotazione');
+    Route::get('/export-prenotazioni-excel', [\App\Http\Controllers\ApprontamentiController::class, 'exportPrenotazioniExcel'])
+        ->name('export-prenotazioni-excel');
 });
 
-// Gestione Approntamenti (Admin)
+// Gestione Approntamenti (Admin) - Configurazione colonne
 Route::prefix('gestione-approntamenti')->name('gestione-approntamenti.')->middleware('permission:admin.access')->group(function () {
     Route::get('/', [\App\Http\Controllers\ApprontamentiController::class, 'gestione'])->name('index');
+    Route::post('/colonne', [\App\Http\Controllers\ApprontamentiController::class, 'storeColonna'])->name('colonne.store');
+    Route::put('/colonne/{id}', [\App\Http\Controllers\ApprontamentiController::class, 'updateColonna'])->name('colonne.update');
+    Route::delete('/colonne/{id}', [\App\Http\Controllers\ApprontamentiController::class, 'destroyColonna'])->name('colonne.destroy');
+    Route::post('/colonne/ordine', [\App\Http\Controllers\ApprontamentiController::class, 'updateOrdine'])->name('colonne.ordine');
+    Route::post('/colonne/{id}/toggle', [\App\Http\Controllers\ApprontamentiController::class, 'toggleColonna'])->name('colonne.toggle');
 });
 
 /*
@@ -474,6 +537,7 @@ Route::prefix('gestione-approntamenti')->name('gestione-approntamenti.')->middle
 Route::prefix('ruolini')->name('ruolini.')->middleware('permission:ruolini.view')->group(function () {
     Route::get('/', [\App\Http\Controllers\RuoliniController::class, 'index'])->name('index');
     Route::get('/export-excel', [\App\Http\Controllers\RuoliniController::class, 'exportExcel'])->name('export-excel');
+    Route::get('/export-rapportino', [\App\Http\Controllers\RuoliniController::class, 'exportRapportino'])->name('export-rapportino');
 });
 
 /*
@@ -637,6 +701,55 @@ if (config('app.debug')) {
         });
     });
 }
+
+    /*
+    |-------------------------------------------------
+    | Rotte per la Gerarchia Organizzativa
+    |-------------------------------------------------
+    */
+    Route::prefix('gerarchia-organizzativa')->name('gerarchia.')->group(function () {
+        // Vista principale
+        Route::get('/', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'index'])
+            ->middleware('permission:gerarchia.view')
+            ->name('index');
+
+        // API - Albero
+        Route::get('/api/tree', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getTree'])
+            ->name('api.tree');
+        Route::get('/api/subtree/{uuid}', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getSubtree'])
+            ->name('api.subtree');
+        Route::get('/api/search', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'search'])
+            ->name('api.search');
+
+        // API - Tipi
+        Route::get('/api/types', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getTypes'])
+            ->name('api.types');
+        Route::get('/api/types/containable/{parentUuid?}', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getContainableTypes'])
+            ->name('api.types.containable');
+
+        // API - CRUD Unità
+        Route::get('/api/units/{uuid}', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'show'])
+            ->name('api.units.show');
+        Route::post('/api/units', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'store'])
+            ->middleware('permission:gerarchia.edit')
+            ->name('api.units.store');
+        Route::put('/api/units/{uuid}', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'update'])
+            ->middleware('permission:gerarchia.edit')
+            ->name('api.units.update');
+        Route::post('/api/units/{uuid}/move', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'move'])
+            ->middleware('permission:gerarchia.edit')
+            ->name('api.units.move');
+        Route::post('/api/units/{uuid?}/reorder', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'reorder'])
+            ->middleware('permission:gerarchia.edit')
+            ->name('api.units.reorder');
+        Route::delete('/api/units/{uuid}', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'destroy'])
+            ->middleware('permission:gerarchia.delete')
+            ->name('api.units.destroy');
+
+        // API - Assegnazioni
+        Route::get('/api/units/{uuid}/assignments', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getAssignments'])
+            ->name('api.units.assignments');
+    });
 
     // Rotta parametrica anagrafica (DEVE essere DOPO tutte le altre rotte specifiche)
     // Altrimenti cattura /anagrafica/export-excel, /anagrafica/create, ecc. come ID militare

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\OrganizationalUnit;
 
 /**
  * Modello per le pianificazioni giornaliere
@@ -42,7 +43,9 @@ class PianificazioneGiornaliera extends Model
         'militare_id',
         'giorno',
         'tipo_servizio_id',
-        'note'
+        'organizational_unit_id', // Nuova gerarchia organizzativa
+        'note',
+        'prenotazione_approntamento_id'
     ];
 
     /**
@@ -67,6 +70,14 @@ class PianificazioneGiornaliera extends Model
     }
 
     /**
+     * Unità organizzativa (nuova gerarchia)
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
+    }
+
+    /**
      * Militare assegnato
      */
     public function militare()
@@ -80,6 +91,22 @@ class PianificazioneGiornaliera extends Model
     public function tipoServizio()
     {
         return $this->belongsTo(TipoServizio::class);
+    }
+
+    /**
+     * Prenotazione approntamento collegata
+     */
+    public function prenotazioneApprontamento()
+    {
+        return $this->belongsTo(PrenotazioneApprontamento::class);
+    }
+
+    /**
+     * Verifica se è collegata a una prenotazione approntamento
+     */
+    public function isCollegataAPrenotazione(): bool
+    {
+        return $this->prenotazione_approntamento_id !== null;
     }
 
     // ==========================================

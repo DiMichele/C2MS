@@ -55,12 +55,17 @@ class GestioneSppController extends Controller
             // Genera codice corso univoco da nome (es. "Carrellista" -> "carrellista")
             $codiceCors = \Str::slug($validated['nome_corso'], '_');
             
-            // Verifica unicità del codice
+            // FIX: Verifica unicità del codice con protezione anti-loop infinito
             $baseCode = $codiceCors;
             $counter = 1;
+            $maxIterations = 1000; // Limite massimo per evitare loop infinito
             while (ConfigurazioneCorsoSpp::where('codice_corso', $codiceCors)->exists()) {
                 $codiceCors = $baseCode . '_' . $counter;
                 $counter++;
+                
+                if ($counter > $maxIterations) {
+                    throw new \RuntimeException('Impossibile generare un codice corso univoco. Contatta l\'amministratore.');
+                }
             }
             
             // Ottieni ordine successivo per il tipo
@@ -88,19 +93,21 @@ class GestioneSppController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore creazione corso SPP', [
+                'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
-                'data' => $request->all()
+                'data' => $request->except(['_token']),
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante la creazione. Riprova o contatta l\'amministratore.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la creazione'])
+                ->withErrors(['error' => 'Si è verificato un errore durante la creazione. Riprova.'])
                 ->withInput();
         }
     }
@@ -125,13 +132,14 @@ class GestioneSppController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore aggiornamento corso SPP', [
+                'user_id' => auth()->id(),
                 'id' => $id,
                 'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.'
             ], 500);
         }
     }
@@ -154,12 +162,17 @@ class GestioneSppController extends Controller
             if ($corso->nome_corso !== $validated['nome_corso']) {
                 $nuovoCodice = \Str::slug($validated['nome_corso'], '_');
                 
-                // Verifica unicità del nuovo codice (escludendo il corso corrente)
+                // FIX: Verifica unicità del nuovo codice con protezione anti-loop infinito
                 $baseCode = $nuovoCodice;
                 $counter = 1;
+                $maxIterations = 1000;
                 while (ConfigurazioneCorsoSpp::where('codice_corso', $nuovoCodice)->where('id', '!=', $id)->exists()) {
                     $nuovoCodice = $baseCode . '_' . $counter;
                     $counter++;
+                    
+                    if ($counter > $maxIterations) {
+                        throw new \RuntimeException('Impossibile generare un codice corso univoco. Contatta l\'amministratore.');
+                    }
                 }
                 
                 $validated['codice_corso'] = $nuovoCodice;
@@ -180,19 +193,21 @@ class GestioneSppController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore modifica corso SPP', [
+                'user_id' => auth()->id(),
                 'id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante la modifica: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante la modifica. Riprova.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la modifica'])
+                ->withErrors(['error' => 'Si è verificato un errore durante la modifica. Riprova.'])
                 ->withInput();
         }
     }
@@ -215,13 +230,15 @@ class GestioneSppController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore eliminazione corso SPP', [
+                'user_id' => auth()->id(),
                 'id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'eliminazione. Potrebbe essere in uso.'
             ], 500);
         }
     }

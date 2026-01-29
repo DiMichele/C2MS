@@ -108,7 +108,8 @@ class GestioneCptController extends Controller
 
         // Ricerca per codice o descrizione
         if ($request->filled('search')) {
-            $search = $request->search;
+            // Sanitizza il termine di ricerca
+            $search = trim($request->search);
             $query->where(function($q) use ($search) {
                 $q->where('codice', 'like', "%{$search}%")
                   ->orWhere('attivita_specifica', 'like', "%{$search}%")
@@ -116,13 +117,30 @@ class GestioneCptController extends Controller
             });
         }
 
-        // Ordinamento
+        // =====================================================================
+        // FIX SICUREZZA: Validazione parametri orderBy con whitelist
+        // Previene SQL injection validando i valori contro liste consentite
+        // =====================================================================
+        $allowedSortColumns = ['ordine', 'codice', 'attivita_specifica', 'impiego', 'macro_attivita', 'attivo', 'id'];
+        $allowedSortDirections = ['asc', 'desc'];
+        
         $sortBy = $request->get('sort_by', 'ordine');
-        $sortDir = $request->get('sort_dir', 'asc');
+        $sortDir = strtolower($request->get('sort_dir', 'asc'));
+        
+        // Valida sortBy contro whitelist, fallback a 'ordine' se non valido
+        if (!in_array($sortBy, $allowedSortColumns, true)) {
+            $sortBy = 'ordine';
+        }
+        
+        // Valida sortDir contro whitelist, fallback a 'asc' se non valido
+        if (!in_array($sortDir, $allowedSortDirections, true)) {
+            $sortDir = 'asc';
+        }
+        
         $query->orderBy($sortBy, $sortDir);
 
-        // Ottieni TUTTI i codici (no paginazione)
-        $codici = $query->get();
+        // Paginazione per evitare timeout con molti record
+        $codici = $query->paginate(50)->withQueryString();
 
         // Ottieni valori unici per i filtri
         $macroAttivita = CodiciServizioGerarchia::select('macro_attivita')
@@ -220,8 +238,15 @@ class GestioneCptController extends Controller
                 ->with('success', "Codice '{$codice->codice}' creato e sincronizzato con il CPT!");
         } catch (\Exception $e) {
             DB::rollBack();
+            // Log dettagliato per debug, messaggio generico per l'utente
+            \Illuminate\Support\Facades\Log::error('Errore creazione codice CPT', [
+                'user_id' => auth()->id(),
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la creazione: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Si è verificato un errore durante la creazione del codice. Riprova o contatta l\'amministratore.'])
                 ->withInput();
         }
     }
@@ -300,8 +325,16 @@ class GestioneCptController extends Controller
                 ->with('success', "Codice '{$codice->codice}' aggiornato e sincronizzato con il CPT!");
         } catch (\Exception $e) {
             DB::rollBack();
+            // Log dettagliato per debug, messaggio generico per l'utente
+            \Illuminate\Support\Facades\Log::error('Errore aggiornamento codice CPT', [
+                'user_id' => auth()->id(),
+                'codice_id' => $codice->id,
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()])
+                ->withErrors(['error' => 'Si è verificato un errore durante l\'aggiornamento del codice. Riprova o contatta l\'amministratore.'])
                 ->withInput();
         }
     }
@@ -327,8 +360,16 @@ class GestioneCptController extends Controller
                 ->with('success', "Codice '{$codiceTesto}' eliminato e rimosso dal CPT!");
         } catch (\Exception $e) {
             DB::rollBack();
+            // Log dettagliato per debug, messaggio generico per l'utente
+            \Illuminate\Support\Facades\Log::error('Errore eliminazione codice CPT', [
+                'user_id' => auth()->id(),
+                'codice_id' => $codice->id,
+                'codice' => $codiceTesto,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()
-                ->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
+                ->with('error', 'Si è verificato un errore durante l\'eliminazione del codice. Potrebbe essere in uso da altre tabelle.');
         }
     }
 
@@ -352,8 +393,16 @@ class GestioneCptController extends Controller
                 ->with('success', "Codice '{$codice->codice}' {$stato} e sincronizzato con il CPT!");
         } catch (\Exception $e) {
             DB::rollBack();
+            // Log dettagliato per debug, messaggio generico per l'utente
+            \Illuminate\Support\Facades\Log::error('Errore toggle stato codice CPT', [
+                'user_id' => auth()->id(),
+                'codice_id' => $codice->id,
+                'codice' => $codice->codice,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()
-                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
+                ->with('error', 'Si è verificato un errore durante l\'aggiornamento dello stato. Riprova.');
         }
     }
 
@@ -591,11 +640,22 @@ class GestioneCptController extends Controller
             return response()->json(['success' => false, 'message' => 'Dati non validi'], 400);
         }
 
-        foreach ($request->ordini as $ordine => $id) {
-            CodiciServizioGerarchia::where('id', $id)->update(['ordine' => $ordine]);
+        // FIX: Usa transazione per aggiornamenti multipli atomici
+        try {
+            DB::transaction(function() use ($request) {
+                foreach ($request->ordini as $ordine => $id) {
+                    CodiciServizioGerarchia::where('id', $id)->update(['ordine' => $ordine]);
+                }
+            });
+            
+            return response()->json(['success' => true, 'message' => 'Ordine aggiornato con successo!']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Errore aggiornamento ordine codici CPT', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            return response()->json(['success' => false, 'message' => 'Errore durante l\'aggiornamento dell\'ordine'], 500);
         }
-
-        return response()->json(['success' => true, 'message' => 'Ordine aggiornato con successo!']);
     }
 
     /**

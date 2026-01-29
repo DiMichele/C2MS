@@ -25,39 +25,8 @@
         >{{ $militare->note ?? '' }}</textarea>
     </div>
 
-    <!-- Note sui Certificati -->
-    <div class="mb-4">
-        <h6 class="mb-3">
-            <i class="fas fa-file-alt text-success me-2"></i>
-            Note sui Certificati
-        </h6>
-        <textarea 
-            class="form-control auto-save-notes" 
-            data-militare-id="{{ $militare->id }}"
-            data-field="certificati_note"
-            data-autosave-url="{{ route('militare.update', $militare->id) }}"
-            data-autosave-field="certificati_note"
-            rows="4"
-            placeholder="Note specifiche sui certificati e corsi..."
-        >{{ $militare->certificati_note ?? '' }}</textarea>
-    </div>
-
-    <!-- Note sulle Idoneità -->
-    <div class="mb-4">
-        <h6 class="mb-3">
-            <i class="fas fa-shield-alt text-warning me-2"></i>
-            Note sulle Idoneità
-        </h6>
-        <textarea 
-            class="form-control auto-save-notes" 
-            data-militare-id="{{ $militare->id }}"
-            data-field="idoneita_note"
-            data-autosave-url="{{ route('militare.update', $militare->id) }}"
-            data-autosave-field="idoneita_note"
-            rows="4"
-            placeholder="Note specifiche sulle idoneità..."
-        >{{ $militare->idoneita_note ?? '' }}</textarea>
-    </div>
+    {{-- Campi certificati_note e idoneita_note rimossi dalla tabella militari --}}
+    {{-- Usare il campo note per tutte le annotazioni --}}
 </div>
 
 <style>

@@ -374,66 +374,78 @@ class MilitareService
             DB::beginTransaction();
             
             try {
-                // Prima di tutto, rimuoviamo eventuali riferimenti circolari
-                // Se questo militare è referenziato come ultimo_poligono_id in altri militari
-                DB::table('militari')
-                    ->where('ultimo_poligono_id', function($query) use ($militare) {
-                        $query->select('id')
-                              ->from('poligoni')
-                              ->where('militare_id', $militare->id);
-                    })
-                    ->update(['ultimo_poligono_id' => null]);
-                
-                // Se questo militare è referenziato come approntamento_principale_id
-                DB::table('militari')
-                    ->where('approntamento_principale_id', function($query) use ($militare) {
-                        $query->select('id')
-                              ->from('approntamenti')
-                              ->whereExists(function($subquery) use ($militare) {
-                                  $subquery->select(DB::raw(1))
-                                           ->from('militare_approntamenti')
-                                           ->whereColumn('militare_approntamenti.approntamento_id', 'approntamenti.id')
-                                           ->where('militare_approntamenti.militare_id', $militare->id);
-                              });
-                    })
-                    ->update(['approntamento_principale_id' => null]);
-                
-                // Ora elimina la foto se esiste
+                // Elimina la foto se esiste
                 $this->deleteFoto($militare);
                 
-                // Elimina i poligoni PRIMA (perché militari.ultimo_poligono_id li referenzia)
-                DB::table('poligoni')->where('militare_id', $militare->id)->delete();
+                // Elimina le scadenze poligoni (tabella corrente)
+                if (\Schema::hasTable('scadenze_poligoni')) {
+                    DB::table('scadenze_poligoni')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // Elimina i certificati associati (hanno ON DELETE CASCADE)
-                // Ma per sicurezza li eliminiamo esplicitamente
-                DB::table('certificati_lavoratori')->where('militare_id', $militare->id)->delete();
-                DB::table('idoneita')->where('militare_id', $militare->id)->delete();
+                // Elimina le scadenze idoneità
+                if (\Schema::hasTable('scadenze_idoneita')) {
+                    DB::table('scadenze_idoneita')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // Elimina le valutazioni
-                DB::table('militare_valutazioni')->where('militare_id', $militare->id)->delete();
+                // Elimina le scadenze corsi SPP
+                if (\Schema::hasTable('scadenze_corsi_spp')) {
+                    DB::table('scadenze_corsi_spp')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // Elimina le presenze (esiste nel DB)
-                DB::table('presenze')->where('militare_id', $militare->id)->delete();
+                // Elimina le scadenze militari
+                if (\Schema::hasTable('scadenze_militari')) {
+                    DB::table('scadenze_militari')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // NOTA: La tabella 'assenze' NON ESISTE nel database, quindi non la eliminiamo
+                // Elimina le scadenze approntamenti
+                if (\Schema::hasTable('scadenze_approntamenti')) {
+                    DB::table('scadenze_approntamenti')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // Elimina gli eventi
-                DB::table('eventi')->where('militare_id', $militare->id)->delete();
-                
-                // Elimina le pianificazioni giornaliere (CPT) - nome corretto della tabella
-                DB::table('pianificazioni_giornaliere')->where('militare_id', $militare->id)->delete();
+                // Elimina le pianificazioni giornaliere (CPT)
+                if (\Schema::hasTable('pianificazioni_giornaliere')) {
+                    DB::table('pianificazioni_giornaliere')->where('militare_id', $militare->id)->delete();
+                }
                 
                 // Elimina le patenti
-                DB::table('patenti_militari')->where('militare_id', $militare->id)->delete();
+                if (\Schema::hasTable('patenti_militari')) {
+                    DB::table('patenti_militari')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // Elimina le note
-                DB::table('notas')->where('militare_id', $militare->id)->delete();
+                // Elimina le relazioni con i teatri operativi
+                if (\Schema::hasTable('teatro_operativo_militare')) {
+                    DB::table('teatro_operativo_militare')->where('militare_id', $militare->id)->delete();
+                }
                 
-                // Elimina eventuali relazioni con approntamenti (tabella pivot)
-                DB::table('militare_approntamenti')->where('militare_id', $militare->id)->delete();
+                // Elimina le prenotazioni approntamenti
+                if (\Schema::hasTable('prenotazioni_approntamenti')) {
+                    DB::table('prenotazioni_approntamenti')->where('militare_id', $militare->id)->delete();
+                }
+                
+                // Elimina eventuali relazioni legacy con approntamenti (tabella pivot)
+                if (\Schema::hasTable('militare_approntamenti')) {
+                    DB::table('militare_approntamenti')->where('militare_id', $militare->id)->delete();
+                }
                 
                 // Elimina eventuali associazioni con attività del board
-                DB::table('activity_militare')->where('militare_id', $militare->id)->delete();
+                if (\Schema::hasTable('activity_militare')) {
+                    DB::table('activity_militare')->where('militare_id', $militare->id)->delete();
+                }
+                
+                // Elimina i valori dei campi custom
+                if (\Schema::hasTable('valori_campi_anagrafica')) {
+                    DB::table('valori_campi_anagrafica')->where('militare_id', $militare->id)->delete();
+                }
+                
+                // Elimina le assegnazioni turno
+                if (\Schema::hasTable('assegnazioni_turno')) {
+                    DB::table('assegnazioni_turno')->where('militare_id', $militare->id)->delete();
+                }
+                
+                // Elimina le ore MCM
+                if (\Schema::hasTable('ore_mcm_militari')) {
+                    DB::table('ore_mcm_militari')->where('militare_id', $militare->id)->delete();
+                }
                 
                 // Elimina il militare
                 $deleted = $militare->delete();

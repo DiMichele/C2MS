@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use App\Traits\BelongsToCompagnia;
 use App\Models\User;
+use App\Models\OrganizationalUnit;
 
 /**
  * SUGECO: Sistema Unico di Gestione e Controllo
@@ -19,7 +20,7 @@ use App\Models\User;
  * automatica dei dati per compagnia. Tutte le query saranno filtrate
  * automaticamente in base alla compagnia dell'utente autenticato.
  * 
- * @version 1.1
+ * @version 1.2
  * @author Michele Di Gennaro
  * 
  * @property int $id
@@ -31,10 +32,14 @@ use App\Models\User;
  * @property int|null $polo_id
  * @property int|null $ruolo_id
  * @property int|null $mansione_id
- * @property string|null $certificati_note
- * @property string|null $idoneita_note
  * @property string|null $note
  * @property string|null $foto_path
+ * @property string|null $email
+ * @property string|null $telefono
+ * @property string $codice_fiscale
+ * @property string|null $nos_status
+ * @property \Illuminate\Support\Carbon|null $data_nascita
+ * @property \Illuminate\Support\Carbon|null $anzianita
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * 
@@ -71,9 +76,9 @@ class Militare extends Model
         'plotone_id',
         'polo_id',
         'compagnia_id',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
         'ruolo_id',
         'mansione_id',
-        'approntamento_principale_id',
         'data_nascita',
         'sesso',
         'luogo_nascita',
@@ -83,16 +88,10 @@ class Militare extends Model
         'codice_fiscale',
         'email',
         'telefono',
-        'certificati_note',
-        'idoneita_note', 
         'note',
         'istituti',
         'foto_path',
-        'data_ultimo_poligono',
         'nos_status',
-        'nos_scadenza',
-        'nos_note',
-        'compagnia_nos'
     ];
 
     /**
@@ -321,16 +320,6 @@ class Militare extends Model
     }
 
     /**
-     * Relazione con l'ufficio del militare (alias di polo per compatibilità)
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function ufficio()
-    {
-        return $this->belongsTo(Ufficio::class, 'polo_id');
-    }
-
-    /**
      * Relazione con la compagnia del militare
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -338,6 +327,16 @@ class Militare extends Model
     public function compagnia()
     {
         return $this->belongsTo(Compagnia::class, 'compagnia_id');
+    }
+
+    /**
+     * Relazione con l'unità organizzativa (nuova gerarchia).
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     /**
@@ -369,17 +368,6 @@ class Militare extends Model
     {
         return $this->belongsTo(Mansione::class, 'mansione_id');
     }
-
-    /**
-     * Relazione con l'approntamento principale
-     * 
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
-    public function approntamentoPrincipale()
-    {
-        return $this->belongsTo(Approntamento::class, 'approntamento_principale_id');
-    }
-
 
     /**
      * Relazione con le assegnazioni agli approntamenti
@@ -484,7 +472,8 @@ class Militare extends Model
             'nos' => 'nos_status',
             'anzianita' => 'anzianita',
             'data_nascita' => 'data_nascita',
-            'email_istituzionale' => 'email_istituzionale',
+            'email_istituzionale' => 'email', // Mappato al nuovo campo email
+            'email' => 'email',
             'telefono' => 'telefono',
             'codice_fiscale' => 'codice_fiscale',
         ];
@@ -529,7 +518,8 @@ class Militare extends Model
             'nos' => 'nos_status',
             'anzianita' => 'anzianita',
             'data_nascita' => 'data_nascita',
-            'email_istituzionale' => 'email_istituzionale',
+            'email_istituzionale' => 'email', // Mappato al nuovo campo email
+            'email' => 'email',
             'telefono' => 'telefono',
             'codice_fiscale' => 'codice_fiscale',
         ];

@@ -65,33 +65,5 @@
     </div>
 </div>
 
-<!-- Modal Elimina Ufficio -->
-<div class="modal fade" id="deleteUfficioModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Conferma Eliminazione
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">Sei sicuro di voler eliminare l'ufficio <strong id="deleteUfficioNome"></strong>?</p>
-                <div class="alert alert-warning mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Attenzione:</strong> Puoi eliminare solo uffici senza militari associati.
-                </div>
-                <input type="hidden" id="delete_ufficio_id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteUfficio">
-                    <i class="fas fa-trash me-1"></i>Elimina
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal elimina ufficio gestito da SUGECO.Confirm -->
 

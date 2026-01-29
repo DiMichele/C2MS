@@ -1,0 +1,289 @@
+/**
+ * SUGECO Confirm - Dialog styles
+ * 
+ * Sistema unificato per dialoghi di conferma.
+ * Stili coerenti con il design system SUGECO.
+ */
+
+/* ==========================================
+   MODAL BASE
+   ========================================== */
+
+.sugeco-confirm-modal .modal-dialog {
+    max-width: 400px;
+}
+
+.sugeco-confirm-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(10, 35, 66, 0.18);
+    overflow: hidden;
+    border-top: 4px solid #0a2342;
+}
+
+/* Type-specific border colors */
+.sugeco-confirm-content[data-type="danger"] {
+    border-top-color: #b3122e;
+}
+
+.sugeco-confirm-content[data-type="warning"] {
+    border-top-color: #e07a00;
+}
+
+.sugeco-confirm-content[data-type="success"] {
+    border-top-color: #1d8f4b;
+}
+
+.sugeco-confirm-content[data-type="info"] {
+    border-top-color: #1c6dd0;
+}
+
+.sugeco-confirm-content[data-type="default"] {
+    border-top-color: #0a2342;
+}
+
+/* ==========================================
+   MODAL BODY
+   ========================================== */
+
+.sugeco-confirm-modal .modal-body {
+    padding: 2rem 1.5rem 1rem;
+}
+
+.sugeco-confirm-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: rgba(10, 35, 66, 0.06);
+}
+
+.sugeco-confirm-icon i {
+    font-size: 2rem !important;
+}
+
+/* Icon background colors based on type */
+.sugeco-confirm-icon.text-danger {
+    background: rgba(179, 18, 46, 0.1);
+}
+
+.sugeco-confirm-icon.text-warning {
+    background: rgba(224, 122, 0, 0.1);
+}
+
+.sugeco-confirm-icon.text-success {
+    background: rgba(29, 143, 75, 0.1);
+}
+
+.sugeco-confirm-icon.text-info {
+    background: rgba(28, 109, 208, 0.1);
+}
+
+.sugeco-confirm-icon.text-primary {
+    background: rgba(10, 35, 66, 0.08);
+}
+
+.sugeco-confirm-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0a2342;
+    margin-bottom: 0.5rem;
+}
+
+.sugeco-confirm-message {
+    font-size: 0.95rem;
+    color: #4a5568;
+    line-height: 1.5;
+}
+
+/* ==========================================
+   MODAL FOOTER
+   ========================================== */
+
+.sugeco-confirm-modal .modal-footer {
+    padding: 0.75rem 1.5rem 1.5rem;
+    border-top: none;
+    gap: 0.75rem;
+}
+
+.sugeco-confirm-cancel,
+.sugeco-confirm-ok {
+    min-width: 110px;
+    padding: 0.6rem 1.25rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.sugeco-confirm-cancel {
+    background: transparent;
+    border: 1px solid #cbd5e0;
+    color: #4a5568;
+}
+
+.sugeco-confirm-cancel:hover {
+    background: #f7fafc;
+    border-color: #a0aec0;
+    color: #2d3748;
+}
+
+.sugeco-confirm-ok.btn-primary {
+    background: #0a2342;
+    border-color: #0a2342;
+}
+
+.sugeco-confirm-ok.btn-primary:hover {
+    background: #143366;
+    border-color: #143366;
+}
+
+.sugeco-confirm-ok.btn-danger {
+    background: #b3122e;
+    border-color: #b3122e;
+}
+
+.sugeco-confirm-ok.btn-danger:hover {
+    background: #8f0e24;
+    border-color: #8f0e24;
+}
+
+.sugeco-confirm-ok.btn-warning {
+    background: #e07a00;
+    border-color: #e07a00;
+    color: #fff;
+}
+
+.sugeco-confirm-ok.btn-warning:hover {
+    background: #c56b00;
+    border-color: #c56b00;
+    color: #fff;
+}
+
+.sugeco-confirm-ok.btn-success {
+    background: #1d8f4b;
+    border-color: #1d8f4b;
+}
+
+.sugeco-confirm-ok.btn-success:hover {
+    background: #177a3f;
+    border-color: #177a3f;
+}
+
+.sugeco-confirm-ok.btn-info {
+    background: #1c6dd0;
+    border-color: #1c6dd0;
+}
+
+.sugeco-confirm-ok.btn-info:hover {
+    background: #175db3;
+    border-color: #175db3;
+}
+
+/* Button icons */
+.sugeco-confirm-cancel i,
+.sugeco-confirm-ok i {
+    font-size: 0.85rem;
+}
+
+/* ==========================================
+   ANIMATIONS
+   ========================================== */
+
+.sugeco-confirm-modal.fade .modal-dialog {
+    transform: scale(0.9) translateY(-20px);
+    transition: transform 0.2s ease-out;
+}
+
+.sugeco-confirm-modal.show .modal-dialog {
+    transform: scale(1) translateY(0);
+}
+
+/* ==========================================
+   BACKDROP
+   ========================================== */
+
+.sugeco-confirm-modal + .modal-backdrop,
+.modal-backdrop.show {
+    background-color: rgba(10, 35, 66, 0.4);
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+@media (max-width: 576px) {
+    .sugeco-confirm-modal .modal-dialog {
+        max-width: calc(100% - 2rem);
+        margin: 1rem;
+    }
+    
+    .sugeco-confirm-modal .modal-body {
+        padding: 1.5rem 1rem 0.75rem;
+    }
+    
+    .sugeco-confirm-modal .modal-footer {
+        padding: 0.5rem 1rem 1.25rem;
+        flex-direction: column-reverse;
+    }
+    
+    .sugeco-confirm-cancel,
+    .sugeco-confirm-ok {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .sugeco-confirm-icon {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .sugeco-confirm-icon i {
+        font-size: 1.75rem !important;
+    }
+    
+    .sugeco-confirm-title {
+        font-size: 1rem;
+    }
+    
+    .sugeco-confirm-message {
+        font-size: 0.9rem;
+    }
+}
+
+/* ==========================================
+   FOCUS STATES (Accessibility)
+   ========================================== */
+
+.sugeco-confirm-cancel:focus,
+.sugeco-confirm-ok:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(10, 35, 66, 0.25);
+}
+
+.sugeco-confirm-ok.btn-danger:focus {
+    box-shadow: 0 0 0 3px rgba(179, 18, 46, 0.25);
+}
+
+.sugeco-confirm-ok.btn-warning:focus {
+    box-shadow: 0 0 0 3px rgba(224, 122, 0, 0.25);
+}
+
+.sugeco-confirm-ok.btn-success:focus {
+    box-shadow: 0 0 0 3px rgba(29, 143, 75, 0.25);
+}
+
+.sugeco-confirm-ok.btn-info:focus {
+    box-shadow: 0 0 0 3px rgba(28, 109, 208, 0.25);
+}
+
+/* ==========================================
+   DARK MODE SUPPORT (if needed in future)
+   ========================================== */
+
+@media (prefers-color-scheme: dark) {
+    /* Placeholder for dark mode styles */
+    /* Currently SUGECO uses light mode only */
+}

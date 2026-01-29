@@ -58,6 +58,7 @@ class User extends Authenticatable
         'email',
         'codice_fiscale',
         'compagnia_id',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
         'role_type',
         'password',
         'must_change_password',
@@ -92,6 +93,14 @@ class User extends Authenticatable
     public function compagnia()
     {
         return $this->belongsTo(\App\Models\Compagnia::class);
+    }
+
+    /**
+     * Unità organizzativa primaria dell'utente (nuova gerarchia).
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(\App\Models\OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     /**
@@ -173,6 +182,7 @@ class User extends Authenticatable
 
     /**
      * Verifica se l'utente ha visibilità globale su tutte le compagnie
+     * Ora si basa sulla tabella role_compagnia_visibility
      * 
      * @return bool
      */
@@ -183,8 +193,11 @@ class User extends Authenticatable
             return true;
         }
         
-        // Verifica permesso specifico
-        return $this->hasPermission('view_all_companies');
+        // Verifica se l'utente può vedere TUTTE le compagnie tramite i suoi ruoli
+        $totalCompagnie = \App\Models\Compagnia::count();
+        $visibleCompagnie = count($this->getVisibleCompagnieIds());
+        
+        return $visibleCompagnie >= $totalCompagnie;
     }
     
     /**
@@ -204,19 +217,26 @@ class User extends Authenticatable
     
     /**
      * Verifica se l'utente può accedere ai dati di una specifica compagnia
+     * Usa la tabella role_compagnia_visibility per determinare l'accesso
      * 
      * @param int $compagniaId
      * @return bool
      */
     public function canAccessCompagnia(int $compagniaId): bool
     {
-        // Visibilità globale = può accedere a tutto
-        if ($this->hasGlobalVisibility()) {
+        // Admin e amministratori vedono sempre tutto
+        if ($this->isAdmin()) {
             return true;
         }
         
-        // Altrimenti può accedere solo alla propria compagnia
-        return $this->compagnia_id === $compagniaId;
+        // Verifica nella tabella di visibilità per ogni ruolo dell'utente
+        foreach ($this->roles as $role) {
+            if ($role->canViewCompagnia($compagniaId)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     /**
@@ -232,31 +252,63 @@ class User extends Authenticatable
             return true;
         }
         
-        // Verifica permesso di modifica
-        if (!$this->hasPermission('edit_military')) {
+        // Deve avere accesso alla compagnia
+        if (!$this->canAccessCompagnia($compagniaId)) {
             return false;
         }
         
-        // Può modificare solo la propria compagnia
-        return $this->compagnia_id === $compagniaId;
+        // Verifica permesso di modifica anagrafica
+        return $this->hasPermission('anagrafica.edit');
     }
     
     /**
-     * Ottiene le compagnie visibili all'utente
+     * Ottiene le compagnie visibili all'utente basandosi sulla tabella role_compagnia_visibility
      * 
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getVisibleCompagnie()
     {
-        if ($this->hasGlobalVisibility()) {
+        // Admin e amministratori vedono tutte le compagnie
+        if ($this->isAdmin()) {
             return \App\Models\Compagnia::orderBy('nome')->get();
         }
         
-        if ($this->compagnia_id) {
-            return \App\Models\Compagnia::where('id', $this->compagnia_id)->get();
+        // Raccogli gli ID delle compagnie visibili da tutti i ruoli dell'utente
+        $compagniaIds = collect();
+        foreach ($this->roles as $role) {
+            $roleCompagniaIds = $role->getCompagnieVisibiliIds();
+            $compagniaIds = $compagniaIds->merge($roleCompagniaIds);
         }
         
-        return collect();
+        $compagniaIds = $compagniaIds->unique()->toArray();
+        
+        if (empty($compagniaIds)) {
+            return collect();
+        }
+        
+        return \App\Models\Compagnia::whereIn('id', $compagniaIds)->orderBy('nome')->get();
+    }
+    
+    /**
+     * Ottiene gli ID delle compagnie visibili all'utente
+     * 
+     * @return array
+     */
+    public function getVisibleCompagnieIds(): array
+    {
+        // Admin e amministratori vedono tutte le compagnie
+        if ($this->isAdmin()) {
+            return \App\Models\Compagnia::pluck('id')->toArray();
+        }
+        
+        // Raccogli gli ID delle compagnie visibili da tutti i ruoli dell'utente
+        $compagniaIds = collect();
+        foreach ($this->roles as $role) {
+            $roleCompagniaIds = $role->getCompagnieVisibiliIds();
+            $compagniaIds = $compagniaIds->merge($roleCompagniaIds);
+        }
+        
+        return $compagniaIds->unique()->toArray();
     }
 
     /**
@@ -279,5 +331,140 @@ class User extends Authenticatable
     public function getPermissionNames(): array
     {
         return $this->getAllPermissions()->pluck('name')->toArray();
+    }
+
+    // =========================================================================
+    // GERARCHIA ORGANIZZATIVA
+    // =========================================================================
+
+    /**
+     * Assegnazioni alle unità organizzative.
+     */
+    public function unitAssignments()
+    {
+        return $this->morphMany(\App\Models\UnitAssignment::class, 'assignable');
+    }
+
+    /**
+     * Unità organizzative a cui l'utente è assegnato.
+     */
+    public function organizationalUnits()
+    {
+        return $this->morphToMany(
+            \App\Models\OrganizationalUnit::class,
+            'assignable',
+            'unit_assignments',
+            'assignable_id',
+            'unit_id'
+        )
+            ->withPivot(['role', 'is_primary', 'start_date', 'end_date', 'notes'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Ottiene l'unità primaria dell'utente.
+     * 
+     * @return \App\Models\OrganizationalUnit|null
+     */
+    public function getPrimaryUnit(): ?\App\Models\OrganizationalUnit
+    {
+        $assignment = $this->unitAssignments()
+            ->where('is_primary', true)
+            ->active()
+            ->first();
+
+        return $assignment?->unit;
+    }
+
+    /**
+     * Verifica se l'utente ha un permesso su un'unità specifica.
+     * 
+     * @param string $permission Nome del permesso
+     * @param \App\Models\OrganizationalUnit|int $unit Unità o ID
+     * @return bool
+     */
+    public function hasPermissionOnUnit(string $permission, $unit): bool
+    {
+        $service = app(\App\Services\HierarchicalPermissionService::class);
+        
+        if (is_int($unit)) {
+            $unit = \App\Models\OrganizationalUnit::find($unit);
+        }
+        
+        if (!$unit) {
+            return false;
+        }
+
+        return $service->hasPermissionOnUnit($this, $permission, $unit);
+    }
+
+    /**
+     * Ottiene gli ID delle unità visibili all'utente nella gerarchia.
+     * 
+     * @return array
+     */
+    public function getVisibleUnitIds(): array
+    {
+        $service = app(\App\Services\HierarchicalPermissionService::class);
+        return $service->getVisibleUnitIds($this);
+    }
+
+    /**
+     * Verifica se l'utente può accedere a un'unità specifica.
+     * 
+     * @param \App\Models\OrganizationalUnit|int $unit
+     * @return bool
+     */
+    public function canAccessUnit($unit): bool
+    {
+        if ($this->isGlobalAdmin()) {
+            return true;
+        }
+
+        $unitId = $unit instanceof \App\Models\OrganizationalUnit ? $unit->id : $unit;
+        
+        return in_array($unitId, $this->getVisibleUnitIds());
+    }
+
+    /**
+     * Assegna l'utente a un'unità organizzativa.
+     * 
+     * @param \App\Models\OrganizationalUnit|int $unit
+     * @param string $role Ruolo nell'unità
+     * @param bool $isPrimary È l'assegnazione primaria?
+     * @param array $options Opzioni aggiuntive
+     * @return \App\Models\UnitAssignment
+     */
+    public function assignToUnit($unit, string $role = 'membro', bool $isPrimary = false, array $options = []): \App\Models\UnitAssignment
+    {
+        $unitId = $unit instanceof \App\Models\OrganizationalUnit ? $unit->id : $unit;
+
+        if ($isPrimary) {
+            $this->unitAssignments()->update(['is_primary' => false]);
+        }
+
+        return $this->unitAssignments()->updateOrCreate(
+            ['unit_id' => $unitId],
+            [
+                'role' => $role,
+                'is_primary' => $isPrimary,
+                'start_date' => $options['start_date'] ?? null,
+                'end_date' => $options['end_date'] ?? null,
+                'notes' => $options['notes'] ?? null,
+            ]
+        );
+    }
+
+    /**
+     * Rimuove l'utente da un'unità organizzativa.
+     * 
+     * @param \App\Models\OrganizationalUnit|int $unit
+     * @return bool
+     */
+    public function removeFromUnit($unit): bool
+    {
+        $unitId = $unit instanceof \App\Models\OrganizationalUnit ? $unit->id : $unit;
+        
+        return $this->unitAssignments()->where('unit_id', $unitId)->delete() > 0;
     }
 } 

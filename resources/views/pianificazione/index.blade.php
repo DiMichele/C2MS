@@ -178,7 +178,7 @@ window.pageData = {
                                     @endphp
                                     {{ !empty($patenti) ? implode(' ', $patenti) : '-' }}
                                 </td>
-                                <td><small>{{ $item['militare']->scadenzaApprontamento->teatro_operativo ?? ($item['militare']->approntamentoPrincipale->nome ?? '-') }}</small></td>
+                                <td><small>{{ $item['militare']->scadenzaApprontamento->teatro_operativo ?? ($item['militare']->getTeatroOperativoCodice() ?? '-') }}</small></td>
                                 
                                 <!-- Celle per ogni giorno -->
                                 @foreach($giorniMese as $giorno)

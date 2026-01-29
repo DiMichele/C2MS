@@ -259,3 +259,42 @@
     font-weight: 600;
 }
 
+/* ==========================================
+   INDICATORI DISPONIBILITA'
+   ========================================== */
+
+.militare-item.militare-disponibile {
+    border-left-color: #28a745;
+}
+
+.militare-item.militare-disponibile .militare-item-icon {
+    color: #28a745;
+}
+
+.militare-item.militare-non-disponibile {
+    background: #fff8e6;
+    border-left-color: #ffc107;
+}
+
+.militare-item.militare-non-disponibile .militare-item-icon {
+    color: #856404;
+}
+
+.militare-item.militare-non-disponibile .militare-item-name {
+    color: #856404;
+}
+
+.militare-item.militare-non-disponibile:hover {
+    background: #fff3cd;
+}
+
+.disponibilita-badge {
+    font-size: 0.7rem !important;
+    padding: 2px 6px !important;
+    flex-shrink: 0;
+}
+
+.militare-item.selected.militare-non-disponibile {
+    background: #ffeeba;
+}
+

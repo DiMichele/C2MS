@@ -18,6 +18,9 @@ namespace App\Http\Controllers;
 use App\Models\BoardActivity;
 use App\Models\BoardColumn;
 use App\Models\Militare;
+use App\Models\PrenotazioneApprontamento;
+use App\Services\AuditService;
+use App\Services\PrenotazioneApprontamentoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -309,6 +312,20 @@ class BoardController extends Controller
             // Ottieni l'ID dell'utente autenticato o del primo utente disponibile
             $userId = auth()->id() ?? \App\Models\User::first()->id;
             
+            // Determina l'unità organizzativa basandosi sulla compagnia mounting
+            $organizationalUnitId = null;
+            if ($validated['compagnia_mounting_id']) {
+                // Cerca l'unità organizzativa che corrisponde alla compagnia legacy
+                $orgUnit = \App\Models\OrganizationalUnit::where('legacy_compagnia_id', $validated['compagnia_mounting_id'])->first();
+                if ($orgUnit) {
+                    $organizationalUnitId = $orgUnit->id;
+                }
+            }
+            // Fallback: usa l'unità dell'utente se disponibile
+            if (!$organizationalUnitId && auth()->user()->organizational_unit_id) {
+                $organizationalUnitId = auth()->user()->organizational_unit_id;
+            }
+            
             $activity = BoardActivity::create([
                 'title' => $validated['title'],
                 'description' => $validated['description'] ?? null,
@@ -317,6 +334,7 @@ class BoardController extends Controller
                 'column_id' => $validated['column_id'],
                 'compagnia_id' => $validated['compagnia_mounting_id'], // Mantieni per compatibilità
                 'compagnia_mounting_id' => $validated['compagnia_mounting_id'],
+                'organizational_unit_id' => $organizationalUnitId, // Nuova gerarchia organizzativa
                 'sigla_cpt_suggerita' => $validated['sigla_cpt_suggerita'] ?? null,
                 'created_by' => $userId,
                 'order' => $this->getNextOrderForColumn($validated['column_id'])
@@ -330,6 +348,9 @@ class BoardController extends Controller
             }
 
             DB::commit();
+
+            // Registra la creazione nel log di audit
+            AuditService::logCreate($activity, "Creata attività: {$activity->title}");
 
             return redirect()->route('board.index')
                 ->with('success', 'Attività creata con successo e sincronizzata con il CPT!');
@@ -420,6 +441,14 @@ class BoardController extends Controller
 
             DB::commit();
 
+            // Registra la modifica nel log di audit
+            AuditService::logUpdate(
+                $activity,
+                ['title' => $oldTitle, 'start_date' => $oldStartDate, 'end_date' => $oldEndDate],
+                ['title' => $activity->title, 'start_date' => $activity->start_date, 'end_date' => $activity->end_date],
+                "Modificata attività: {$activity->title}"
+            );
+
             return redirect()->route('board.activities.show', $activity)
                 ->with('success', 'Attività aggiornata con successo e sincronizzata con il CPT!');
                 
@@ -456,7 +485,7 @@ class BoardController extends Controller
             $value = $request->input('value');
             
             // Campi consentiti per l'autosalvataggio
-            $allowedFields = ['title', 'description', 'start_date', 'end_date', 'column_id'];
+            $allowedFields = ['title', 'description', 'start_date', 'end_date', 'column_id', 'compagnia_mounting_id'];
             
             if (!in_array($field, $allowedFields)) {
                 return response()->json([
@@ -468,10 +497,26 @@ class BoardController extends Controller
             // Validazione specifica per campo
             $this->validateFieldValue($field, $value);
             
-            $activity->update([$field => $value]);
+            // Se cambia compagnia_mounting_id, aggiorna anche compagnia_id e organizational_unit_id
+            if ($field === 'compagnia_mounting_id') {
+                // Trova l'unità organizzativa corrispondente
+                $organizationalUnitId = null;
+                $orgUnit = \App\Models\OrganizationalUnit::where('legacy_compagnia_id', $value)->first();
+                if ($orgUnit) {
+                    $organizationalUnitId = $orgUnit->id;
+                }
+                
+                $activity->update([
+                    'compagnia_mounting_id' => $value,
+                    'compagnia_id' => $value,
+                    'organizational_unit_id' => $organizationalUnitId
+                ]);
+            } else {
+                $activity->update([$field => $value]);
+            }
             
             // Ricarica l'attività con le relazioni per restituire dati aggiornati
-            $activity->load(['column']);
+            $activity->load(['column', 'compagniaMounting']);
             
             return response()->json([
                 'success' => true,
@@ -482,7 +527,8 @@ class BoardController extends Controller
                     'description' => $activity->description,
                     'start_date' => $activity->start_date->format('d/m/Y'),
                     'end_date' => $activity->end_date ? $activity->end_date->format('d/m/Y') : null,
-                    'column' => $activity->column
+                    'column' => $activity->column,
+                    'compagnia_mounting' => $activity->compagniaMounting
                 ]
             ]);
             
@@ -569,6 +615,14 @@ class BoardController extends Controller
             // Sincronizza con CPT
             $this->sincronizzaConCPT($activity, [$militare->id]);
             
+            // Registra nel log di audit
+            AuditService::log(
+                'update',
+                "Aggiunto militare {$militare->cognome} {$militare->nome} all'attività {$activity->title}",
+                $activity,
+                ['militare_id' => $militare->id, 'militare_nome' => "{$militare->cognome} {$militare->nome}"]
+            );
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Militare aggiunto con successo all\'attività e sincronizzato con il CPT!',
@@ -631,7 +685,30 @@ class BoardController extends Controller
             // Rimuovi dal CPT
             $this->rimuoviDaCPT($activity, [$militare->id]);
             
+            // Se c'è una prenotazione collegata, eliminala
+            $prenotazione = PrenotazioneApprontamento::where('militare_id', $militare->id)
+                ->where('data_prenotazione', $activity->start_date?->format('Y-m-d'))
+                ->where('stato', 'prenotato')
+                ->first();
+            
+            if ($prenotazione) {
+                $prenotazioneService = app(PrenotazioneApprontamentoService::class);
+                $prenotazioneService->eliminaPrenotazione($prenotazione);
+                Log::info('Eliminata prenotazione collegata al militare rimosso', [
+                    'prenotazione_id' => $prenotazione->id,
+                    'militare_id' => $militare->id
+                ]);
+            }
+            
             DB::commit();
+            
+            // Registra nel log di audit
+            AuditService::log(
+                'update',
+                "Rimosso militare {$militare->cognome} {$militare->nome} dall'attività {$activity->title}",
+                $activity,
+                ['militare_id' => $militare->id, 'militare_nome' => "{$militare->cognome} {$militare->nome}"]
+            );
             
             Log::info('Militare rimosso da attività e CPT', [
                 'activity_id' => $activity->id,
@@ -641,7 +718,7 @@ class BoardController extends Controller
             
             return response()->json([
                 'success' => true,
-                'message' => 'Militare rimosso con successo dall\'attività e dal CPT'
+                'message' => 'Militare rimosso con successo'
             ]);
             
         } catch (\Exception $e) {
@@ -663,6 +740,7 @@ class BoardController extends Controller
 
     /**
      * Elimina un'attività
+     * Se l'attività è collegata a prenotazioni approntamento, elimina anche quelle (cascata)
      * 
      * @param BoardActivity $activity Attività da eliminare
      * @return \Illuminate\Http\RedirectResponse Redirect con messaggio di successo o errore
@@ -671,6 +749,35 @@ class BoardController extends Controller
     {
         try {
             DB::beginTransaction();
+            
+            // Registra l'eliminazione PRIMA di eliminare
+            $activityTitle = $activity->title;
+            AuditService::logDelete($activity, "Eliminata attività: {$activityTitle}");
+            
+            // Se l'attività è collegata a prenotazioni, elimina anche quelle
+            if ($activity->prenotazione_approntamento_id) {
+                $prenotazioneService = app(PrenotazioneApprontamentoService::class);
+                $prenotazioneService->eliminaDaBoard($activity);
+                Log::info('Eliminate prenotazioni collegate all\'attività', [
+                    'activity_id' => $activity->id,
+                    'prenotazione_id' => $activity->prenotazione_approntamento_id
+                ]);
+            } else {
+                // Elimina anche tutte le prenotazioni dei militari per questa attività
+                $militariIds = $activity->militari->pluck('id')->toArray();
+                if (!empty($militariIds)) {
+                    // Cerca prenotazioni collegate tramite data e militari
+                    $prenotazioni = PrenotazioneApprontamento::whereIn('militare_id', $militariIds)
+                        ->where('data_prenotazione', $activity->start_date?->format('Y-m-d'))
+                        ->where('stato', 'prenotato')
+                        ->get();
+                    
+                    $prenotazioneService = app(PrenotazioneApprontamentoService::class);
+                    foreach ($prenotazioni as $prenotazione) {
+                        $prenotazioneService->eliminaPrenotazione($prenotazione);
+                    }
+                }
+            }
             
             // PRIMA rimuovi dal CPT tutte le pianificazioni associate
             $militariIds = $activity->militari->pluck('id')->toArray();
@@ -736,7 +843,8 @@ class BoardController extends Controller
             'description' => 'nullable|string',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date',
-            'column_id' => 'required|exists:board_columns,id'
+            'column_id' => 'required|exists:board_columns,id',
+            'compagnia_mounting_id' => 'required|exists:compagnie,id'
         ];
 
         if (isset($rules[$field])) {
@@ -1058,6 +1166,9 @@ class BoardController extends Controller
         $temp_file = tempnam(sys_get_temp_dir(), 'excel');
         $writer->save($temp_file);
         
+        // Registra l'esportazione nel log di audit
+        AuditService::logExport('attivita', 1, "Esportata attività: {$activity->title}");
+        
         return response()->download($temp_file, $filename)->deleteFileAfterSend(true);
     }
     
@@ -1163,6 +1274,9 @@ class BoardController extends Controller
         
         $temp_file = tempnam(sys_get_temp_dir(), 'excel');
         $writer->save($temp_file);
+        
+        // Registra l'esportazione nel log di audit
+        AuditService::logExport('board_attivita', $activities->count(), "Esportata board completa attività");
         
         return response()->download($temp_file, $filename)->deleteFileAfterSend(true);
     }

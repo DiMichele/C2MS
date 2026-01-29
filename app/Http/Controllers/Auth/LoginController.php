@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -43,6 +44,10 @@ class LoginController extends Controller
         // Se l'utente non esiste
         if (!$user) {
             RateLimiter::hit($this->throttleKey($request));
+            
+            // Registra il tentativo fallito
+            AuditService::logLoginFailed($request->username, 'Username non trovato');
+            
             throw ValidationException::withMessages([
                 'username' => 'Username non trovato.',
             ]);
@@ -51,6 +56,10 @@ class LoginController extends Controller
         // Verifica password
         if (!Hash::check($request->password, $user->password)) {
             RateLimiter::hit($this->throttleKey($request));
+            
+            // Registra il tentativo fallito
+            AuditService::logLoginFailed($request->username, 'Password errata');
+            
             throw ValidationException::withMessages([
                 'password' => 'Password errata.',
             ]);
@@ -61,6 +70,9 @@ class LoginController extends Controller
         $request->session()->regenerate();
         RateLimiter::clear($this->throttleKey($request));
 
+        // Registra l'accesso riuscito
+        AuditService::logLogin($user);
+
         return redirect()->intended(route('dashboard'))
             ->with('success', 'Benvenuto, ' . $user->name . '!');
     }
@@ -70,6 +82,12 @@ class LoginController extends Controller
      */
     public function logout(Request $request)
     {
+        // Registra il logout PRIMA di effettuarlo
+        $user = Auth::user();
+        if ($user) {
+            AuditService::logLogout($user);
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();

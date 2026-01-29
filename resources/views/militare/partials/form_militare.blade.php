@@ -398,9 +398,9 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="email_istituzionale" class="form-label">Email Istituzionale</label>
-                                    <input type="email" class="form-control @error('email_istituzionale') is-invalid @enderror" id="email_istituzionale" name="email_istituzionale" value="{{ old('email_istituzionale', $militare->email_istituzionale ?? '') }}" placeholder="esempio@esercito.difesa.it">
-                                    @error('email_istituzionale')
+                                    <label for="email" class="form-label">Email Istituzionale</label>
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email', $militare->email ?? '') }}" placeholder="esempio@esercito.difesa.it">
+                                    @error('email')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>

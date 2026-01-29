@@ -17,6 +17,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\OrganizationalUnit;
 
 /**
  * Modello per le attività della bacheca (board)
@@ -62,9 +63,11 @@ class BoardActivity extends Model
         'created_by',
         'compagnia_id',
         'compagnia_mounting_id',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
         'sigla_cpt_suggerita',
         'status',
-        'order'
+        'order',
+        'prenotazione_approntamento_id'
     ];
 
     /**
@@ -89,6 +92,16 @@ class BoardActivity extends Model
     public function column()
     {
         return $this->belongsTo(BoardColumn::class);
+    }
+
+    /**
+     * Unità organizzativa (nuova gerarchia)
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     /**
@@ -146,6 +159,26 @@ class BoardActivity extends Model
     public function compagniaMounting()
     {
         return $this->belongsTo(Compagnia::class, 'compagnia_mounting_id');
+    }
+
+    /**
+     * Relazione con la prenotazione approntamento collegata
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function prenotazioneApprontamento()
+    {
+        return $this->belongsTo(PrenotazioneApprontamento::class);
+    }
+
+    /**
+     * Verifica se l'attività è collegata a una prenotazione approntamento
+     * 
+     * @return bool
+     */
+    public function isCollegataAPrenotazione(): bool
+    {
+        return $this->prenotazione_approntamento_id !== null;
     }
 
     // ==========================================

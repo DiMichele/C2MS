@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Compagnia;
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -35,13 +36,14 @@ class AdminController extends Controller
      */
     public function permissionsIndex()
     {
-        $roles = Role::with('permissions')->orderBy('name')->get();
+        $roles = Role::with(['permissions', 'compagnieVisibili'])->orderBy('name')->get();
         $permissions = \App\Models\Permission::orderBy('category')->orderBy('name')->get();
+        $compagnie = Compagnia::orderBy('nome')->get();
         
         // Raggruppa permessi per categoria
         $permissionsByCategory = $permissions->groupBy('category');
         
-        return view('admin.permissions.index', compact('roles', 'permissions', 'permissionsByCategory'));
+        return view('admin.permissions.index', compact('roles', 'permissions', 'permissionsByCategory', 'compagnie'));
     }
 
     /**
@@ -87,12 +89,16 @@ class AdminController extends Controller
             'username' => $username,
             'email' => $email,
             'compagnia_id' => $validated['compagnia_id'] ?? null,
-            'password' => Hash::make('11Reggimento'),
+            // FIX: Password spostata in configurazione per facilità di gestione
+            'password' => Hash::make(config('auth.default_password')),
             'must_change_password' => true,
         ]);
 
         // Assegna ruolo
         $user->assignRole($role);
+
+        // Registra la creazione nel log di audit
+        AuditService::logCreate($user, "Creato utente: {$user->name} ({$user->username}) con ruolo {$role->display_name}");
 
         $compagniaInfo = $user->compagnia_id ? " (Compagnia: {$user->compagnia->nome})" : " (Accesso globale)";
         
@@ -131,14 +137,29 @@ class AdminController extends Controller
             return back()->withErrors(['compagnia_id' => 'La compagnia è obbligatoria per questo ruolo.'])->withInput();
         }
 
+        // Salva i valori originali per l'audit
+        $oldValues = $user->toArray();
+        $oldRole = $user->roles->first()?->display_name ?? 'Nessuno';
+
+        // FIX: Sincronizza email con username (come in store())
+        $newUsername = strtolower($validated['username']);
         $user->update([
             'name' => $validated['name'],
-            'username' => strtolower($validated['username']),
+            'username' => $newUsername,
+            'email' => $newUsername . '@sugeco.local', // Aggiorna email automaticamente
             'compagnia_id' => $validated['compagnia_id'] ?? null,
         ]);
 
         // Aggiorna ruolo
         $user->roles()->sync([$validated['role_id']]);
+
+        // Registra la modifica nel log di audit
+        AuditService::logUpdate(
+            $user,
+            ['name' => $oldValues['name'], 'username' => $oldValues['username'], 'ruolo' => $oldRole],
+            ['name' => $user->name, 'username' => $user->username, 'ruolo' => $role->display_name],
+            "Modificato utente: {$user->name}"
+        );
 
         return redirect()->route('admin.users.index')
             ->with('success', "Utente {$user->name} aggiornato con successo!");
@@ -162,6 +183,11 @@ class AdminController extends Controller
         }
 
         $name = $user->name;
+        $username = $user->username;
+        
+        // Registra l'eliminazione PRIMA di eliminare
+        AuditService::logDelete($user, "Eliminato utente: {$name} ({$username})");
+        
         $user->delete();
 
         return redirect()->route('admin.users.index')
@@ -173,13 +199,24 @@ class AdminController extends Controller
      */
     public function resetPassword(User $user)
     {
+        // FIX: Password spostata in configurazione per facilità di gestione
+        $defaultPassword = config('auth.default_password');
+        
         $user->update([
-            'password' => Hash::make('11Reggimento'),
+            'password' => Hash::make($defaultPassword),
             'must_change_password' => true,
         ]);
 
+        // Registra il reset password nel log di audit
+        AuditService::log(
+            'password_change',
+            "Password resettata per l'utente {$user->name} ({$user->username}) da un amministratore",
+            $user,
+            ['reset_by' => auth()->user()->name]
+        );
+
         return redirect()->route('admin.users.index')
-            ->with('success', "Password di {$user->name} resettata a: 11Reggimento");
+            ->with('success', "Password di {$user->name} resettata a: {$defaultPassword}");
     }
 
     /**
@@ -189,6 +226,12 @@ class AdminController extends Controller
     {
         // PROTEGGI I RUOLI ADMIN E AMMINISTRATORE - Non possono essere modificati
         if ($role->name === 'admin' || $role->name === 'amministratore') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Il ruolo ' . $role->display_name . ' è protetto e non può essere modificato.'
+                ], 400);
+            }
             return redirect()->route('admin.permissions.index')
                 ->with('error', 'Il ruolo ' . $role->display_name . ' è protetto e non può essere modificato. Ha automaticamente tutti i permessi.');
         }
@@ -198,8 +241,37 @@ class AdminController extends Controller
             'permissions.*' => 'exists:permissions,id'
         ]);
 
+        // Salva i permessi attuali per l'audit
+        $oldPermissions = $role->permissions->pluck('name')->toArray();
+
         $permissions = $request->input('permissions', []);
         $role->permissions()->sync($permissions);
+
+        // Ottieni i nuovi permessi per l'audit
+        $role->load('permissions');
+        $newPermissions = $role->permissions->pluck('name')->toArray();
+
+        // Registra la modifica permessi nel log di audit
+        AuditService::logPermissionChange($role->users->first() ?? new User(['name' => "Ruolo: {$role->display_name}"]), $oldPermissions, $newPermissions);
+        
+        // Registra anche come modifica al ruolo
+        AuditService::log(
+            'permission_change',
+            "Modificati permessi del ruolo: {$role->display_name}",
+            null,
+            [
+                'role' => $role->name,
+                'old_permissions' => $oldPermissions,
+                'new_permissions' => $newPermissions
+            ]
+        );
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Permessi aggiornati per: ' . $role->display_name
+            ]);
+        }
 
         return redirect()->route('admin.permissions.index')
             ->with('success', "Permessi aggiornati per il ruolo: {$role->display_name}");
@@ -245,8 +317,71 @@ class AdminController extends Controller
             $role->permissions()->sync($validated['permissions']);
         }
 
+        // Registra la creazione nel log di audit
+        AuditService::log(
+            'create',
+            "Creato nuovo ruolo: {$role->display_name}",
+            null,
+            [
+                'role_name' => $role->name,
+                'role_display_name' => $role->display_name,
+                'permissions_count' => count($validated['permissions'] ?? [])
+            ]
+        );
+
         return redirect()->route('admin.permissions.index')
             ->with('success', "Ruolo {$role->display_name} creato con successo!");
+    }
+
+    /**
+     * Aggiorna le compagnie visibili per un ruolo
+     */
+    public function updateCompanyVisibility(Request $request, Role $role)
+    {
+        // I ruoli admin e amministratore vedono sempre tutte le compagnie
+        if ($role->name === 'admin' || $role->name === 'amministratore') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Il ruolo ' . $role->display_name . ' ha automaticamente visibilità su tutte le compagnie.'
+            ], 400);
+        }
+        
+        $request->validate([
+            'compagnie' => 'array',
+            'compagnie.*' => 'exists:compagnie,id'
+        ]);
+
+        // Salva le compagnie attuali per l'audit
+        $oldCompagnie = $role->compagnieVisibili->pluck('nome')->toArray();
+
+        $compagnieIds = $request->input('compagnie', []);
+        $role->syncCompagnieVisibili($compagnieIds);
+
+        // Ottieni i nuovi valori per l'audit
+        $role->load('compagnieVisibili');
+        $newCompagnie = $role->compagnieVisibili->pluck('nome')->toArray();
+
+        // Registra la modifica nel log di audit
+        AuditService::log(
+            'permission_change',
+            "Modificata visibilità compagnie per il ruolo: {$role->display_name}",
+            null,
+            [
+                'role' => $role->name,
+                'old_compagnie' => $oldCompagnie,
+                'new_compagnie' => $newCompagnie
+            ]
+        );
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Visibilità compagnie aggiornata per: ' . $role->display_name
+            ]);
+        }
+
+        return redirect()->route('admin.permissions.index')
+            ->with('success', "Visibilità compagnie aggiornata per il ruolo: {$role->display_name}");
     }
 
     /**
@@ -261,7 +396,20 @@ class AdminController extends Controller
         }
 
         $name = $role->display_name;
+        $roleName = $role->name;
         $usersCount = $role->users()->count();
+        
+        // Registra l'eliminazione PRIMA di eliminare
+        AuditService::log(
+            'delete',
+            "Eliminato ruolo: {$name}",
+            null,
+            [
+                'role_name' => $roleName,
+                'role_display_name' => $name,
+                'affected_users' => $usersCount
+            ]
+        );
         
         // Rimuovi il ruolo da tutti gli utenti assegnati
         $role->users()->detach();

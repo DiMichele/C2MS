@@ -267,35 +267,7 @@
     </div>
 </div>
 
-<!-- Modal Conferma Eliminazione -->
-<div class="modal fade" id="deleteCorsoModal" tabindex="-1" aria-labelledby="deleteCorsoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteCorsoModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Conferma Eliminazione
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">Sei sicuro di voler eliminare il corso <strong id="deleteCorsoNome"></strong>?</p>
-                <div class="alert alert-warning mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Attenzione:</strong> Questa azione eliminerà anche tutte le scadenze associate a questo corso per tutti i militari.
-                </div>
-                <input type="hidden" id="delete_corso_id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="fas fa-trash me-1"></i>Elimina
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
 
 <script>
 (function() {
@@ -483,27 +455,21 @@
         
         // Gestione pulsanti eliminazione
         document.querySelectorAll('.delete-corso-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 const corsoId = this.dataset.corsoId;
                 const nome = this.dataset.nome;
                 
-                document.getElementById('delete_corso_id').value = corsoId;
-                document.getElementById('deleteCorsoNome').textContent = nome;
+                // Usa il sistema di conferma unificato
+                const confirmed = await SUGECO.Confirm.show({
+                    title: 'Conferma Eliminazione',
+                    message: `Eliminare il corso "${nome}"? Verranno eliminate anche tutte le scadenze associate.`,
+                    type: 'danger',
+                    confirmText: 'Elimina'
+                });
                 
-                const modal = new bootstrap.Modal(document.getElementById('deleteCorsoModal'));
-                modal.show();
-            });
-        });
-        
-        // Conferma eliminazione
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', function() {
-                const corsoId = document.getElementById('delete_corso_id').value;
+                if (!confirmed) return;
                 
-                this.disabled = true;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
-                
+                // Esegui eliminazione
                 fetch('{{ url("gestione-spp") }}' + '/' + corsoId, {
                     method: 'DELETE',
                     headers: {
@@ -521,18 +487,14 @@
                 })
                 .then(function(data) {
                     if (data.success) {
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteCorsoModal'));
-                        modal.hide();
                         location.reload();
                     }
                 })
                 .catch(function(error) {
-                    alert('Errore: ' + error.message);
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                    showError('Errore: ' + error.message);
                 });
             });
-        }
+        });
 
         // Ricerca e filtri
         if (searchInput) {

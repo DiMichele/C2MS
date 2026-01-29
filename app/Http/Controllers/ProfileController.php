@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -46,6 +47,9 @@ class ProfileController extends Controller
             'must_change_password' => false,
             'last_password_change' => now(),
         ]);
+
+        // Registra il cambio password nel log di audit
+        AuditService::logPasswordChange($user);
 
         return back()->with('success', 'Password cambiata con successo!');
     }

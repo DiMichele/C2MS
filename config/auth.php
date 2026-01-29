@@ -112,4 +112,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default User Password
+    |--------------------------------------------------------------------------
+    |
+    | Password di default per nuovi utenti e reset password.
+    | Gli utenti verranno obbligati a cambiarla al primo accesso.
+    |
+    */
+
+    'default_password' => env('DEFAULT_USER_PASSWORD', '11Reggimento'),
+
 ];

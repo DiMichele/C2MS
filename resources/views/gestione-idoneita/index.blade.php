@@ -225,35 +225,7 @@
     </div>
 </div>
 
-<!-- Modal Conferma Eliminazione -->
-<div class="modal fade" id="deleteIdoneitaModal" tabindex="-1" aria-labelledby="deleteIdoneitaModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteIdoneitaModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Conferma Eliminazione
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">Sei sicuro di voler eliminare il tipo di idoneità <strong id="deleteIdoneitaNome"></strong>?</p>
-                <div class="alert alert-warning mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Attenzione:</strong> Se ci sono scadenze associate, il tipo verrà disattivato invece di essere eliminato.
-                </div>
-                <input type="hidden" id="delete_idoneita_id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                    <i class="fas fa-trash me-1"></i>Elimina
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
 
 <script>
 (function() {
@@ -441,27 +413,21 @@
         
         // Gestione pulsanti eliminazione
         document.querySelectorAll('.delete-idoneita-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 const idoneitaId = this.dataset.idoneitaId;
                 const nome = this.dataset.nome;
                 
-                document.getElementById('delete_idoneita_id').value = idoneitaId;
-                document.getElementById('deleteIdoneitaNome').textContent = nome;
+                // Usa il sistema di conferma unificato
+                const confirmed = await SUGECO.Confirm.show({
+                    title: 'Conferma Eliminazione',
+                    message: `Eliminare il tipo di idoneità "${nome}"? Se ci sono scadenze associate, verrà disattivato.`,
+                    type: 'danger',
+                    confirmText: 'Elimina'
+                });
                 
-                const modal = new bootstrap.Modal(document.getElementById('deleteIdoneitaModal'));
-                modal.show();
-            });
-        });
-        
-        // Conferma eliminazione
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', function() {
-                const idoneitaId = document.getElementById('delete_idoneita_id').value;
+                if (!confirmed) return;
                 
-                this.disabled = true;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
-                
+                // Esegui eliminazione
                 fetch('{{ url("gestione-idoneita") }}' + '/' + idoneitaId, {
                     method: 'DELETE',
                     headers: {
@@ -479,18 +445,14 @@
                 })
                 .then(function(data) {
                     if (data.success) {
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteIdoneitaModal'));
-                        modal.hide();
                         location.reload();
                     }
                 })
                 .catch(function(error) {
-                    alert('Errore: ' + error.message);
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                    showError('Errore: ' + error.message);
                 });
             });
-        }
+        });
 
         // Ricerca
         if (searchInput) {

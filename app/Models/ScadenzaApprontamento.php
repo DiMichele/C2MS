@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class ScadenzaApprontamento extends Model
 {
@@ -14,6 +15,7 @@ class ScadenzaApprontamento extends Model
 
     protected $fillable = [
         'militare_id',
+        'teatro_operativo_id',
         'teatro_operativo',
         'ultimo_poligono_approntamento',
         'poligono',
@@ -33,11 +35,11 @@ class ScadenzaApprontamento extends Model
     ];
 
     /**
-     * Configurazione delle colonne per la visualizzazione
+     * Configurazione delle colonne per la visualizzazione (FALLBACK)
+     * Usata solo se la tabella config_colonne_approntamenti non esiste
      * Le colonne marcate come 'fonte' => 'scadenze_militari' leggono dalla tabella condivisa
      */
-    public const COLONNE = [
-        // Colonne condivise con SPP (Corsi di Formazione)
+    public const COLONNE_DEFAULT = [
         'idoneita_to' => ['label' => 'Idoneità T.O.', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'idoneita_to'],
         'bls' => ['label' => 'BLS', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'blsd'],
         'ultimo_poligono_approntamento' => ['label' => 'Ultimo Poligono Approntamento', 'fonte' => 'approntamenti'],
@@ -54,7 +56,6 @@ class ScadenzaApprontamento extends Model
         'rapporto_media' => ['label' => 'RAPPORTO CON I MEDIA', 'fonte' => 'approntamenti'],
         'abuso_alcol_droga' => ['label' => 'ABUSO ALCOL e DROGA', 'fonte' => 'approntamenti'],
         'training_covid' => ['label' => 'TRAINING ON COVID (A cura DSS)', 'fonte' => 'approntamenti'],
-        // Colonne condivise con SPP
         'lavoratore_4h' => ['label' => 'Lavoratore 4H (5 anni)', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'lavoratore_4h'],
         'lavoratore_8h' => ['label' => 'Lavoratore 8H (5 anni)', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'lavoratore_8h'],
         'preposto' => ['label' => 'Preposto (2 anni)', 'fonte' => 'scadenze_militari', 'campo_sorgente' => 'preposto'],
@@ -62,18 +63,44 @@ class ScadenzaApprontamento extends Model
     ];
 
     /**
-     * Colonne che provengono da scadenze_militari
+     * Getter dinamico per COLONNE (compatibilità con codice esistente)
+     * Legge dalla tabella config_colonne_approntamenti se esiste
      */
-    public const COLONNE_DA_SCADENZE_MILITARI = [
-        'idoneita_to', 'bls', 'lavoratore_4h', 'lavoratore_8h', 'preposto'
-    ];
+    public static function getColonne(): array
+    {
+        // Verifica se la tabella esiste
+        if (Schema::hasTable('config_colonne_approntamenti')) {
+            return ConfigColonnaApprontamento::getColonneAttive();
+        }
+        return self::COLONNE_DEFAULT;
+    }
 
     /**
-     * Durate in mesi per le scadenze proprie (se applicabile)
+     * Property accessor per compatibilità con codice esistente che usa COLONNE
      */
-    private const DURATE = [
-        // Le durate per colonne condivise sono gestite da ScadenzaMilitare
-    ];
+    public const COLONNE = 'use_getColonne_method';
+
+    /**
+     * Colonne che provengono da scadenze_militari (dinamico)
+     */
+    public static function getColonneDaScadenzeMilitari(): array
+    {
+        if (Schema::hasTable('config_colonne_approntamenti')) {
+            return ConfigColonnaApprontamento::getColonneCondivise();
+        }
+        return ['idoneita_to', 'bls', 'lavoratore_4h', 'lavoratore_8h', 'preposto'];
+    }
+
+    /**
+     * Durate in mesi per le scadenze (dinamico dal DB)
+     */
+    public static function getDurataCampo(string $campo): ?int
+    {
+        if (Schema::hasTable('config_colonne_approntamenti')) {
+            return ConfigColonnaApprontamento::getScadenzaMesi($campo);
+        }
+        return null;
+    }
 
     // Relazione con Militare
     public function militare()
@@ -86,7 +113,7 @@ class ScadenzaApprontamento extends Model
      */
     public static function isColonnaCondivisa(string $campo): bool
     {
-        return in_array($campo, self::COLONNE_DA_SCADENZE_MILITARI);
+        return in_array($campo, self::getColonneDaScadenzeMilitari());
     }
 
     /**
@@ -94,7 +121,10 @@ class ScadenzaApprontamento extends Model
      */
     public static function getCampoSorgente(string $campo): string
     {
-        $config = self::COLONNE[$campo] ?? null;
+        if (Schema::hasTable('config_colonne_approntamenti')) {
+            return ConfigColonnaApprontamento::getCampoSorgente($campo);
+        }
+        $config = self::COLONNE_DEFAULT[$campo] ?? null;
         return $config['campo_sorgente'] ?? $campo;
     }
 
@@ -142,7 +172,7 @@ class ScadenzaApprontamento extends Model
             return null;
         }
         
-        $mesi = self::DURATE[$campo] ?? null;
+        $mesi = self::getDurataCampo($campo);
         
         if (!$mesi) {
             return null;
@@ -232,8 +262,12 @@ class ScadenzaApprontamento extends Model
      */
     public static function getLabels(): array
     {
+        if (Schema::hasTable('config_colonne_approntamenti')) {
+            return ConfigColonnaApprontamento::getLabels();
+        }
+        
         $labels = [];
-        foreach (self::COLONNE as $campo => $config) {
+        foreach (self::COLONNE_DEFAULT as $campo => $config) {
             $labels[$campo] = $config['label'];
         }
         return $labels;
@@ -244,7 +278,8 @@ class ScadenzaApprontamento extends Model
      */
     public static function getColonneCattedre(): array
     {
-        return array_filter(self::COLONNE, function($config, $campo) {
+        $colonne = self::getColonne();
+        return array_filter($colonne, function($config, $campo) {
             // Escludi le colonne condivise e teatro_operativo
             return ($config['fonte'] ?? '') === 'approntamenti' && $campo !== 'teatro_operativo';
         }, ARRAY_FILTER_USE_BOTH);

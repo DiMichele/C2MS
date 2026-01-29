@@ -9,15 +9,16 @@ use Illuminate\Database\Eloquent\Model;
  * Modello per i tipi di poligono
  * 
  * @property int $id
+ * @property string $codice
  * @property string $nome
  * @property string|null $descrizione
- * @property int $punteggio_minimo
- * @property int $punteggio_massimo
+ * @property int $durata_mesi
  * @property bool $attivo
+ * @property int $ordine
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * 
- * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\Poligono[] $poligoni
+ * @property-read \Illuminate\Database\Eloquent\Collection|\App\Models\ScadenzaPoligono[] $scadenzePoligoni
  */
 class TipoPoligono extends Model
 {
@@ -29,8 +30,6 @@ class TipoPoligono extends Model
         'codice',
         'nome',
         'descrizione',
-        'punteggio_minimo',
-        'punteggio_massimo',
         'durata_mesi',
         'attivo',
         'ordine'
@@ -38,8 +37,6 @@ class TipoPoligono extends Model
 
     protected $casts = [
         'attivo' => 'boolean',
-        'punteggio_minimo' => 'integer',
-        'punteggio_massimo' => 'integer',
         'durata_mesi' => 'integer',
         'ordine' => 'integer'
     ];
@@ -47,14 +44,6 @@ class TipoPoligono extends Model
     // ==========================================
     // RELAZIONI
     // ==========================================
-
-    /**
-     * Poligoni di questo tipo
-     */
-    public function poligoni()
-    {
-        return $this->hasMany(Poligono::class, 'tipo_poligono_id');
-    }
 
     /**
      * Scadenze poligoni di questo tipo
@@ -100,42 +89,4 @@ class TipoPoligono extends Model
         return $query->where('codice', $codice);
     }
 
-    // ==========================================
-    // METODI HELPER
-    // ==========================================
-
-    /**
-     * Verifica se un punteggio è sufficiente per superare il poligono
-     */
-    public function isPunteggioSufficiente(int $punteggio): bool
-    {
-        return $punteggio >= $this->punteggio_minimo;
-    }
-
-    /**
-     * Calcola la percentuale del punteggio
-     */
-    public function calcolaPercentuale(int $punteggio): float
-    {
-        if ($this->punteggio_massimo == 0) {
-            return 0;
-        }
-        
-        return round(($punteggio / $this->punteggio_massimo) * 100, 2);
-    }
-
-    /**
-     * Ottiene il colore del badge in base al punteggio
-     */
-    public function getColoreBadge(int $punteggio): string
-    {
-        $percentuale = $this->calcolaPercentuale($punteggio);
-        
-        if ($percentuale >= 90) return 'success';
-        if ($percentuale >= 80) return 'primary';
-        if ($percentuale >= 70) return 'warning';
-        if ($percentuale >= 60) return 'secondary';
-        
-        return 'danger';
-    }
 }

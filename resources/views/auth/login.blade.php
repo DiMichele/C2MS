@@ -8,7 +8,8 @@
     
     <!-- Bootstrap 5 CSS -->
     <link href="{{ asset('vendor/css/bootstrap.min.css') }}" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font locali (funziona offline) -->
+    <link href="{{ asset('vendor/css/google-fonts.css') }}" rel="stylesheet">
     
     <style>
         * {
@@ -29,7 +30,7 @@
         }
 
         body {
-            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;

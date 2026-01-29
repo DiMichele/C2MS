@@ -490,88 +490,15 @@
                     <label class="form-label"><strong>Posti:</strong> <span id="posizioneServizio"></span></label>
                 </div>
 
+                <!-- Selettore Militari con Disponibilità Automatica -->
                 <div class="mb-3">
-                    <label class="form-label">Seleziona Militari</label>
-                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px;">
-                        @php
-                            // Funzione helper per classificare il grado
-                            $classificaGrado = function($nomeGrado) {
-                                $nomeGrado = strtolower(trim($nomeGrado));
-                                
-                                // UFFICIALI - match precisi (da Colonnello a Tenente)
-                                if ($nomeGrado === 'colonnello' || $nomeGrado === 'ten. col.' || $nomeGrado === 'tenente colonnello') return 'UFFICIALI';
-                                if ($nomeGrado === 'maggiore' || $nomeGrado === 'magg.') return 'UFFICIALI';
-                                if ($nomeGrado === 'capitano' || $nomeGrado === 'cap.') return 'UFFICIALI';
-                                // Tenente (ma NON luogotenente)
-                                if (($nomeGrado === 'tenente' || $nomeGrado === 'ten.') && !str_contains($nomeGrado, 'luogo')) return 'UFFICIALI';
-                                if ($nomeGrado === 'sottotenente' || $nomeGrado === 'sotten.') return 'UFFICIALI';
-                                
-                                // SOTTUFFICIALI - match precisi (da 1° Luogotenente a Sergente)
-                                if (str_contains($nomeGrado, 'luogoten')) return 'SOTTUFFICIALI';
-                                if (str_contains($nomeGrado, 'maresciall')) return 'SOTTUFFICIALI';
-                                if (str_contains($nomeGrado, 'sergent')) return 'SOTTUFFICIALI';
-                                if ($nomeGrado === 'mar.' || $nomeGrado === 'serg.' || str_contains($nomeGrado, 'serg.')) return 'SOTTUFFICIALI';
-                                
-                                // GRADUATI - match precisi (Graduato Aiutante, Graduato, Graduato Scelto)
-                                if (str_contains($nomeGrado, 'graduato')) return 'GRADUATI';
-                                if ($nomeGrado === 'grad.' || $nomeGrado === 'grad. sc.' || $nomeGrado === 'grad. ai.') return 'GRADUATI';
-                                
-                                // VOLONTARI - tutto il resto (da Caporal Maggiore a Soldato)
-                                return 'VOLONTARI';
-                            };
-                            
-                            $militariPerCategoria = [
-                                'UFFICIALI' => collect(),
-                                'SOTTUFFICIALI' => collect(),
-                                'GRADUATI' => collect(),
-                                'VOLONTARI' => collect(),
-                            ];
-                            
-                            foreach ($militari as $militare) {
-                                if (!$militare->grado) continue;
-                                $categoria = $classificaGrado($militare->grado->nome);
-                                $militariPerCategoria[$categoria]->push($militare);
-                            }
-                        @endphp
-                        
-                        @foreach($militariPerCategoria as $categoria => $militariCategoria)
-                            @if($militariCategoria->isNotEmpty())
-                                <div class="mb-3">
-                                    <strong class="d-block mb-2" style="color: #0a2342; font-size: 0.9rem;">{{ $categoria }}</strong>
-                                    @foreach($militariCategoria as $militare)
-                                        <div class="form-check">
-                                            <input class="form-check-input militare-checkbox" 
-                                                   type="checkbox" 
-                                                   value="{{ $militare->id }}" 
-                                                   id="militare_{{ $militare->id }}"
-                                                   data-nome="{{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}">
-                                            <label class="form-check-label" for="militare_{{ $militare->id }}">
-                                                {{ $militare->grado->sigla ?? '' }} {{ $militare->cognome }} {{ $militare->nome }}
-                                                @if($militare->plotone)
-                                                    <small class="text-muted">- {{ $militare->plotone->nome }}</small>
-                                                @endif
-                                            </label>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        @endforeach
-                        
-                        @if($militari->isEmpty())
-                            <p class="text-muted">Nessun militare disponibile</p>
-                        @endif
-                    </div>
-                    <div class="mt-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselezionaTutti()">
-                            <i class="fas fa-square"></i> Deseleziona tutti
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Banner unico per disponibilità e conflitti -->
-                <div id="risultatoVerifica" class="alert d-none">
-                    <div id="militariDisponibili"></div>
-                    <div id="militariConflitti"></div>
+                    <label class="form-label"><strong>Seleziona Militari</strong></label>
+                    @include('components.selettore-militari-disponibilita', [
+                        'id' => 'turni',
+                        'showPlotone' => true,
+                        'multiSelect' => true,
+                        'maxHeight' => '350px'
+                    ])
                 </div>
                 
                 <!-- Banner errori assegnazione -->
@@ -590,19 +517,13 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="flex-direction: column; align-items: stretch;">
-                <div class="d-flex justify-content-end gap-2">
+            <div class="modal-footer">
+                <div class="d-flex justify-content-end gap-2 w-100">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="button" class="btn btn-warning" id="btnVerifica" onclick="verificaDisponibilitaMultipla()" disabled>
-                        <i class="fas fa-search"></i> Verifica disponibilità
-                    </button>
                     <button type="button" class="btn btn-success" id="btnConferma" onclick="confermaAssegnazione()" disabled>
-                        <i class="fas fa-check"></i> Conferma
+                        <i class="fas fa-check"></i> Conferma Assegnazione
                     </button>
                 </div>
-                <small class="text-muted text-center mt-2" style="font-size: 0.875rem;">
-                    <i class="fas fa-info-circle"></i> Seleziona i militari e clicca "Verifica disponibilità"
-                </small>
             </div>
         </div>
     </div>
@@ -697,311 +618,68 @@ function apriModalAssegnazione(servizioId, data, giornoSettimana, nomeServizio, 
     currentNumAssegnati = numAssegnati;
     hasConflict = false;
 
-    // Reset form - deseleziona tutti i checkbox
-    document.querySelectorAll('.militare-checkbox').forEach(cb => {
-        cb.checked = false;
-        delete cb.dataset.forza;
-        cb.disabled = false;
-    });
-    document.getElementById('risultatoVerifica').classList.add('d-none');
+    // Reset componente selettore
+    if (window.SelettoreMilitariDisponibilita && window.SelettoreMilitariDisponibilita['turni']) {
+        window.SelettoreMilitariDisponibilita['turni'].reset();
+    }
+    
     document.getElementById('erroriAssegnazione').classList.add('d-none');
     document.getElementById('btnConferma').disabled = true;
-    document.getElementById('btnVerifica').disabled = true; // Disabilita anche Verifica
 
     // Popola info servizio
     document.getElementById('nomeServizio').textContent = nomeServizio;
     document.getElementById('dataServizio').textContent = giornoSettimana + ' ' + data;
     document.getElementById('posizioneServizio').textContent = `${numAssegnati} assegnati su ${maxPosti} (disponibili: ${getPostiDisponibili()})`;
 
-    const postiDisponibili = getPostiDisponibili();
-    if (postiDisponibili === 0) {
-        document.querySelectorAll('.militare-checkbox').forEach(cb => {
-            cb.disabled = true;
-        });
-    }
-
-    // Aggiungi listener per abilitare/disabilitare pulsante Verifica
-    document.querySelectorAll('.militare-checkbox').forEach(cb => {
-        cb.onchange = () => {
-            if (!enforceMaxPosti(cb)) {
-                return;
-            }
-            aggiornaStatoPulsantiModal();
-        };
-    });
-
     // Mostra modal
-    new bootstrap.Modal(document.getElementById('modalAssegnazione')).show();
-}
-
-// Aggiorna stato pulsanti del modal in base alle selezioni
-function aggiornaStatoPulsantiModal() {
-    const checkboxesSelezionati = document.querySelectorAll('.militare-checkbox:checked').length;
-    const btnVerifica = document.getElementById('btnVerifica');
+    const modal = new bootstrap.Modal(document.getElementById('modalAssegnazione'));
+    modal.show();
     
-    if (checkboxesSelezionati > 0) {
-        btnVerifica.disabled = false;
-    } else {
-        btnVerifica.disabled = true;
-        // Se non ci sono più selezioni, nascondi i risultati e disabilita conferma
-        document.getElementById('risultatoVerifica').classList.add('d-none');
-        document.getElementById('btnConferma').disabled = true;
+    // Carica automaticamente i militari con disponibilità
+    if (window.SelettoreMilitariDisponibilita && window.SelettoreMilitariDisponibilita['turni']) {
+        window.SelettoreMilitariDisponibilita['turni'].caricaMilitari(data);
     }
 }
 
-// Seleziona/Deseleziona tutti
-function selezionaTutti() {
-    const maxSelezionabili = getPostiDisponibili();
-    let selezionati = 0;
-    document.querySelectorAll('.militare-checkbox').forEach(cb => {
-        if (selezionati < maxSelezionabili) {
-            cb.checked = true;
-            selezionati++;
+// Listener per aggiornamento selezione militari dal componente
+document.addEventListener('militariSelezionatiChange', function(e) {
+    if (e.detail.componentId === 'turni') {
+        const count = e.detail.count;
+        const postiDisponibili = getPostiDisponibili();
+        
+        // Abilita/disabilita pulsante conferma in base alla selezione
+        if (count > 0 && count <= postiDisponibili) {
+            document.getElementById('btnConferma').disabled = false;
         } else {
-            cb.checked = false;
-        }
-    });
-    aggiornaStatoPulsantiModal();
-}
-
-function deselezionaTutti() {
-    document.querySelectorAll('.militare-checkbox').forEach(cb => {
-        cb.checked = false;
-        delete cb.dataset.forza;
-    });
-    document.getElementById('risultatoVerifica').classList.add('d-none');
-    document.getElementById('erroriAssegnazione').classList.add('d-none');
-    document.getElementById('btnConferma').disabled = true;
-    aggiornaStatoPulsantiModal(); // Disabilita anche Verifica
-    hasConflict = false;
-}
-
-// Verifica disponibilità per selezione multipla con checkbox
-async function verificaDisponibilitaMultipla() {
-    const checkboxes = document.querySelectorAll('.militare-checkbox:checked');
-    
-    // Validazione già gestita dal pulsante disabilitato
-    if (checkboxes.length === 0) {
-        return;
-    }
-
-    showSpinner();
-    
-    let conflittiTotali = 0;
-    let disponibiliTotali = 0;
-    const militariDisponibili = [];
-    const militariConflitti = [];
-    
-    for (const checkbox of checkboxes) {
-        const militareId = checkbox.value;
-        const militareNome = checkbox.dataset.nome;
-        
-        // Verifica disponibilità
-        try {
-            const response = await fetch('{{ route("servizi.turni.check-disponibilita") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    militare_id: militareId,
-                    data: currentData
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.disponibile) {
-                disponibiliTotali++;
-                militariDisponibili.push(militareNome);
-                delete checkbox.dataset.conflitto; // Rimuovi flag conflitto se presente
-            } else {
-                conflittiTotali++;
-                checkbox.dataset.conflitto = 'true'; // Marca come conflitto
-                militariConflitti.push({
-                    nome: militareNome,
-                    motivo: data.motivo,
-                    checkbox: checkbox
-                });
-            }
-
-        } catch (error) {
-            console.error('Errore verifica disponibilità:', error);
-        }
-    }
-    
-    hideSpinner();
-    
-    // Mostra risultato in un unico banner
-    const risultatoDiv = document.getElementById('risultatoVerifica');
-    const disponibiliDiv = document.getElementById('militariDisponibili');
-    const conflittiDiv = document.getElementById('militariConflitti');
-    
-    if (conflittiTotali > 0) {
-        // Banner giallo con conflitti
-        risultatoDiv.className = 'alert alert-warning';
-        
-        // Sezione disponibili
-        if (disponibiliTotali > 0) {
-            disponibiliDiv.innerHTML = `
-                <div class="mb-3">
-                    <strong class="text-success">✓ ${disponibiliTotali} Militare/i disponibile/i:</strong>
-                    <div class="mt-1">${militariDisponibili.map(nome => `<span class="badge bg-success me-1">${nome}</span>`).join('')}</div>
-                </div>
-            `;
-        } else {
-            disponibiliDiv.innerHTML = '';
-        }
-        
-        // Sezione conflitti con opzioni
-        conflittiDiv.innerHTML = `
-            <div>
-                <strong class="text-danger">⚠️ ${conflittiTotali} Militare/i con conflitto:</strong>
-                <div class="mt-2" style="background: #fff; padding: 10px; border-radius: 4px; border-left: 4px solid #dc3545;">
-                    ${militariConflitti.map((m, idx) => `
-                        <div class="militare-conflitto-card mb-2 pb-2 ${idx < militariConflitti.length - 1 ? 'border-bottom' : ''}" id="conflitto-${m.checkbox.value}">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <strong>${m.nome}</strong>
-                                    <span id="badge-forzato-${m.checkbox.value}" class="badge bg-success ms-2 d-none">
-                                        <i class="fas fa-check"></i> Forzatura attiva
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="text-muted small mt-1">${m.motivo}</div>
-                            <div class="mt-2" id="azioni-${m.checkbox.value}">
-                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deselezionaMilitare('militare_${m.checkbox.value}')">
-                                    <i class="fas fa-times"></i> Deseleziona
-                                </button>
-                                <button type="button" class="btn btn-sm btn-warning" id="btn-forza-${m.checkbox.value}" onclick="forzaAssegnazioneMilitare('${m.checkbox.value}', '${m.nome.replace(/'/g, "\\'")}')">
-                                    <i class="fas fa-exclamation-triangle"></i> Forza assegnazione
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="alert alert-info mt-3 mb-0">
-                    <small>
-                        <i class="fas fa-info-circle"></i> 
-                        Puoi deselezionare i militari con conflitto o forzare l'assegnazione per sovrascrivere i loro impegni attuali.
-                    </small>
-                </div>
-            </div>
-        `;
-        
-        hasConflict = true;
-        // CRITICO: Disabilita il pulsante finché non risolve TUTTI i conflitti
-        document.getElementById('btnConferma').disabled = true;
-    } else {
-        // Banner verde - tutto ok
-        risultatoDiv.className = 'alert alert-success';
-        disponibiliDiv.innerHTML = `
-            <div>
-                <strong class="text-success">✓ Tutti i ${disponibiliTotali} militari sono disponibili</strong>
-                <div class="mt-2">${militariDisponibili.map(nome => `<span class="badge bg-success me-1 mb-1">${nome}</span>`).join('')}</div>
-            </div>
-        `;
-        conflittiDiv.innerHTML = '';
-        hasConflict = false;
-        // Abilita il pulsante - tutti disponibili
-        document.getElementById('btnConferma').disabled = false;
-    }
-    
-    risultatoDiv.classList.remove('d-none');
-}
-
-// Deseleziona un militare specifico
-function deselezionaMilitare(checkboxId) {
-    const checkbox = document.getElementById(checkboxId);
-    if (checkbox) {
-        const militareId = checkbox.value;
-        
-        // 1. Deseleziona il checkbox
-        checkbox.checked = false;
-        delete checkbox.dataset.forza; // Rimuovi flag forzatura se presente
-        delete checkbox.dataset.conflitto; // Rimuovi flag conflitto
-        
-        // 2. Rimuovi la card del conflitto dal DOM
-        const conflittoCard = document.getElementById(`conflitto-${militareId}`);
-        if (conflittoCard) {
-            conflittoCard.remove();
-        }
-        
-        // 3. Controlla se ci sono ancora militari selezionati
-        const checkboxesRimaste = document.querySelectorAll('.militare-checkbox:checked');
-        
-        if (checkboxesRimaste.length === 0) {
-            // Nessun militare selezionato - nascondi tutto e disabilita conferma
-            document.getElementById('risultatoVerifica').classList.add('d-none');
             document.getElementById('btnConferma').disabled = true;
-        } else {
-            // Ci sono ancora militari - controlla se ci sono ancora conflitti
-            const conflittiRimasti = document.querySelectorAll('[id^="conflitto-"]');
-            
-            if (conflittiRimasti.length === 0) {
-                // Nessun conflitto rimasto - abilita conferma
-                document.getElementById('btnConferma').disabled = false;
-            } else {
-                // Ci sono ancora conflitti - mantieni disabilitato
-                document.getElementById('btnConferma').disabled = true;
-            }
+        }
+        
+        // Mostra warning se selezionati più dei posti disponibili
+        if (count > postiDisponibili && postiDisponibili > 0) {
+            showToast(`Puoi selezionare al massimo ${postiDisponibili} militare/i`, 'warning');
         }
     }
-}
+});
 
-// Forza assegnazione per un militare specifico (aggiunge attributo data e feedback visivo)
-function forzaAssegnazioneMilitare(militareId, nomeMilitare) {
-    const checkbox = document.querySelector(`.militare-checkbox[value="${militareId}"]`);
-    if (checkbox) {
-        checkbox.dataset.forza = 'true';
-        
-        // Feedback visivo 1: Mostra badge verde "Forzatura attiva"
-        const badge = document.getElementById(`badge-forzato-${militareId}`);
-        if (badge) {
-            badge.classList.remove('d-none');
-        }
-        
-        // Feedback visivo 2: Cambia il pulsante in verde con check
-        const btnForza = document.getElementById(`btn-forza-${militareId}`);
-        if (btnForza) {
-            btnForza.className = 'btn btn-sm btn-success';
-            btnForza.innerHTML = '<i class="fas fa-check-circle"></i> Forzatura attivata';
-            btnForza.disabled = true;
-        }
-        
-        // Feedback visivo 3: Aggiungi bordo verde alla card
-        const card = document.getElementById(`conflitto-${militareId}`);
-        if (card) {
-            card.style.borderLeft = '4px solid #28a745';
-            card.style.background = '#d4edda';
-            card.style.padding = '10px';
-            card.style.borderRadius = '4px';
-        }
-        
-        // CRITICO: Ri-valida per abilitare il pulsante Conferma
-        const checkboxes = document.querySelectorAll('.militare-checkbox:checked');
-        const militariDisponibili = Array.from(checkboxes).filter(cb => !cb.dataset.conflitto);
-        const militariConflitti = Array.from(checkboxes).filter(cb => cb.dataset.conflitto);
-        
-        const tuttiConflittiRisolti = militariConflitti.every(cb => cb.dataset.forza === 'true');
-        const haDisponibili = militariDisponibili.length > 0 || militariConflitti.some(cb => cb.dataset.forza === 'true');
-        
-        document.getElementById('btnConferma').disabled = !haDisponibili || !tuttiConflittiRisolti;
+// Funzione helper per ottenere i militari selezionati dal componente
+function getMilitariSelezionatiTurni() {
+    if (window.SelettoreMilitariDisponibilita && window.SelettoreMilitariDisponibilita['turni']) {
+        return window.SelettoreMilitariDisponibilita['turni'].getDatiMilitariSelezionati();
     }
+    return [];
 }
 
-// Conferma assegnazione (supporta selezione multipla con checkbox)
+// Conferma assegnazione (usa il nuovo componente selettore)
 async function confermaAssegnazione() {
-    const checkboxes = document.querySelectorAll('.militare-checkbox:checked');
+    // Ottieni i militari selezionati dal componente
+    const militariSelezionati = getMilitariSelezionatiTurni();
     
-    if (checkboxes.length === 0) {
-        showToast('⚠️ Seleziona almeno un militare', 'error');
+    if (militariSelezionati.length === 0) {
+        showToast('Seleziona almeno un militare', 'error');
         return;
     }
 
-    if (checkboxes.length > getPostiDisponibili()) {
+    if (militariSelezionati.length > getPostiDisponibili()) {
         showToast('Hai selezionato più militari dei posti disponibili', 'error');
         return;
     }
@@ -1013,10 +691,9 @@ async function confermaAssegnazione() {
     const errors = [];
 
     // Assegna ogni militare selezionato
-    for (const checkbox of checkboxes) {
-        const militareId = checkbox.value;
-        const militareNome = checkbox.dataset.nome;
-        const forzaPerQuestoMilitare = checkbox.dataset.forza === 'true';
+    for (const militare of militariSelezionati) {
+        const militareId = militare.id;
+        const militareNome = `${militare.grado} ${militare.cognome} ${militare.nome}`;
         
         try {
             const response = await fetch('{{ route("servizi.turni.assegna") }}', {
@@ -1031,7 +708,7 @@ async function confermaAssegnazione() {
                     servizio_id: currentServizioId,
                     militare_id: militareId,
                     data: currentData,
-                    forza_sovrascrizione: forzaPerQuestoMilitare
+                    forza_sovrascrizione: false // I militari mostrati sono già verificati come disponibili
                 })
             });
 

@@ -42,9 +42,13 @@ if ($ngrokInPath) {
 Write-Host ""
 Write-Host "3. Verifica autenticazione ngrok..." -ForegroundColor Yellow
 
-# Verifica se ngrok è autenticato
-$ngrokConfig = "$env:USERPROFILE\.ngrok2\ngrok.yml"
-if (-not (Test-Path $ngrokConfig)) {
+# Verifica se ngrok è autenticato (controlla entrambi i percorsi: nuovo e legacy)
+$ngrokConfigNew = "$env:LOCALAPPDATA\ngrok\ngrok.yml"
+$ngrokConfigOld = "$env:USERPROFILE\.ngrok2\ngrok.yml"
+
+if ((Test-Path $ngrokConfigNew) -or (Test-Path $ngrokConfigOld)) {
+    Write-Host "   ✅ Ngrok autenticato" -ForegroundColor Green
+} else {
     Write-Host "   ⚠️  Ngrok non sembra essere autenticato" -ForegroundColor Yellow
     Write-Host "   Per autenticarti:" -ForegroundColor Cyan
     Write-Host "   1. Vai su https://dashboard.ngrok.com/get-started/your-authtoken" -ForegroundColor White

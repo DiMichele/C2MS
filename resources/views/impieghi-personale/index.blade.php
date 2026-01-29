@@ -721,17 +721,7 @@
     </div>
 </div>
 
-<!-- Modal Conferma Custom -->
-<div class="confirm-overlay" id="confirmOverlay">
-    <div class="confirm-box">
-        <div class="confirm-header" id="confirmTitle">Conferma</div>
-        <div class="confirm-body" id="confirmMessage">Sei sicuro?</div>
-        <div class="confirm-footer">
-            <button class="btn-cancel" onclick="chiudiConferma()">Annulla</button>
-            <button class="btn-confirm" id="confirmBtn">Conferma</button>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma gestito globalmente da SUGECO.Confirm -->
 
 @endsection
 
@@ -1035,21 +1025,21 @@ function modificaTeatro() {
     });
 }
 
-function eliminaTeatro() {
-    mostraConferma('Elimina Teatro', 'Eliminare questo Teatro e tutte le assegnazioni?', function() {
-        fetch('{{ url("impieghi-personale/teatri") }}/' + document.getElementById('modTeatroId').value, {
-            method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrfToken }
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('modalModificaTeatro')).hide();
-                teatroSelezionato = 'reset';
-                selezionaVista(null);
-                caricaTeatri();
-            }
-        });
+async function eliminaTeatro() {
+    if (!await SUGECO.Confirm.delete('Eliminare questo Teatro e tutte le assegnazioni?')) return;
+    
+    fetch('{{ url("impieghi-personale/teatri") }}/' + document.getElementById('modTeatroId').value, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': csrfToken }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalModificaTeatro')).hide();
+            teatroSelezionato = 'reset';
+            selezionaVista(null);
+            caricaTeatri();
+        }
     });
 }
 
@@ -1111,31 +1101,31 @@ function assegnaMilitare(militareId) {
     });
 }
 
-function rimuoviDaTeatro(militareId) {
-    mostraConferma('Rimuovi Militare', 'Rimuovere questo militare dal Teatro?', function() {
-        fetch('{{ route("impieghi-personale.militari.rimuovi") }}', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ teatro_operativo_id: teatroSelezionato, militare_id: militareId })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) { caricaMilitari(); caricaTeatri(); }
-        });
+async function rimuoviDaTeatro(militareId) {
+    if (!await SUGECO.Confirm.delete('Rimuovere questo militare dal Teatro?')) return;
+    
+    fetch('{{ route("impieghi-personale.militari.rimuovi") }}', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ teatro_operativo_id: teatroSelezionato, militare_id: militareId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { caricaMilitari(); caricaTeatri(); }
     });
 }
 
-function rimuoviDaTeatroGenerico(militareId, teatroId) {
-    mostraConferma('Rimuovi Militare', 'Rimuovere questo militare dal Teatro?', function() {
-        fetch('{{ route("impieghi-personale.militari.rimuovi") }}', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ teatro_operativo_id: teatroId, militare_id: militareId })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) { caricaMilitari(); caricaTeatri(); }
-        });
+async function rimuoviDaTeatroGenerico(militareId, teatroId) {
+    if (!await SUGECO.Confirm.delete('Rimuovere questo militare dal Teatro?')) return;
+    
+    fetch('{{ route("impieghi-personale.militari.rimuovi") }}', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ teatro_operativo_id: teatroId, militare_id: militareId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { caricaMilitari(); caricaTeatri(); }
     });
 }
 
@@ -1170,39 +1160,28 @@ function salvaRuolo(militareId, ruolo) {
     });
 }
 
-function confermaTutti() {
-    mostraConferma('Conferma Tutti', 'Confermare tutti i militari in bozza?', function() {
-        fetch('{{ route("impieghi-personale.militari.conferma-tutti") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-            body: JSON.stringify({ teatro_operativo_id: teatroSelezionato })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) { caricaMilitari(); caricaTeatri(); }
-        });
+async function confermaTutti() {
+    if (!await SUGECO.Confirm.show({
+        message: 'Confermare tutti i militari in bozza?',
+        title: 'Conferma Tutti',
+        type: 'success',
+        confirmText: 'Conferma Tutti'
+    })) return;
+    
+    fetch('{{ route("impieghi-personale.militari.conferma-tutti") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+        body: JSON.stringify({ teatro_operativo_id: teatroSelezionato })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) { caricaMilitari(); caricaTeatri(); }
     });
 }
 
-// === MODAL CONFERMA CUSTOM ===
-let confirmCallback = null;
-
-function mostraConferma(titolo, messaggio, callback) {
-    document.getElementById('confirmTitle').textContent = titolo;
-    document.getElementById('confirmMessage').textContent = messaggio;
-    confirmCallback = callback;
-    document.getElementById('confirmOverlay').classList.add('show');
-    document.getElementById('confirmBtn').onclick = function() {
-        const cb = confirmCallback; // Salva prima di resettare
-        chiudiConferma();
-        if (cb) cb(); // Esegui dopo aver chiuso
-    };
-}
-
-function chiudiConferma() {
-    document.getElementById('confirmOverlay').classList.remove('show');
-    confirmCallback = null;
-}
+// Modal conferma gestito globalmente da SUGECO.Confirm
+// Usa: await SUGECO.Confirm.delete('messaggio') per eliminazioni
+// Usa: await SUGECO.Confirm.show({ message, title, type, confirmText }) per conferme personalizzate
 
 // === ASSEGNAZIONE DA VISTA GENERALE ===
 function apriModalAssegna(militareId, nomeCompleto) {

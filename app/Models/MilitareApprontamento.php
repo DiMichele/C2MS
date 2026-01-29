@@ -7,9 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
 /**
- * Modello per la relazione militare-approntamento
+ * Modello per la relazione militare-approntamento (LEGACY)
  * 
- * Rappresenta l'assegnazione di un militare a un approntamento
+ * NOTA: Questo modello è legacy. Usare TeatroOperativoMilitare per le nuove implementazioni.
+ * La tabella approntamenti è stata sostituita da teatri_operativi.
+ * 
+ * Rappresenta l'assegnazione di un militare a un approntamento/teatro operativo
  * con dettagli specifici come ruolo, date e note.
  * 
  * @property int $id
@@ -24,7 +27,9 @@ use Carbon\Carbon;
  * @property \Carbon\Carbon|null $updated_at
  * 
  * @property-read \App\Models\Militare $militare
- * @property-read \App\Models\Approntamento $approntamento
+ * @property-read \App\Models\TeatroOperativo $approntamento
+ * 
+ * @deprecated Usare TeatroOperativoMilitare al posto di questo modello
  */
 class MilitareApprontamento extends Model
 {
@@ -72,11 +77,21 @@ class MilitareApprontamento extends Model
     }
 
     /**
-     * Approntamento di assegnazione
+     * Teatro Operativo di assegnazione (ex Approntamento)
+     * 
+     * @deprecated La relazione punta a TeatroOperativo invece di Approntamento (rimossa)
      */
     public function approntamento()
     {
-        return $this->belongsTo(Approntamento::class);
+        return $this->belongsTo(TeatroOperativo::class, 'approntamento_id');
+    }
+    
+    /**
+     * Alias per compatibilità con nuovo schema
+     */
+    public function teatroOperativo()
+    {
+        return $this->belongsTo(TeatroOperativo::class, 'approntamento_id');
     }
 
     // ==========================================
@@ -220,6 +235,8 @@ class MilitareApprontamento extends Model
 
     /**
      * Imposta come assegnazione principale
+     * 
+     * @deprecated Il campo approntamento_principale_id è stato rimosso da militari
      */
     public function impostaPrincipale()
     {
@@ -229,6 +246,18 @@ class MilitareApprontamento extends Model
               ->update(['principale' => false]);
 
         $this->principale = true;
+        
+        return $this->save();
+    }
+
+    /**
+     * Rimuove il flag principale
+     * 
+     * @deprecated Il campo approntamento_principale_id è stato rimosso da militari
+     */
+    public function rimuoviPrincipale()
+    {
+        $this->principale = false;
         return $this->save();
     }
 }

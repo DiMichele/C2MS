@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\OrganizationalUnit;
 
 class ServizioTurno extends Model
 {
@@ -13,6 +14,7 @@ class ServizioTurno extends Model
 
     protected $fillable = [
         'nome',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
         'codice',
         'sigla_cpt',
         'smontante_cpt',
@@ -40,6 +42,14 @@ class ServizioTurno extends Model
     public function assegnazioni()
     {
         return $this->hasMany(AssegnazioneTurno::class, 'servizio_turno_id');
+    }
+
+    /**
+     * Unità organizzativa (nuova gerarchia)
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     /**

@@ -96,6 +96,33 @@ h1, h2, h3, h4, h5, h6, .header-title {
     background-color: var(--navy) !important;
     box-shadow: var(--shadow-md) !important;
     z-index: 1030 !important;
+}
+
+/* Badge Unità Organizzativa nel header */
+.unit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: var(--gold-light);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-right: 1rem;
+    white-space: nowrap;
+}
+
+.unit-badge i {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+.unit-badge:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--gold);
+}
     position: fixed !important;
     width: 100% !important;
     top: 0 !important;
@@ -210,48 +237,103 @@ h1.page-title {
 /* ==========================================
    BADGES & COUNTERS
    ========================================== */
-.badge.bg-primary {
-    background: linear-gradient(135deg, var(--navy), var(--navy-light)) !important;
-    color: white !important;
-    font-size: 0.95rem !important;
-    padding: 8px 16px !important;
-    border-radius: 20px !important;
-    font-weight: 600 !important;
-    box-shadow: 0 3px 8px rgba(15, 58, 109, 0.2) !important;
-    position: relative !important;
-    border: 2px solid rgba(255, 255, 255, 0.2) !important;
-}
 
-/* Badge e indicatori */
-.badge {
-    font-weight: 500;
-    padding: 0.35rem 0.65rem;
-    border-radius: 6px;
-}
-
-.badge-primary {
-    background-color: var(--navy);
-    color: white;
-}
-
-.badge-success {
-    background-color: var(--success);
-    color: white;
-}
-
-.badge-danger {
-    background-color: var(--error);
-    color: white;
-}
-
-.badge-warning {
-    background-color: var(--warning);
-    color: white;
-}
-
+/* Stile uniforme per TUTTI i badge - stesso carattere e forma, cambia solo il colore */
+.badge,
+.badge.bg-primary,
+.badge.bg-success,
+.badge.bg-danger,
+.badge.bg-warning,
+.badge.bg-info,
+.badge.bg-secondary,
+.badge.bg-light,
+.badge.bg-dark,
+.badge.bg-purple,
+.badge-primary,
+.badge-success,
+.badge-danger,
+.badge-warning,
 .badge-info {
-    background-color: var(--info);
-    color: white;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 6px !important;
+    line-height: 1.2 !important;
+    display: inline-block !important;
+    text-align: center !important;
+    vertical-align: baseline !important;
+    white-space: nowrap !important;
+    font-family: 'Roboto', sans-serif !important;
+    letter-spacing: 0.3px !important;
+}
+
+/* Colori di sfondo - solo questi cambiano */
+.badge.bg-primary,
+.badge-primary {
+    background-color: var(--navy) !important;
+    color: white !important;
+}
+
+.badge.bg-success,
+.badge-success {
+    background-color: var(--success) !important;
+    color: white !important;
+}
+
+.badge.bg-danger,
+.badge-danger {
+    background-color: var(--error) !important;
+    color: white !important;
+}
+
+.badge.bg-warning,
+.badge-warning {
+    background-color: var(--warning) !important;
+    color: #212529 !important;
+}
+
+.badge.bg-info,
+.badge-info {
+    background-color: var(--info) !important;
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+    color: white !important;
+}
+
+.badge.bg-light {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+.badge.bg-dark {
+    background-color: #212529 !important;
+    color: white !important;
+}
+
+.badge.bg-purple {
+    background-color: #6f42c1 !important;
+    color: white !important;
+}
+
+/* Badge con testo scuro su sfondo chiaro */
+.badge.text-dark {
+    color: #212529 !important;
+}
+
+/* Forza stile uniforme anche con stili inline - sovrascrive font-size, padding, border-radius */
+/* Escludi badge speciali (legenda, celle giorno) */
+.badge[style*="font-size"]:not(.badge-legenda):not(.giorno-cell .badge):not(.codice-badge),
+.badge[style*="padding"]:not(.badge-legenda):not(.giorno-cell .badge):not(.codice-badge),
+.badge[style*="border-radius"]:not(.badge-legenda):not(.giorno-cell .badge):not(.codice-badge) {
+    font-size: 0.75rem !important;
+    padding: 0.35rem 0.65rem !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.3px !important;
 }
 
 /* ==========================================

@@ -24,6 +24,7 @@ use App\Models\Ruolo;
 use App\Models\Mansione;
 use App\Models\RuoloCertificati;
 use App\Services\MilitareService;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Services\ExcelStyleService;
@@ -91,14 +92,18 @@ class MilitareController extends Controller
     public function show(Militare $militare)
     {
         try {
-            // Carica le relazioni necessarie (solo quelle che esistono)
+            // Carica tutte le relazioni necessarie per la pagina dettaglio completa
             $militare->load([
                 'grado', 
                 'plotone', 
                 'polo', 
                 'mansione', 
                 'ruolo',
-                'scadenza'
+                'compagnia',
+                'scadenza',
+                'teatriOperativi',
+                'activities.column',
+                'patenti',
             ]);
             
             // Ottieni la valutazione del militare (se esiste e la tabella esiste)
@@ -107,7 +112,10 @@ class MilitareController extends Controller
                 $valutazioneUtente = \App\Models\MilitareValutazione::where('militare_id', $militare->id)->first();
             }
             
-            return view('militare.show', compact('militare', 'valutazioneUtente'));
+            // Prepara i dati del calendario per il mese corrente
+            $calendarioData = $this->preparaCalendarioMilitare($militare);
+            
+            return view('militare.show', compact('militare', 'valutazioneUtente', 'calendarioData'));
             
         } catch (\Exception $e) {
             Log::error('Errore nel caricamento del militare', [
@@ -118,6 +126,113 @@ class MilitareController extends Controller
             return redirect()->route('anagrafica.index')
                 ->withErrors(['error' => 'Errore nel caricamento del militare: ' . $e->getMessage()]);
         }
+    }
+    
+    /**
+     * Prepara i dati del calendario per il mese corrente di un militare
+     * 
+     * @param Militare $militare
+     * @return array
+     */
+    private function preparaCalendarioMilitare(Militare $militare): array
+    {
+        $anno = now()->year;
+        $mese = now()->month;
+        $giorniNelMese = now()->daysInMonth;
+        
+        // Ottieni la pianificazione mensile
+        $pianificazioneMensile = \App\Models\PianificazioneMensile::where('mese', $mese)
+            ->where('anno', $anno)
+            ->first();
+        
+        // Ottieni le pianificazioni del militare per questo mese
+        $pianificazioni = [];
+        if ($pianificazioneMensile) {
+            $pianificazioniQuery = \App\Models\PianificazioneGiornaliera::where('militare_id', $militare->id)
+                ->where('pianificazione_mensile_id', $pianificazioneMensile->id)
+                ->with(['tipoServizio', 'tipoServizio.codiceGerarchia'])
+                ->get();
+            
+            foreach ($pianificazioniQuery as $p) {
+                if (!isset($pianificazioni[$p->giorno])) {
+                    $pianificazioni[$p->giorno] = [];
+                }
+                $pianificazioni[$p->giorno][] = $p;
+            }
+        }
+        
+        // Mappa colori per tipologie
+        $coloriAttivita = [
+            'T.O.' => '#dc3545', 'EXE' => '#ffc107', 'EX' => '#ffc107',
+            'CAT' => '#28a745', 'CATT' => '#28a745', 'CRS' => '#007bff',
+            'CORSO' => '#007bff', 'SI' => '#6c757d', 'STB' => '#fd7e14',
+            'OP' => '#dc3545', 'LIC' => '#17a2b8', 'MAL' => '#e83e8c', 'RIP' => '#6f42c1',
+        ];
+        
+        // Prepara calendario
+        $calendarioMese = [];
+        $giorniItaliani = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+        
+        for ($giorno = 1; $giorno <= $giorniNelMese; $giorno++) {
+            $data = \Carbon\Carbon::createFromDate($anno, $mese, $giorno);
+            
+            $impegniGiorno = [];
+            if (isset($pianificazioni[$giorno])) {
+                foreach ($pianificazioni[$giorno] as $p) {
+                    if ($p->tipoServizio) {
+                        $codice = $p->tipoServizio->codice;
+                        $colore = $coloriAttivita[strtoupper($codice)] 
+                            ?? $p->tipoServizio->codiceGerarchia->colore_badge 
+                            ?? '#6c757d';
+                        
+                        $impegniGiorno[] = [
+                            'codice' => $codice,
+                            'descrizione' => $p->tipoServizio->nome,
+                            'colore' => $colore,
+                        ];
+                    }
+                }
+            }
+            
+            $calendarioMese[$giorno] = [
+                'giorno' => $giorno,
+                'data' => $data,
+                'nome_giorno' => $giorniItaliani[$data->dayOfWeek],
+                'is_weekend' => $data->isWeekend(),
+                'is_today' => $data->isToday(),
+                'impegni' => $impegniGiorno,
+                'ha_impegno' => count($impegniGiorno) > 0,
+            ];
+        }
+        
+        // Statistiche
+        $totaleImpegni = collect($calendarioMese)->where('ha_impegno', true)->count();
+        
+        return [
+            'anno' => $anno,
+            'mese' => $mese,
+            'nomeMese' => $this->getNomeMese($mese),
+            'calendarioMese' => $calendarioMese,
+            'primoGiornoSettimana' => \Carbon\Carbon::create($anno, $mese, 1)->dayOfWeek == 0 ? 6 : \Carbon\Carbon::create($anno, $mese, 1)->dayOfWeek - 1,
+            'statistiche' => [
+                'totale_impegni' => $totaleImpegni,
+                'giorni_liberi' => $giorniNelMese - $totaleImpegni,
+                'percentuale_impegno' => $giorniNelMese > 0 ? round(($totaleImpegni / $giorniNelMese) * 100) : 0,
+            ],
+        ];
+    }
+    
+    /**
+     * Ottiene il nome del mese in italiano
+     */
+    private function getNomeMese(int $mese): string
+    {
+        $nomiMesi = [
+            1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile',
+            5 => 'Maggio', 6 => 'Giugno', 7 => 'Luglio', 8 => 'Agosto',
+            9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre'
+        ];
+        return $nomiMesi[$mese] ?? '';
     }
 
     /**
@@ -141,7 +256,10 @@ class MilitareController extends Controller
     public function store(Request $request)
     {
         try {
-            $this->militareService->createMilitare($request->all());
+            $militare = $this->militareService->createMilitare($request->all());
+            
+            // Registra la creazione nel log di audit
+            AuditService::logCreate($militare, "Creato militare: {$militare->cognome} {$militare->nome}");
             
             return redirect()->route('anagrafica.index')
                 ->with('success', 'Militare creato con successo!');
@@ -234,12 +352,24 @@ class MilitareController extends Controller
             // La policy verifica che sia owner E abbia permesso anagrafica.edit
             $this->authorize('update', $militare);
             
+            // Salva i valori originali per l'audit
+            $oldValues = $militare->getOriginal();
+            
             if ($request->ajax() || $request->wantsJson()) {
                 $result = $this->militareService->updateMilitareAjax($id, $request->all());
+                
+                // Registra la modifica nel log di audit
+                $militare->refresh();
+                AuditService::logUpdate($militare, $oldValues, $militare->toArray());
+                
                 return response()->json($result);
             }
             
             $this->militareService->updateMilitare($id, $request->all());
+            
+            // Registra la modifica nel log di audit
+            $militare->refresh();
+            AuditService::logUpdate($militare, $oldValues, $militare->toArray());
             
             return redirect()->route('anagrafica.show', $id)
                 ->with('success', 'Militare aggiornato con successo!');
@@ -346,6 +476,10 @@ class MilitareController extends Controller
                 'militare_nome' => $militare->cognome . ' ' . $militare->nome
             ]);
             
+            // Registra l'eliminazione PRIMA di eliminare (per avere i dati)
+            $militareNome = "{$militare->cognome} {$militare->nome}";
+            AuditService::logDelete($militare, "Eliminato militare: {$militareNome}");
+            
             $result = $this->militareService->deleteMilitare($militare);
             
             if (!$result) {
@@ -416,7 +550,16 @@ class MilitareController extends Controller
             // VERIFICA PERMESSI via Policy (single source of truth)
             $this->authorize('update', $militare);
             
+            $oldNotes = $militare->note;
             $this->militareService->updateNotes($militare, $request->get('note'));
+            
+            // Registra la modifica nel log di audit
+            AuditService::logUpdate(
+                $militare,
+                ['note' => $oldNotes],
+                ['note' => $request->get('note')],
+                "Aggiornate note del militare {$militare->cognome} {$militare->nome}"
+            );
             
             return response()->json([
                 'success' => true,
@@ -780,6 +923,9 @@ class MilitareController extends Controller
             $tempFile = tempnam(sys_get_temp_dir(), 'anagrafica_');
             $writer->save($tempFile);
             
+            // Registra l'esportazione nel log di audit
+            AuditService::logExport('anagrafica_militari', $militari->count(), "Esportazione anagrafica militari in Excel");
+            
             return response()->download($tempFile, $filename, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ])->deleteFileAfterSend(true);
@@ -918,10 +1064,21 @@ class MilitareController extends Controller
                 }
             }
             
+            // Salva il valore originale per l'audit
+            $oldValue = $militare->$dbField;
+            
             // Aggiorna il campo
             try {
                 $militare->$dbField = $value;
                 $militare->save();
+                
+                // Registra la modifica nel log di audit
+                AuditService::logUpdate(
+                    $militare,
+                    [$dbField => $oldValue],
+                    [$dbField => $value],
+                    "Modificato campo '{$field}' del militare {$militare->cognome} {$militare->nome}"
+                );
             } catch (\Illuminate\Database\QueryException $e) {
                 // Se c'è un errore di foreign key, prova a gestirlo
                 if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
@@ -1095,12 +1252,20 @@ class MilitareController extends Controller
             }
             
             // Crea la patente
-            $militare->patenti()->create([
+            $patenteCreata = $militare->patenti()->create([
                 'categoria' => $patente,
                 'tipo' => 'MIL',
                 'data_ottenimento' => now(),
                 'data_scadenza' => now()->addYears(10)
             ]);
+            
+            // Registra l'aggiunta patente nel log di audit
+            AuditService::log(
+                'update',
+                "Aggiunta patente cat. {$patente} al militare {$militare->cognome} {$militare->nome}",
+                $militare,
+                ['patente_aggiunta' => $patente]
+            );
             
             return response()->json([
                 'success' => true,
@@ -1138,6 +1303,16 @@ class MilitareController extends Controller
             
             // Elimina la patente
             $deleted = $militare->patenti()->where('categoria', $patente)->delete();
+            
+            // Registra la rimozione patente nel log di audit
+            if ($deleted > 0) {
+                AuditService::log(
+                    'update',
+                    "Rimossa patente cat. {$patente} dal militare {$militare->cognome} {$militare->nome}",
+                    $militare,
+                    ['patente_rimossa' => $patente]
+                );
+            }
             
             return response()->json([
                 'success' => true,

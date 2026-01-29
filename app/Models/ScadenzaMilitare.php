@@ -81,16 +81,26 @@ class ScadenzaMilitare extends Model
      * Configurazione durate (in mesi)
      */
     private const DURATE = [
+        // Idoneità (12 mesi)
         'pefo' => 12,
         'idoneita_mans' => 12,
         'idoneita_smi' => 12,
-        'idoneita_to' => 12,       // Idoneità Teatro Operativo - 1 anno
+        'idoneita_to' => 12,
+        // Corsi lavoratori (60 mesi = 5 anni)
         'lavoratore_4h' => 60,
         'lavoratore_8h' => 60,
+        // Corsi RSPP (24 mesi = 2 anni)
         'preposto' => 24,
         'dirigenti' => 24,
+        'antincendio' => 24,
+        'blsd' => 24,
+        'primo_soccorso_aziendale' => 36,
+        // Poligono (6 mesi)
         'poligono_approntamento' => 6,
         'poligono_mantenimento' => 6,
+        'tiri_approntamento' => 6,
+        'mantenimento_arma_lunga' => 6,
+        'mantenimento_arma_corta' => 6,
     ];
 
     /**

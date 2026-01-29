@@ -165,115 +165,46 @@
     </table>
 </div>
 
-<!-- Modale Conferma Reset Password -->
-<div class="modal fade" id="confirmResetModal" tabindex="-1" aria-labelledby="confirmResetModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title" id="confirmResetModalLabel">
-                    <i class="fas fa-key me-2"></i>
-                    Conferma Reset Password
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-0">
-                    Sei sicuro di voler resettare la password di <strong id="resetUserNameText"></strong> a <code>11Reggimento</code>?
-                </p>
-                <div class="alert alert-info mt-3 mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    L'utente dovrà cambiare la password al prossimo accesso.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-2"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-warning" id="confirmResetBtn">
-                    <i class="fas fa-key me-2"></i>Reset Password
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modale Conferma Eliminazione Utente -->
-<div class="modal fade" id="confirmDeleteUserModal" tabindex="-1" aria-labelledby="confirmDeleteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="confirmDeleteUserModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Conferma Eliminazione
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-0">
-                    Sei sicuro di voler eliminare definitivamente l'utente <strong id="deleteUserNameText"></strong>?
-                </p>
-                <div class="alert alert-danger mt-3 mb-0">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Attenzione:</strong> Questa azione è irreversibile!
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-2"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteUserBtn">
-                    <i class="fas fa-trash me-2"></i>Elimina
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma reset e eliminazione gestiti da SUGECO.Confirm -->
 @endsection
 
 @push('scripts')
 <script>
-// Gestione modali conferma
+// Gestione conferme con sistema unificato SUGECO.Confirm
 document.addEventListener('DOMContentLoaded', function() {
-    let formToSubmit = null;
-    
-    // Modale Reset Password
-    const resetModal = new bootstrap.Modal(document.getElementById('confirmResetModal'));
+    // Reset Password
     document.querySelectorAll('.reset-password-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             const form = this.closest('.reset-password-form');
             const userName = form.dataset.userName;
             
-            document.getElementById('resetUserNameText').textContent = userName;
-            formToSubmit = form;
-            resetModal.show();
+            const confirmed = await SUGECO.Confirm.show({
+                title: 'Reset Password',
+                message: `Resettare la password di ${userName} a "11Reggimento"? L'utente dovrà cambiarla al prossimo accesso.`,
+                type: 'warning',
+                confirmText: 'Reset Password'
+            });
+            
+            if (confirmed) {
+                form.submit();
+            }
         });
     });
     
-    document.getElementById('confirmResetBtn').addEventListener('click', function() {
-        if (formToSubmit) {
-            formToSubmit.submit();
-        }
-    });
-    
-    // Modale Eliminazione Utente
-    const deleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteUserModal'));
+    // Eliminazione Utente
     document.querySelectorAll('.delete-user-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {
             e.preventDefault();
             const form = this.closest('.delete-user-form');
             const userName = form.dataset.userName;
             
-            document.getElementById('deleteUserNameText').textContent = userName;
-            formToSubmit = form;
-            deleteModal.show();
+            const confirmed = await SUGECO.Confirm.delete(`Eliminare definitivamente l'utente ${userName}? Questa azione è irreversibile!`);
+            
+            if (confirmed) {
+                form.submit();
+            }
         });
-    });
-    
-    document.getElementById('confirmDeleteUserBtn').addEventListener('click', function() {
-        if (formToSubmit) {
-            formToSubmit.submit();
-        }
     });
 });
 
@@ -285,21 +216,29 @@ setTimeout(() => {
     });
 }, 5000);
 
-// Funzionalità di ricerca utente
+// FIX: Funzionalità di ricerca utente estesa a tutti i campi visibili
 document.getElementById('searchUser').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
     const rows = document.querySelectorAll('table tbody tr');
     
     rows.forEach(row => {
-        // Prendi nome e username
+        // Prendi nome, username, ruolo e compagnia
         const nameCell = row.querySelector('td:nth-child(1)');
         const usernameCell = row.querySelector('td:nth-child(2)');
+        const roleCell = row.querySelector('td:nth-child(3)');
+        const compagniaCell = row.querySelector('td:nth-child(4)');
         
         if (nameCell && usernameCell) {
             const name = nameCell.textContent.toLowerCase();
             const username = usernameCell.textContent.toLowerCase();
+            const role = roleCell ? roleCell.textContent.toLowerCase() : '';
+            const compagnia = compagniaCell ? compagniaCell.textContent.toLowerCase() : '';
             
-            if (name.includes(searchTerm) || username.includes(searchTerm)) {
+            // Cerca in tutti i campi
+            if (name.includes(searchTerm) || 
+                username.includes(searchTerm) || 
+                role.includes(searchTerm) || 
+                compagnia.includes(searchTerm)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';

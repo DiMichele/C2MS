@@ -288,39 +288,13 @@
                                 </button>
                             </form>
                             <button type="button" 
-                                    class="btn btn-outline-danger"
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#deleteModal{{ $codice->id }}"
+                                    class="btn btn-outline-danger delete-codice-btn"
+                                    data-codice-id="{{ $codice->id }}"
+                                    data-codice-nome="{{ $codice->codice }}"
+                                    data-delete-url="{{ route('codici-cpt.destroy', $codice) }}"
                                     title="Elimina">
                                 <i class="fas fa-trash"></i>
                             </button>
-                        </div>
-
-                        <!-- Modal Elimina -->
-                        <div class="modal fade" id="deleteModal{{ $codice->id }}" tabindex="-1">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header border-0">
-                                        <h5 class="modal-title">Conferma Eliminazione</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p class="mb-2">Sei sicuro di voler eliminare il codice <strong>{{ $codice->codice }}</strong>?</p>
-                                        <p class="text-muted small mb-0">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                            Questa azione non può essere annullata.
-                                        </p>
-                                    </div>
-                                    <div class="modal-footer border-0">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                                        <form action="{{ route('codici-cpt.destroy', $codice) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger">Elimina</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     </td>
                 </tr>
@@ -341,10 +315,34 @@
     </table>
 </div>
 
+{{-- Paginazione --}}
+@if($codici->hasPages())
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted">
+        <small>
+            Mostrando {{ $codici->firstItem() }}-{{ $codici->lastItem() }} di {{ $codici->total() }} codici
+        </small>
+    </div>
+    <div>
+        {{ $codici->links() }}
+    </div>
+</div>
+@else
+<div class="text-muted mt-2">
+    <small>Totale: {{ $codici->count() }} codici</small>
+</div>
+@endif
+
 <!-- Floating Button Export Excel -->
 <a href="{{ route('codici-cpt.export') }}" class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
     <i class="fas fa-file-excel"></i>
 </a>
+
+<!-- Form nascosto per eliminazione codici -->
+<form id="deleteCodiceForm" method="POST" style="display: none;">
+    @csrf
+    @method('DELETE')
+</form>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -362,6 +360,22 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Gestione eliminazione codici con sistema conferma unificato
+    document.querySelectorAll('.delete-codice-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const codiceNome = this.dataset.codiceNome;
+            const deleteUrl = this.dataset.deleteUrl;
+            
+            const confirmed = await SUGECO.Confirm.delete(`Eliminare il codice "${codiceNome}"? Questa azione non può essere annullata.`);
+            
+            if (confirmed) {
+                const form = document.getElementById('deleteCodiceForm');
+                form.action = deleteUrl;
+                form.submit();
+            }
+        });
     });
 });
 </script>

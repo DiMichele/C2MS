@@ -32,14 +32,8 @@ class GestioneAnagraficaConfigController extends Controller
         // Carica tutti i campi (sistema + custom) ordinati per il tab Campi
         $campi = ConfigurazioneCampoAnagrafica::ordinati()->get();
         
-        // Se tutti gli ordini sono multipli di 10, normalizza a 1,2,3...
-        if ($campi->count() > 0 && $campi->pluck('ordine')->every(fn ($o) => $o % 10 === 0)) {
-            $posizione = 1;
-            foreach ($campi as $campo) {
-                $campo->update(['ordine' => $posizione++]);
-            }
-            $campi = ConfigurazioneCampoAnagrafica::ordinati()->get();
-        }
+        // RIMOSSO: Normalizzazione ordine automatica ad ogni accesso
+        // La normalizzazione era problematica perché modificava il database ad ogni page load.
         
         return view('gestione-anagrafica-config.index', compact('plotoni', 'uffici', 'incarichi', 'compagnie', 'campi'));
     }
@@ -62,10 +56,14 @@ class GestioneAnagraficaConfigController extends Controller
                 'plotone' => $plotone->load('compagnia')
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore creazione plotone', ['error' => $e->getMessage()]);
+            Log::error('Errore creazione plotone', [
+                'user_id' => auth()->id(),
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante la creazione. Riprova.'
             ], 500);
         }
     }
@@ -87,10 +85,15 @@ class GestioneAnagraficaConfigController extends Controller
                 'plotone' => $plotone->load('compagnia')
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore aggiornamento plotone', ['error' => $e->getMessage()]);
+            Log::error('Errore aggiornamento plotone', [
+                'user_id' => auth()->id(),
+                'plotone_id' => $id,
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.'
             ], 500);
         }
     }
@@ -98,10 +101,11 @@ class GestioneAnagraficaConfigController extends Controller
     public function destroyPlotone($id)
     {
         try {
-            $plotone = Plotone::findOrFail($id);
+            // FIX N+1: Usa withCount per ottimizzare la query
+            $plotone = Plotone::withCount('militari')->findOrFail($id);
             
             // Verifica se ci sono militari associati
-            if ($plotone->militari()->count() > 0) {
+            if ($plotone->militari_count > 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Impossibile eliminare: ci sono militari associati a questo plotone'
@@ -115,10 +119,14 @@ class GestioneAnagraficaConfigController extends Controller
                 'message' => 'Plotone eliminato con successo'
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore eliminazione plotone', ['error' => $e->getMessage()]);
+            Log::error('Errore eliminazione plotone', [
+                'user_id' => auth()->id(),
+                'plotone_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'eliminazione. Riprova.'
             ], 500);
         }
     }
@@ -140,10 +148,14 @@ class GestioneAnagraficaConfigController extends Controller
                 'ufficio' => $ufficio
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore creazione ufficio', ['error' => $e->getMessage()]);
+            Log::error('Errore creazione ufficio', [
+                'user_id' => auth()->id(),
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante la creazione. Riprova.'
             ], 500);
         }
     }
@@ -164,10 +176,15 @@ class GestioneAnagraficaConfigController extends Controller
                 'ufficio' => $ufficio
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore aggiornamento ufficio', ['error' => $e->getMessage()]);
+            Log::error('Errore aggiornamento ufficio', [
+                'user_id' => auth()->id(),
+                'ufficio_id' => $id,
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.'
             ], 500);
         }
     }
@@ -175,10 +192,11 @@ class GestioneAnagraficaConfigController extends Controller
     public function destroyUfficio($id)
     {
         try {
-            $ufficio = Polo::findOrFail($id);
+            // FIX N+1: Usa withCount per ottimizzare la query
+            $ufficio = Polo::withCount('militari')->findOrFail($id);
             
             // Verifica se ci sono militari associati
-            if ($ufficio->militari()->count() > 0) {
+            if ($ufficio->militari_count > 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Impossibile eliminare: ci sono militari associati a questo ufficio'
@@ -192,10 +210,14 @@ class GestioneAnagraficaConfigController extends Controller
                 'message' => 'Ufficio eliminato con successo'
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore eliminazione ufficio', ['error' => $e->getMessage()]);
+            Log::error('Errore eliminazione ufficio', [
+                'user_id' => auth()->id(),
+                'ufficio_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'eliminazione. Riprova.'
             ], 500);
         }
     }
@@ -217,10 +239,14 @@ class GestioneAnagraficaConfigController extends Controller
                 'incarico' => $incarico
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore creazione incarico', ['error' => $e->getMessage()]);
+            Log::error('Errore creazione incarico', [
+                'user_id' => auth()->id(),
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante la creazione. Riprova.'
             ], 500);
         }
     }
@@ -241,10 +267,15 @@ class GestioneAnagraficaConfigController extends Controller
                 'incarico' => $incarico
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore aggiornamento incarico', ['error' => $e->getMessage()]);
+            Log::error('Errore aggiornamento incarico', [
+                'user_id' => auth()->id(),
+                'incarico_id' => $id,
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.'
             ], 500);
         }
     }
@@ -252,10 +283,11 @@ class GestioneAnagraficaConfigController extends Controller
     public function destroyIncarico($id)
     {
         try {
-            $incarico = Mansione::findOrFail($id);
+            // FIX N+1: Usa withCount per ottimizzare la query
+            $incarico = Mansione::withCount('militari')->findOrFail($id);
             
             // Verifica se ci sono militari associati
-            if ($incarico->militari()->count() > 0) {
+            if ($incarico->militari_count > 0) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Impossibile eliminare: ci sono militari associati a questo incarico'
@@ -269,10 +301,14 @@ class GestioneAnagraficaConfigController extends Controller
                 'message' => 'Incarico eliminato con successo'
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore eliminazione incarico', ['error' => $e->getMessage()]);
+            Log::error('Errore eliminazione incarico', [
+                'user_id' => auth()->id(),
+                'incarico_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'eliminazione. Riprova.'
             ], 500);
         }
     }

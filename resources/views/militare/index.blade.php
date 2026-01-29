@@ -139,7 +139,7 @@
 @php
     // Check if any filters are active
     $activeFilters = [];
-    foreach(['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email_istituzionale', 'telefono', 'presenza', 'compleanno'] as $filter) {
+    foreach(['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email', 'telefono', 'presenza', 'compleanno'] as $filter) {
         if(request()->filled($filter)) $activeFilters[] = $filter;
     }
     $hasActiveFilters = count($activeFilters) > 0;
@@ -198,7 +198,7 @@
                             <select name="compagnia" id="filter_compagnia" class="form-select form-select-sm filter-select" data-nosubmit="true">
                                 <option value="">Tutte</option>
                                 @foreach($compagnie as $compagnia)
-                                    <option value="{{ $compagnia->id }}">
+                                    <option value="{{ $compagnia->id }}" {{ request('compagnia') == $compagnia->id ? 'selected' : '' }}>
                                         {{ $compagnia->numero ?? $compagnia->nome }}
                                     </option>
                                 @endforeach
@@ -214,7 +214,7 @@
                             <select name="plotone_id" id="filter_plotone_id" class="form-select form-select-sm filter-select" data-nosubmit="true" disabled title="Seleziona prima una compagnia">
                                 <option value="">Seleziona compagnia</option>
                                 @foreach($plotoni as $plotone)
-                                    <option value="{{ $plotone->id }}" data-compagnia-id="{{ $plotone->compagnia_id }}">
+                                    <option value="{{ $plotone->id }}" data-compagnia-id="{{ $plotone->compagnia_id }}" {{ request('plotone_id') == $plotone->id ? 'selected' : '' }}>
                                         {{ $plotone->nome }}
                                     </option>
                                 @endforeach
@@ -286,14 +286,14 @@
                     
                     {{-- Filtro Email Istituzionale --}}
                     <div class="col-md-3">
-                        <label for="email_istituzionale" class="form-label small mb-1">Email Istituzionale</label>
+                        <label for="email" class="form-label small mb-1">Email Istituzionale</label>
                         <div class="select-wrapper">
-                            <select name="email_istituzionale" id="filter_email_istituzionale" class="form-select form-select-sm filter-select" data-nosubmit="true">
+                            <select name="email" id="filter_email" class="form-select form-select-sm filter-select" data-nosubmit="true">
                                 <option value="">Tutte</option>
                                 <option value="registrata">Registrata</option>
                                 <option value="non_registrata">Non Registrata</option>
                             </select>
-                            <span class="clear-filter" data-filter="email_istituzionale" title="Rimuovi filtro" style="display: none;">&times;</span>
+                            <span class="clear-filter" data-filter="email" title="Rimuovi filtro" style="display: none;">&times;</span>
                         </div>
                     </div>
                     
@@ -352,7 +352,7 @@
                     data-polo-id="{{ $m->polo_id ?? '' }}"
                     data-mansione-id="{{ $m->mansione_id ?? '' }}"
                     data-nos-status="{{ $m->nos_status ?? '' }}"
-                    data-email="{{ $m->email_istituzionale ? '1' : '0' }}"
+                    data-email="{{ $m->email ? '1' : '0' }}"
                     data-telefono="{{ $m->telefono ? '1' : '0' }}"
                     @if($isAcquired) title="Militare acquisito - Sola lettura" @endif>
                     @foreach($campiCustom as $campo)
@@ -397,39 +397,12 @@
     <i class="fas fa-file-excel"></i>
 </button>
 
-<!-- Modal per conferma eliminazione -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content border-0 shadow">
-      <div class="modal-body text-center p-5">
-        <div class="mb-4">
-          <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-            <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
-          </div>
-        </div>
-        
-        <h4 class="mb-3">Eliminare questo militare?</h4>
-        <p class="text-muted mb-2">Stai per eliminare:</p>
-        <h5 class="fw-bold mb-4" id="militare-to-delete"></h5>
-        
-        <div class="alert alert-danger bg-danger bg-opacity-10 border-0 mb-4">
-          <small><i class="fas fa-exclamation-circle me-1"></i> Questa azione Ã¨ irreversibile</small>
-        </div>
-        
-        <div class="d-grid gap-2">
-          <form id="deleteForm" action="" method="POST">
-              @csrf
-              @method('DELETE')
-              <button type="submit" class="btn btn-danger w-100 mb-2">
-                <i class="fas fa-trash-alt me-2"></i>SÃ¬, Elimina
-              </button>
-          </form>
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annulla</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
+<!-- Form nascosto per eliminazione -->
+<form id="deleteForm" action="" method="POST" style="display: none;">
+    @csrf
+    @method('DELETE')
+</form>
 
 @endsection
 
@@ -437,7 +410,7 @@
 <!-- Script per inizializzazione moduli -->
 <script>
 // Funzione per confermare l'eliminazione del militare
-function confirmDelete(militareId) {
+async function confirmDelete(militareId) {
     // Ottieni i dati del militare dalla riga
     const row = document.getElementById('militare-' + militareId);
     if (!row) {
@@ -447,18 +420,22 @@ function confirmDelete(militareId) {
     
     const cognome = row.querySelector('a.link-name').textContent.trim();
     const grado = row.querySelector('select[data-field="grado_id"] option:checked').textContent.trim();
+    const militareInfo = grado + ' ' + cognome;
     
-    // Imposta il nome del militare nel modal
-    document.getElementById('militare-to-delete').textContent = grado + ' ' + cognome;
+    // Usa il sistema di conferma unificato
+    const confirmed = await SUGECO.Confirm.show({
+        title: 'Eliminare questo militare?',
+        message: `Stai per eliminare ${militareInfo}. Questa azione è irreversibile.`,
+        type: 'danger',
+        confirmText: 'Elimina'
+    });
     
-    // Imposta l'action del form di eliminazione con la rotta corretta
+    if (!confirmed) return;
+    
+    // Imposta l'action del form e invia
     const deleteForm = document.getElementById('deleteForm');
-    const deleteUrl = '{{ url("anagrafica") }}/' + militareId;
-    deleteForm.action = deleteUrl;
-    
-    // Mostra il modal
-    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    deleteModal.show();
+    deleteForm.action = '{{ url("anagrafica") }}/' + militareId;
+    deleteForm.submit();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -528,7 +505,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Inizializza stato plotoni al caricamento
-        updatePlotoniFilter(compagniaSelect.value);
+        const initialCompagniaId = compagniaSelect.value;
+        updatePlotoniFilter(initialCompagniaId);
+        
+        // Se c'è un plotone selezionato nell'URL, verifica che appartenga alla compagnia
+        if (initialCompagniaId && plotoneSelect.value) {
+            const selectedOption = plotoneSelect.querySelector(`option[value="${plotoneSelect.value}"]`);
+            if (selectedOption && selectedOption.getAttribute('data-compagnia-id') != initialCompagniaId) {
+                // Il plotone selezionato non appartiene alla compagnia, resetta
+                plotoneSelect.value = '';
+            }
+        }
     }
     
     // Funzione per applicare i filtri lato client (usa data-attributes)
@@ -593,11 +580,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Filtro Email Istituzionale (usa data-attribute)
-            if (show && filters.email_istituzionale) {
+            if (show && filters.email) {
                 const hasEmail = row.dataset.email === '1';
-                if (filters.email_istituzionale === 'registrata' && !hasEmail) {
+                if (filters.email === 'registrata' && !hasEmail) {
                     show = false;
-                } else if (filters.email_istituzionale === 'non_registrata' && hasEmail) {
+                } else if (filters.email === 'non_registrata' && hasEmail) {
                     show = false;
                 }
             }
@@ -655,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = new URL(window.location);
         
         // Rimuovi tutti i parametri dei filtri
-        ['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email_istituzionale', 'telefono'].forEach(param => {
+        ['compagnia', 'plotone_id', 'grado_id', 'polo_id', 'mansione_id', 'nos_status', 'email', 'telefono'].forEach(param => {
             url.searchParams.delete(param);
         });
         
@@ -705,7 +692,10 @@ document.addEventListener('DOMContentLoaded', function() {
             select.value = '';
             select.classList.remove('applied');
         });
-        updatePlotoniFilter('');
+        // Reset plotone quando si resettano tutti i filtri
+        if (plotoneSelect) {
+            updatePlotoniFilter('');
+        }
         applyFiltersClientSide();
     };
     
@@ -833,13 +823,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.target.style.backgroundColor = '';
                     }, 1000);
                     
-                    // Se Ã¨ stata cambiata la compagnia, resetta e filtra i plotoni
-                    if (field === 'compagnia' && data.plotone_reset) {
+                    // Se è stata cambiata la compagnia, resetta e filtra i plotoni
+                    if (field === 'compagnia') {
                         const rowId = e.target.getAttribute('data-row-id');
                         const plotoneSelect = document.querySelector(`.plotone-select[data-row-id="${rowId}"]`);
                         if (plotoneSelect) {
-                            plotoneSelect.value = ''; // Resetta il plotone
-                            filterPlotoniByCompagnia(plotoneSelect, value); // Filtra i plotoni per la nuova compagnia
+                            filterPlotoniByCompagnia(plotoneSelect, value); // Filtra e disabilita/abilita i plotoni
                         }
                     }
                 } else {
@@ -925,7 +914,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 checkbox.checked = !isChecked;
                 formCheck.style.transform = 'scale(1)';
                 
-                // Non mostrare piÃ¹ alert, solo console per debugging
+                // Non mostrare più alert, solo console per debugging
             });
         }
         
@@ -1001,9 +990,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Funzione per filtrare i plotoni in base alla compagnia
+    // Funzione per filtrare i plotoni in base alla compagnia e disabilitarli se necessario
     function filterPlotoniByCompagnia(plotoneSelect, compagniaId) {
         const options = plotoneSelect.querySelectorAll('option');
+        
+        // Disabilita il select se non c'è compagnia selezionata
+        if (!compagniaId) {
+            plotoneSelect.disabled = true;
+            plotoneSelect.title = 'Seleziona prima una compagnia';
+        } else {
+            plotoneSelect.disabled = false;
+            plotoneSelect.removeAttribute('title');
+        }
         
         options.forEach(option => {
             if (option.value === '') {
@@ -1020,6 +1018,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 option.style.display = 'none';
             }
         });
+        
+        // Se il plotone selezionato non appartiene alla compagnia, resetta
+        if (compagniaId && plotoneSelect.value) {
+            const selectedOption = plotoneSelect.querySelector(`option[value="${plotoneSelect.value}"]`);
+            if (selectedOption && selectedOption.getAttribute('data-compagnia-id') != compagniaId) {
+                plotoneSelect.value = '';
+            }
+        } else if (!compagniaId) {
+            // Se non c'è compagnia, resetta il plotone
+            plotoneSelect.value = '';
+        }
     }
     
     // Inizializza i filtri dei plotoni all'avvio
@@ -1029,7 +1038,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (compagniaSelect) {
             const compagniaId = compagniaSelect.value;
-            if (compagniaId) {
+            filterPlotoniByCompagnia(plotoneSelect, compagniaId);
+        } else {
+            // Se non c'è compagnia select, disabilita comunque il plotone
+            filterPlotoniByCompagnia(plotoneSelect, null);
+        }
+    });
+    
+    // Listener per cambio compagnia nella tabella
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('compagnia-select')) {
+            const rowId = e.target.getAttribute('data-row-id');
+            const plotoneSelect = document.querySelector(`.plotone-select[data-row-id="${rowId}"]`);
+            
+            if (plotoneSelect) {
+                const compagniaId = e.target.value;
                 filterPlotoniByCompagnia(plotoneSelect, compagniaId);
             }
         }
@@ -1048,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Gestisci checkbox
             if (e.target.type === 'checkbox') {
-                // Se ci sono piÃ¹ checkbox per lo stesso campo (checkbox multipli con opzioni)
+                // Se ci sono più checkbox per lo stesso campo (checkbox multipli con opzioni)
                 const allCheckboxes = document.querySelectorAll(`.campo-custom-field[data-campo-nome="${nomeCampo}"][data-militare-id="${militareId}"]`);
                 
                 if (allCheckboxes.length > 1) {

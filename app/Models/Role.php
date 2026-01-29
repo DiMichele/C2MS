@@ -54,6 +54,44 @@ class Role extends Model
     {
         return $this->belongsTo(Compagnia::class);
     }
+    
+    /**
+     * Compagnie visibili per questo ruolo (tabella pivot role_compagnia_visibility)
+     */
+    public function compagnieVisibili(): BelongsToMany
+    {
+        return $this->belongsToMany(Compagnia::class, 'role_compagnia_visibility', 'role_id', 'compagnia_id')
+            ->withTimestamps();
+    }
+    
+    /**
+     * Ottiene gli ID delle compagnie visibili per questo ruolo
+     */
+    public function getCompagnieVisibiliIds(): array
+    {
+        return $this->compagnieVisibili()->pluck('compagnie.id')->toArray();
+    }
+    
+    /**
+     * Verifica se il ruolo può vedere una specifica compagnia
+     */
+    public function canViewCompagnia(int $compagniaId): bool
+    {
+        // Admin e amministratore vedono sempre tutto
+        if (in_array($this->name, ['admin', 'amministratore'])) {
+            return true;
+        }
+        
+        return $this->compagnieVisibili()->where('compagnie.id', $compagniaId)->exists();
+    }
+    
+    /**
+     * Sincronizza le compagnie visibili per questo ruolo
+     */
+    public function syncCompagnieVisibili(array $compagniaIds): void
+    {
+        $this->compagnieVisibili()->sync($compagniaIds);
+    }
 
     /**
      * Verifica se il ruolo ha un determinato permesso

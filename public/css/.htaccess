@@ -1,0 +1,29 @@
+# ==============================================================================
+# SUGECO - CSS Assets Security
+# ==============================================================================
+
+# Disabilita directory listing
+Options -Indexes
+
+# Blocca metodi HTTP pericolosi
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK) [NC]
+    RewriteRule .* - [F,L]
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    Header set Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'self'"
+    Header unset X-Powered-By
+</IfModule>
+
+# Blocca file pericolosi
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|phps|pl|cgi|py|sh)$">
+    Require all denied
+</FilesMatch>

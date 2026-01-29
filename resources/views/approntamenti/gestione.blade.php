@@ -7,13 +7,20 @@
     <!-- Header Centrato -->
     <div class="text-center mb-4">
         <h1 class="page-title">Gestione Approntamenti</h1>
-        <p class="text-muted">Configurazione delle colonne e scadenze per la pagina Approntamenti</p>
+        <p class="text-muted">Configura le colonne e scadenze per la pagina Approntamenti</p>
+    </div>
+
+    <!-- Pulsante Aggiungi Colonna -->
+    <div class="d-flex justify-content-center mb-4">
+        <button type="button" class="btn btn-success" onclick="openAddModal()">
+            <i class="fas fa-plus me-2"></i>Aggiungi Colonna
+        </button>
     </div>
 
     <!-- Info Card -->
     <div class="alert alert-info mb-4" style="max-width: 900px; margin: 0 auto;">
         <i class="fas fa-info-circle me-2"></i>
-        <strong>Nota:</strong> Le colonne degli approntamenti sono predefinite. Puoi visualizzare le colonne disponibili e le relative scadenze (se configurate). Per modificare i valori, vai alla pagina <a href="{{ route('approntamenti.index') }}">Approntamenti</a> e clicca sulla cella desiderata.
+        <strong>Nota:</strong> Le colonne con l'icona <i class="fas fa-link text-warning"></i> sono condivise con il sistema SPP e non possono essere eliminate. Trascina le righe per riordinare le colonne.
     </div>
 
     <!-- Tabella Colonne -->
@@ -21,39 +28,50 @@
         <table class="sugeco-table" id="colonneTable">
             <thead>
                 <tr>
-                    <th>#</th>
+                    <th style="width: 40px;"></th>
                     <th>Nome Colonna</th>
-                    <th>Campo DB</th>
-                    <th>Scadenza</th>
-                    <th>Stato</th>
+                    <th style="width: 150px;">Scadenza</th>
+                    <th style="width: 120px;">Azioni</th>
                 </tr>
             </thead>
             <tbody id="colonneTableBody">
-                @php
-                    $durate = [
-                        'rspp_4h' => 60,       
-                        'rspp_8h' => 60,       
-                        'rspp_preposti' => 24, 
-                        'bls' => 24,           
-                    ];
-                    $index = 1;
-                @endphp
-                @foreach($colonne as $campo => $label)
-                <tr>
-                    <td class="text-center text-muted">{{ $index++ }}</td>
-                    <td><strong>{{ $label }}</strong></td>
-                    <td><code>{{ $campo }}</code></td>
+                @foreach($colonne as $colonna)
+                <tr data-id="{{ $colonna->id }}" class="{{ !$colonna->attivo ? 'table-secondary' : '' }}">
+                    <td class="text-center drag-handle" style="cursor: move;">
+                        <i class="fas fa-grip-vertical text-muted"></i>
+                    </td>
+                    <td>
+                        <strong>{{ $colonna->label }}</strong>
+                        @if($colonna->fonte === 'scadenze_militari')
+                            <i class="fas fa-link text-warning ms-2" title="Colonna condivisa con SPP"></i>
+                        @endif
+                        @if(!$colonna->attivo)
+                            <span class="badge bg-secondary ms-2">Disattivata</span>
+                        @endif
+                    </td>
                     <td class="text-center">
-                        @if(isset($durate[$campo]))
+                        @if($colonna->scadenza_mesi)
                             <span class="badge bg-primary">
-                                {{ $durate[$campo] }} mesi ({{ $durate[$campo] / 12 }} anni)
+                                {{ $colonna->scadenza_formattata }}
                             </span>
                         @else
                             <span class="text-muted">-</span>
                         @endif
                     </td>
                     <td class="text-center">
-                        <span class="badge bg-success">Attivo</span>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary" onclick="openEditModal({{ $colonna->id }}, '{{ addslashes($colonna->label) }}', {{ $colonna->scadenza_mesi ?? 'null' }})" title="Modifica">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-{{ $colonna->attivo ? 'warning' : 'success' }}" onclick="toggleColonna({{ $colonna->id }})" title="{{ $colonna->attivo ? 'Disattiva' : 'Attiva' }}">
+                                <i class="fas fa-{{ $colonna->attivo ? 'eye-slash' : 'eye' }}"></i>
+                            </button>
+                            @if($colonna->fonte !== 'scadenze_militari')
+                            <button type="button" class="btn btn-outline-danger" onclick="deleteColonna({{ $colonna->id }}, '{{ addslashes($colonna->label) }}')" title="Elimina">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            @endif
+                        </div>
                     </td>
                 </tr>
                 @endforeach
@@ -65,7 +83,7 @@
     <div class="mt-4" style="max-width: 900px; margin: 0 auto;">
         <div class="card border-0 shadow-sm">
             <div class="card-header" style="background: #0a2342; color: white;">
-                <i class="fas fa-palette me-2"></i>Legenda Colori
+                <i class="fas fa-palette me-2"></i>Legenda Colori nella pagina Approntamenti
             </div>
             <div class="card-body">
                 <div class="row">
@@ -90,7 +108,7 @@
                     <div class="col-md-3">
                         <div class="d-flex align-items-center mb-2">
                             <span class="color-sample me-2" style="background-color: #e2e3e5; width: 30px; height: 20px; border-radius: 4px;"></span>
-                            <span>Non richiesto</span>
+                            <span>Non presente</span>
                         </div>
                     </div>
                 </div>
@@ -104,7 +122,7 @@
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm text-center">
                     <div class="card-body">
-                        <h3 class="text-primary mb-1">{{ count($colonne) }}</h3>
+                        <h3 class="text-primary mb-1">{{ $colonne->count() }}</h3>
                         <small class="text-muted">Colonne Totali</small>
                     </div>
                 </div>
@@ -112,16 +130,16 @@
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm text-center">
                     <div class="card-body">
-                        <h3 class="text-success mb-1">{{ count($durate) }}</h3>
-                        <small class="text-muted">Con Scadenza</small>
+                        <h3 class="text-success mb-1">{{ $colonne->where('attivo', true)->count() }}</h3>
+                        <small class="text-muted">Attive</small>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm text-center">
                     <div class="card-body">
-                        <h3 class="text-secondary mb-1">{{ count($colonne) - count($durate) }}</h3>
-                        <small class="text-muted">Solo Data</small>
+                        <h3 class="text-info mb-1">{{ $colonne->whereNotNull('scadenza_mesi')->count() }}</h3>
+                        <small class="text-muted">Con Scadenza</small>
                     </div>
                 </div>
             </div>
@@ -136,21 +154,245 @@
     </div>
 </div>
 
-{{-- 
-.table-container-ruolini {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    margin: 0;
+<!-- Modal Aggiungi/Modifica Colonna -->
+<div class="modal fade" id="colonnaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0a2342, #1a3a5c); color: white;">
+                <h5 class="modal-title" id="colonnaModalTitle">
+                    <i class="fas fa-columns me-2"></i>Nuova Colonna
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="colonnaForm">
+                <div class="modal-body">
+                    <input type="hidden" id="colonnaId" value="">
+                    
+                    <div class="mb-3">
+                        <label for="colonnaLabel" class="form-label fw-semibold">Nome Colonna <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="colonnaLabel" name="label" required maxlength="100" placeholder="Es: Corso ABC">
+                        <div class="form-text">Il nome che apparirà nell'intestazione della tabella approntamenti</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="colonnaScadenza" class="form-label fw-semibold">Scadenza (mesi)</label>
+                        <input type="number" class="form-control" id="colonnaScadenza" name="scadenza_mesi" min="1" max="120" placeholder="Es: 24">
+                        <div class="form-text">Lascia vuoto se la colonna non ha una scadenza automatica</div>
+                    </div>
+                    
+                    <div class="alert alert-secondary mb-0">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Suggerimento:</strong> Inserisci 12 per 1 anno, 24 per 2 anni, 60 per 5 anni.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-success" id="btnSaveColonna">
+                        <i class="fas fa-check me-1"></i>Salva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
+
+@endsection
+
+@push('scripts')
+<!-- SortableJS locale (funziona offline) -->
+<script src="{{ asset('vendor/js/sortable.min.js') }}"></script>
+<script>
+const ROUTES = {
+    store: '{{ route("gestione-approntamenti.colonne.store") }}',
+    update: '{{ route("gestione-approntamenti.colonne.update", ["id" => "__ID__"]) }}',
+    destroy: '{{ route("gestione-approntamenti.colonne.destroy", ["id" => "__ID__"]) }}',
+    toggle: '{{ route("gestione-approntamenti.colonne.toggle", ["id" => "__ID__"]) }}',
+    ordine: '{{ route("gestione-approntamenti.colonne.ordine") }}'
+};
+const CSRF_TOKEN = '{{ csrf_token() }}';
+
+let colonnaModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    colonnaModal = new bootstrap.Modal(document.getElementById('colonnaModal'));
+    
+    // Inizializza Sortable per drag & drop
+    const tbody = document.getElementById('colonneTableBody');
+    new Sortable(tbody, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function(evt) {
+            saveOrdine();
+        }
+    });
+    
+    // Form submit
+    document.getElementById('colonnaForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveColonna();
+    });
+});
+
+function openAddModal() {
+    document.getElementById('colonnaId').value = '';
+    document.getElementById('colonnaLabel').value = '';
+    document.getElementById('colonnaScadenza').value = '';
+    document.getElementById('colonnaModalTitle').innerHTML = '<i class="fas fa-plus me-2"></i>Nuova Colonna';
+    colonnaModal.show();
 }
 
-code {
-    background-color: #f1f3f5;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    color: #495057;
+function openEditModal(id, label, scadenza) {
+    document.getElementById('colonnaId').value = id;
+    document.getElementById('colonnaLabel').value = label;
+    document.getElementById('colonnaScadenza').value = scadenza || '';
+    document.getElementById('colonnaModalTitle').innerHTML = '<i class="fas fa-edit me-2"></i>Modifica Colonna';
+    colonnaModal.show();
 }
---}}
-@endsection
+
+async function saveColonna() {
+    const id = document.getElementById('colonnaId').value;
+    const label = document.getElementById('colonnaLabel').value.trim();
+    const scadenza = document.getElementById('colonnaScadenza').value;
+    
+    if (!label) {
+        showToast('warning', 'Inserisci il nome della colonna');
+        return;
+    }
+    
+    const btn = document.getElementById('btnSaveColonna');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+    
+    try {
+        const url = id 
+            ? ROUTES.update.replace('__ID__', id)
+            : ROUTES.store;
+        
+        const response = await fetch(url, {
+            method: id ? 'PUT' : 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                label: label,
+                scadenza_mesi: scadenza ? parseInt(scadenza) : null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', data.message);
+            colonnaModal.hide();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('error', data.message || 'Errore durante il salvataggio');
+        }
+    } catch (error) {
+        showToast('error', 'Errore di comunicazione con il server');
+        console.error(error);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Salva';
+    }
+}
+
+async function deleteColonna(id, label) {
+    // Usa il sistema di conferma unificato
+    const confirmed = await SUGECO.Confirm.show({
+        title: 'Conferma Eliminazione',
+        message: `Eliminare la colonna "${label}"? I dati esistenti non verranno eliminati, ma la colonna non sarà più visibile.`,
+        type: 'danger',
+        confirmText: 'Elimina'
+    });
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(ROUTES.destroy.replace('__ID__', id), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', data.message);
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('error', data.message || 'Errore durante l\'eliminazione');
+        }
+    } catch (error) {
+        showToast('error', 'Errore di comunicazione con il server');
+        console.error(error);
+    }
+}
+
+async function toggleColonna(id) {
+    try {
+        const response = await fetch(ROUTES.toggle.replace('__ID__', id), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', data.message);
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('error', data.message || 'Errore');
+        }
+    } catch (error) {
+        showToast('error', 'Errore di comunicazione con il server');
+        console.error(error);
+    }
+}
+
+async function saveOrdine() {
+    const rows = document.querySelectorAll('#colonneTableBody tr[data-id]');
+    const ordine = Array.from(rows).map(row => parseInt(row.dataset.id));
+    
+    try {
+        const response = await fetch(ROUTES.ordine, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ ordine: ordine })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('success', 'Ordine salvato');
+        }
+    } catch (error) {
+        showToast('error', 'Errore nel salvataggio dell\'ordine');
+        console.error(error);
+    }
+}
+
+function showToast(type, message) {
+    if (window.SUGECO?.Toast) {
+        window.SUGECO.Toast.show(type, message);
+    } else {
+        alert(message);
+    }
+}
+</script>
+@endpush

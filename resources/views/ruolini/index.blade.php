@@ -156,8 +156,9 @@
                                             <th class="ruolini-col-grade">Grado</th>
                                             <th class="ruolini-col-cognome">Cognome</th>
                                             <th class="ruolini-col-nome">Nome</th>
-                                            <th class="ruolini-col-plotone">Plotone</th>
+                                            <th class="ruolini-col-plotone col-plotone">Plotone</th>
                                             <th class="ruolini-col-ufficio">Ufficio</th>
+                                            <th class="ruolini-col-telefono col-telefono">Telefono</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -174,8 +175,9 @@
                                                    class="ruolini-link">{{ $item['militare']->cognome }}</a>
                                             </td>
                                             <td>{{ $item['militare']->nome }}</td>
-                                            <td class="text-muted">{{ $item['militare']->plotone->nome ?? '-' }}</td>
+                                            <td class="text-muted col-plotone">{{ $item['militare']->plotone->nome ?? '-' }}</td>
                                             <td class="text-muted">{{ $item['militare']->polo->nome ?? '-' }}</td>
+                                            <td class="text-muted col-telefono">{{ $item['militare']->telefono ?? '-' }}</td>
                                         </tr>
                                         @endforeach
                                     </tbody>
@@ -200,8 +202,9 @@
                                             <th class="ruolini-col-grade">Grado</th>
                                             <th class="ruolini-col-cognome">Cognome</th>
                                             <th class="ruolini-col-nome">Nome</th>
-                                            <th class="ruolini-col-plotone">Plotone</th>
+                                            <th class="ruolini-col-plotone col-plotone">Plotone</th>
                                             <th class="ruolini-col-ufficio">Ufficio</th>
+                                            <th class="ruolini-col-telefono col-telefono">Telefono</th>
                                             <th class="ruolini-col-motivo">Motivazione</th>
                                         </tr>
                                     </thead>
@@ -219,8 +222,9 @@
                                                    class="ruolini-link">{{ $item['militare']->cognome }}</a>
                                             </td>
                                             <td>{{ $item['militare']->nome }}</td>
-                                            <td class="text-muted">{{ $item['militare']->plotone->nome ?? '-' }}</td>
+                                            <td class="text-muted col-plotone">{{ $item['militare']->plotone->nome ?? '-' }}</td>
                                             <td class="text-muted">{{ $item['militare']->polo->nome ?? '-' }}</td>
+                                            <td class="text-muted col-telefono">{{ $item['militare']->telefono ?? '-' }}</td>
                                             <td>
                                                 @foreach($item['impegni'] as $impegno)
                                                 <span class="badge ruolini-impegno-badge" style="background: {{ $impegno['colore'] }};" 
@@ -246,15 +250,41 @@
     @endforeach
 </div>
 
-<!-- Floating export button -->
-<button type="button" class="fab fab-excel" id="exportExcel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
-    <i class="fas fa-file-excel"></i>
-</button>
+<!-- Floating export buttons -->
+<div class="fab-container">
+    <button type="button" class="fab fab-rapportino mb-2" id="exportRapportino" data-tooltip="Esporta Rapportino" aria-label="Esporta Rapportino">
+        <i class="fas fa-file-invoice"></i>
+    </button>
+    <button type="button" class="fab fab-excel" id="exportExcel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
+        <i class="fas fa-file-excel"></i>
+    </button>
+</div>
 
 <style>
 .ruolini-page {
     position: relative;
     z-index: 1;
+}
+
+/* Floating Buttons Container */
+.fab-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 1000;
+}
+
+.fab-rapportino {
+    background-color: #ffc107; /* Warning/Gold color */
+    color: #000;
+}
+
+.fab-rapportino:hover {
+    background-color: #e0a800;
+    color: #000;
 }
 
 /* Sezione Data */
@@ -603,8 +633,26 @@
     width: 18%;
 }
 
+.ruolini-col-telefono {
+    width: 15%;
+}
+
 .ruolini-col-motivo {
     width: auto;
+}
+
+/* Nascondi colonna plotone quando filtro attivo */
+.hide-plotone-col .col-plotone {
+    display: none;
+}
+
+/* Mostra colonna telefono quando filtro plotone attivo */
+.col-telefono {
+    display: none;
+}
+
+.hide-plotone-col .col-telefono {
+    display: table-cell;
 }
 
 @media (max-width: 768px) {
@@ -671,6 +719,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportBtn) {
         exportBtn.addEventListener('click', function() {
             exportRuoliniExcel();
+        });
+    }
+
+    const exportRapportinoBtn = document.getElementById('exportRapportino');
+    if (exportRapportinoBtn) {
+        exportRapportinoBtn.addEventListener('click', function() {
+            exportRapportinoExcel();
         });
     }
     
@@ -817,6 +872,16 @@ function applicaFiltri() {
     const compagniaId = getCompagniaId();
     const plotoneId = document.getElementById('plotoneSelect').value;
     const ufficioId = document.getElementById('ufficioSelect').value;
+    
+    // Gestisce visibilità colonne: nasconde Plotone e mostra Telefono quando filtro plotone attivo
+    const ruoliniPage = document.querySelector('.ruolini-page');
+    if (ruoliniPage) {
+        if (plotoneId) {
+            ruoliniPage.classList.add('hide-plotone-col');
+        } else {
+            ruoliniPage.classList.remove('hide-plotone-col');
+        }
+    }
     
     // Seleziona tutte le righe filtrables
     const rows = document.querySelectorAll('.ruolini-row');
@@ -1054,6 +1119,19 @@ function exportRuoliniExcel() {
     
     const q = params.toString();
     window.location.href = '{{ route("ruolini.export-excel") }}' + (q ? '?' + q : '');
+}
+
+function exportRapportinoExcel() {
+    const data = document.getElementById('dataSelect').value;
+    const compagnia = getCompagniaId();
+    
+    // Il rapportino è sempre per l'intera giornata/compagnia, ignoriamo plotone e ufficio
+    const params = new URLSearchParams();
+    if (data) params.append('data', data);
+    if (compagnia) params.append('compagnia_id', compagnia);
+    
+    const q = params.toString();
+    window.location.href = '{{ route("ruolini.export-rapportino") }}' + (q ? '?' + q : '');
 }
 
 // ============================================

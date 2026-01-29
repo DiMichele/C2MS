@@ -55,7 +55,7 @@ class Grado extends Model
      * 
      * @var array<string>
      */
-    protected $fillable = ['nome', 'abbreviazione', 'categoria', 'ordine'];
+    protected $fillable = ['nome', 'abbreviazione', 'categoria', 'ordine', 'sigla_categoria'];
     
     /**
      * Accessor per retrocompatibilità: ritorna abbreviazione quando si chiede sigla

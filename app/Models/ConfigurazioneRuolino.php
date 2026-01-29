@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\BelongsToCompagnia;
+use App\Models\OrganizationalUnit;
 
 /**
  * Model per la configurazione dei ruolini PER COMPAGNIA
@@ -33,6 +34,7 @@ class ConfigurazioneRuolino extends Model
 
     protected $fillable = [
         'compagnia_id',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
         'tipo_servizio_id',
         'stato_presenza',
         'note'
@@ -56,6 +58,14 @@ class ConfigurazioneRuolino extends Model
     public function compagnia()
     {
         return $this->belongsTo(Compagnia::class);
+    }
+
+    /**
+     * Unità organizzativa (nuova gerarchia)
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     /**

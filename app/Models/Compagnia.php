@@ -59,7 +59,7 @@ class Compagnia extends Model
      * 
      * @var array<string>
      */
-    protected $fillable = ['nome'];
+    protected $fillable = ['nome', 'descrizione', 'codice'];
     
     /**
      * Accessor per ottenere il numero della compagnia dal nome

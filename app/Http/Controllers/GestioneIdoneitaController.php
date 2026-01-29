@@ -51,12 +51,17 @@ class GestioneIdoneitaController extends Controller
             // Genera codice univoco
             $codice = \Str::slug($validated['nome'], '_');
             
-            // Verifica unicità del codice
+            // FIX: Verifica unicità del codice con protezione anti-loop infinito
             $baseCode = $codice;
             $counter = 1;
+            $maxIterations = 1000;
             while (TipoIdoneita::where('codice', $codice)->exists()) {
                 $codice = $baseCode . '_' . $counter;
                 $counter++;
+                
+                if ($counter > $maxIterations) {
+                    throw new \RuntimeException('Impossibile generare un codice univoco.');
+                }
             }
 
             // Determina ordine
@@ -84,19 +89,21 @@ class GestioneIdoneitaController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore creazione tipo idoneità', [
+                'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
-                'data' => $validated
+                'data' => $validated,
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante la creazione. Riprova o contatta l\'amministratore.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la creazione'])
+                ->withErrors(['error' => 'Si è verificato un errore durante la creazione. Riprova.'])
                 ->withInput();
         }
     }
@@ -121,13 +128,14 @@ class GestioneIdoneitaController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore aggiornamento tipo idoneità', [
+                'user_id' => auth()->id(),
                 'id' => $id,
                 'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.'
             ], 500);
         }
     }
@@ -150,12 +158,17 @@ class GestioneIdoneitaController extends Controller
             if ($idoneita->nome !== $validated['nome']) {
                 $nuovoCodice = \Str::slug($validated['nome'], '_');
                 
-                // Verifica unicità del nuovo codice (escludendo il tipo corrente)
+                // FIX: Verifica unicità del nuovo codice con protezione anti-loop infinito
                 $baseCode = $nuovoCodice;
                 $counter = 1;
+                $maxIterations = 1000;
                 while (TipoIdoneita::where('codice', $nuovoCodice)->where('id', '!=', $id)->exists()) {
                     $nuovoCodice = $baseCode . '_' . $counter;
                     $counter++;
+                    
+                    if ($counter > $maxIterations) {
+                        throw new \RuntimeException('Impossibile generare un codice univoco.');
+                    }
                 }
                 
                 $validated['codice'] = $nuovoCodice;
@@ -176,19 +189,21 @@ class GestioneIdoneitaController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore modifica tipo idoneità', [
+                'user_id' => auth()->id(),
                 'id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante la modifica: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante la modifica. Riprova.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la modifica'])
+                ->withErrors(['error' => 'Si è verificato un errore durante la modifica. Riprova.'])
                 ->withInput();
         }
     }
@@ -199,10 +214,11 @@ class GestioneIdoneitaController extends Controller
     public function destroy(Request $request, $id)
     {
         try {
-            $idoneita = TipoIdoneita::findOrFail($id);
+            // FIX N+1: Usa withCount per ottimizzare la query
+            $idoneita = TipoIdoneita::withCount('scadenzeIdoneita')->findOrFail($id);
             
             // Verifica se ci sono scadenze associate
-            $countScadenze = $idoneita->scadenzeIdoneita()->count();
+            $countScadenze = $idoneita->scadenze_idoneita_count;
             
             if ($countScadenze > 0) {
                 // Disattiva invece di eliminare se ci sono dati associati
@@ -225,19 +241,21 @@ class GestioneIdoneitaController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore eliminazione tipo idoneità', [
+                'user_id' => auth()->id(),
                 'id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante l\'eliminazione. Potrebbe essere in uso.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante l\'eliminazione']);
+                ->withErrors(['error' => 'Si è verificato un errore durante l\'eliminazione. Riprova.']);
         }
     }
 
@@ -259,13 +277,14 @@ class GestioneIdoneitaController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore toggle stato tipo idoneità', [
+                'user_id' => auth()->id(),
                 'id' => $id,
                 'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'operazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'operazione. Riprova.'
             ], 500);
         }
     }

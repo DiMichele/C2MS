@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\OrganizationalUnit;
 
 /**
  * Modello per le pianificazioni mensili
@@ -45,7 +46,8 @@ class PianificazioneMensile extends Model
         'descrizione',
         'stato',
         'data_creazione',
-        'creato_da'
+        'creato_da',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
     ];
 
     /**
@@ -62,6 +64,14 @@ class PianificazioneMensile extends Model
     // ==========================================
     // RELAZIONI
     // ==========================================
+
+    /**
+     * Unità organizzativa (nuova gerarchia)
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
+    }
 
     /**
      * Utente che ha creato la pianificazione

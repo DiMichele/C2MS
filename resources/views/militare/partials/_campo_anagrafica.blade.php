@@ -41,7 +41,8 @@
                 $valore = $militare->data_nascita ? $militare->data_nascita->format('Y-m-d') : '';
                 break;
             case 'email_istituzionale':
-                $valore = $militare->email_istituzionale;
+            case 'email':
+                $valore = $militare->email;
                 break;
             case 'telefono':
                 $valore = $militare->telefono;

@@ -44,10 +44,10 @@
                                             <i class="fas fa-file-download"></i> Visualizza
                                         </a>
                                     @endif
-                                    <form action="{{ route('certificati.destroy', $certificato->id) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('certificati.destroy', $certificato->id) }}" method="POST" class="d-inline delete-certificato-form">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Sei sicuro di voler eliminare questo certificato?')">
+                                        <button type="button" class="btn btn-sm btn-outline-danger delete-certificato-btn">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </form>
@@ -86,4 +86,17 @@
             }
         });
     });
-</script> 
+    
+    // Gestione eliminazione certificati con sistema conferma unificato
+    document.querySelectorAll('.delete-certificato-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const form = this.closest('.delete-certificato-form');
+            
+            const confirmed = await SUGECO.Confirm.delete('Eliminare questo certificato?');
+            
+            if (confirmed && form) {
+                form.submit();
+            }
+        });
+    });
+</script>

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\OrganizationalUnit;
 
 class TurnoSettimanale extends Model
 {
@@ -17,6 +18,7 @@ class TurnoSettimanale extends Model
         'data_fine',
         'anno',
         'numero_settimana',
+        'organizational_unit_id', // Nuova gerarchia organizzativa
         'stato',
         'note',
     ];
@@ -34,6 +36,14 @@ class TurnoSettimanale extends Model
     public function assegnazioni()
     {
         return $this->hasMany(AssegnazioneTurno::class, 'turno_settimanale_id');
+    }
+
+    /**
+     * Unità organizzativa (nuova gerarchia)
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
     }
 
     /**

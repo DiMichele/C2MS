@@ -163,29 +163,7 @@
     </div>
 </div>
 
-<!-- Modal Conferma Eliminazione -->
-<div class="modal fade" id="deletePoligonoModal" tabindex="-1" aria-labelledby="deletePoligonoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deletePoligonoModalLabel">Conferma Eliminazione</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">Sei sicuro di voler eliminare il tipo di poligono <strong id="deletePoligonoNome"></strong>?</p>
-                <div class="alert alert-danger mb-0">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attenzione:</strong> Verranno eliminate anche tutte le scadenze associate a questo tipo. L'operazione è irreversibile.
-                </div>
-                <input type="hidden" id="delete_poligono_id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Elimina</button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
 
 <script>
 (function() {
@@ -265,9 +243,7 @@
                 const formData = new FormData(this);
                 const data = {
                     nome: formData.get('nome'),
-                    durata_mesi: parseInt(formData.get('durata_mesi')),
-                    punteggio_minimo: 0,
-                    punteggio_massimo: 100
+                    durata_mesi: parseInt(formData.get('durata_mesi'))
                 };
                 
                 const submitBtn = this.querySelector('button[type="submit"]');
@@ -332,9 +308,7 @@
                 const formData = new FormData(this);
                 const data = {
                     nome: formData.get('nome'),
-                    durata_mesi: parseInt(formData.get('durata_mesi')),
-                    punteggio_minimo: 0,
-                    punteggio_massimo: 100
+                    durata_mesi: parseInt(formData.get('durata_mesi'))
                 };
                 
                 const submitBtn = this.querySelector('button[type="submit"]');
@@ -375,27 +349,21 @@
         
         // Gestione pulsanti eliminazione
         document.querySelectorAll('.delete-poligono-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 const poligonoId = this.dataset.poligonoId;
                 const nome = this.dataset.nome;
                 
-                document.getElementById('delete_poligono_id').value = poligonoId;
-                document.getElementById('deletePoligonoNome').textContent = nome;
+                // Usa il sistema di conferma unificato
+                const confirmed = await SUGECO.Confirm.show({
+                    title: 'Conferma Eliminazione',
+                    message: `Eliminare il tipo di poligono "${nome}"? Verranno eliminate anche tutte le scadenze associate.`,
+                    type: 'danger',
+                    confirmText: 'Elimina'
+                });
                 
-                const modal = new bootstrap.Modal(document.getElementById('deletePoligonoModal'));
-                modal.show();
-            });
-        });
-        
-        // Conferma eliminazione
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', function() {
-                const poligonoId = document.getElementById('delete_poligono_id').value;
+                if (!confirmed) return;
                 
-                this.disabled = true;
-                this.innerHTML = 'Eliminazione...';
-                
+                // Esegui eliminazione
                 fetch('{{ url("gestione-poligoni") }}' + '/' + poligonoId, {
                     method: 'DELETE',
                     headers: {
@@ -413,18 +381,14 @@
                 })
                 .then(function(data) {
                     if (data.success) {
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('deletePoligonoModal'));
-                        modal.hide();
                         location.reload();
                     }
                 })
                 .catch(function(error) {
-                    alert('Errore: ' + error.message);
-                    confirmDeleteBtn.disabled = false;
-                    confirmDeleteBtn.innerHTML = 'Elimina';
+                    showError('Errore: ' + error.message);
                 });
             });
-        }
+        });
     }
 })();
 </script>

@@ -19,6 +19,9 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Services\ExcelStyleService;
+use App\Services\AuditService;
+use App\Services\PrenotazioneApprontamentoService;
+use App\Models\PrenotazioneApprontamento;
 
 /**
  * Controller per la gestione della pianificazione mensile
@@ -66,7 +69,6 @@ class PianificazioneController extends Controller
                 'polo',
                 'mansione',
                 'ruolo', 
-                'approntamentoPrincipale',
                 'scadenzaApprontamento',
                 'teatriOperativi',
                 'patenti',
@@ -578,9 +580,9 @@ class PianificazioneController extends Controller
         $militare->load([
             'grado',
             'plotone',
-            'approntamentoPrincipale',
             'scadenzaApprontamento',
-            'ultimoPoligono.tipoPoligono',
+            'teatriOperativi',
+            'scadenzePoligoni.tipoPoligono',
             'valutazioni' => function($query) {
                 $query->latest()->limit(5);
             }
@@ -672,6 +674,26 @@ class PianificazioneController extends Controller
                 ]
             );
         
+        // Verifica se c'è una pianificazione esistente con prenotazione collegata
+        $pianificazioneEsistente = PianificazioneGiornaliera::where([
+            'militare_id' => $militare->id,
+            'pianificazione_mensile_id' => $pianificazioneMensile->id,
+            'giorno' => $request->giorno
+        ])->first();
+        
+        // Se si sta rimuovendo il servizio e c'era una prenotazione collegata, elimina la prenotazione
+        if (!$tipoServizioId && $pianificazioneEsistente && $pianificazioneEsistente->prenotazione_approntamento_id) {
+            $prenotazione = PrenotazioneApprontamento::find($pianificazioneEsistente->prenotazione_approntamento_id);
+            if ($prenotazione && $prenotazione->stato === 'prenotato') {
+                $prenotazioneService = app(PrenotazioneApprontamentoService::class);
+                $prenotazioneService->eliminaPrenotazione($prenotazione);
+                \Log::info('Eliminata prenotazione collegata da CPT', [
+                    'prenotazione_id' => $prenotazione->id,
+                    'militare_id' => $militare->id
+                ]);
+            }
+        }
+
         $pianificazione = PianificazioneGiornaliera::updateOrCreate(
             [
                 'militare_id' => $militare->id,
@@ -689,6 +711,14 @@ class PianificazioneController extends Controller
         
         // SINCRONIZZAZIONE BIDIREZIONALE: CPT -> Turni
         $this->sincronizzaCptVersoTurni($militare, $anno, $mese, $request->giorno, $tipoServizioId);
+        
+            // Registra la modifica nel log di audit
+            AuditService::log(
+                'update',
+                "Aggiornato CPT giorno {$request->giorno}/{$mese}/{$anno} per {$militare->cognome} {$militare->nome}",
+                $militare,
+                ['giorno' => $request->giorno, 'mese' => $mese, 'anno' => $anno, 'tipo_servizio_id' => $tipoServizioId]
+            );
         
             return response()->json([
                 'success' => true,
@@ -856,8 +886,8 @@ class PianificazioneController extends Controller
             'polo',
             'mansione',
             'ruolo',
-            'approntamentoPrincipale',
             'scadenzaApprontamento',
+            'teatriOperativi',
             'patenti',
             'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
                 $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
@@ -1116,7 +1146,7 @@ class PianificazioneController extends Controller
             $sheet->setCellValue('G' . $row, !empty($patenti) ? implode(' ', $patenti) : '-');
             
             // Teatro Operativo (era "APPRONT.")
-            $sheet->setCellValue('H' . $row, $militare->scadenzaApprontamento->teatro_operativo ?? ($militare->approntamentoPrincipale->nome ?? '-'));
+            $sheet->setCellValue('H' . $row, $militare->scadenzaApprontamento->teatro_operativo ?? ($militare->getTeatroOperativoCodice() ?? '-'));
 
             // Aggiungi i dati di pianificazione per ogni giorno
             $pianificazioniPerGiorno = [];

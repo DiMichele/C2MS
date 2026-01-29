@@ -57,7 +57,12 @@
                             <form action="{{ route('militare.destroy', $militare->id) }}" method="POST" class="d-inline delete-form">
                                 @csrf
                                 @method('DELETE')
-                                <button type="button" class="action-btn delete" data-tooltip="Elimina" aria-label="Elimina" data-toggle="modal" data-target="#deleteModal" data-id="{{ $militare->id }}" data-name="{{ $militare->cognome }} {{ $militare->nome }}">
+                                <button type="button" 
+                                        class="action-btn delete delete-militare-btn" 
+                                        data-tooltip="Elimina" 
+                                        aria-label="Elimina" 
+                                        data-militare-id="{{ $militare->id }}" 
+                                        data-militare-name="{{ $militare->cognome }} {{ $militare->nome }}">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </form>
@@ -80,4 +85,27 @@
         {{ $militari->links() }}
     </div>
 </div>
-@endif 
+@endif
+
+@once
+@push('scripts')
+<script>
+// Gestione eliminazione militari con sistema conferma unificato
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-militare-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const militareId = this.dataset.militareId;
+            const militareName = this.dataset.militareName;
+            const form = this.closest('.delete-form');
+            
+            const confirmed = await SUGECO.Confirm.delete(`Eliminare ${militareName}? Questa azione è irreversibile.`);
+            
+            if (confirmed && form) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+@endpush
+@endonce

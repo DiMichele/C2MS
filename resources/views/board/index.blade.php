@@ -87,12 +87,9 @@
                             <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}" style="position: relative;">
                                 <!-- Pulsanti azione -->
                                 <div class="activity-actions">
-                                    <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-light" title="Visualizza" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
+                                    <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-light" title="Visualizza dettagli" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
                                         <i class="fas fa-eye" style="font-size: 0.75rem;"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-info" onclick="openEditModal({{ $activity->id }}, event)" title="Modifica" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
-                                        <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
-                                    </button>
                                     <button type="button" class="btn btn-sm btn-danger" onclick="openDeleteModal({{ $activity->id }}, event)" title="Elimina" style="padding: 0.15rem 0.35rem;">
                                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                                     </button>
@@ -200,12 +197,9 @@
                             <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}" style="position: relative;">
                                 <!-- Pulsanti azione -->
                                 <div class="activity-actions">
-                                    <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-light" title="Visualizza" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
+                                    <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-light" title="Visualizza dettagli" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
                                         <i class="fas fa-eye" style="font-size: 0.75rem;"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-info" onclick="openEditModal({{ $activity->id }}, event)" title="Modifica" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
-                                        <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
-                                    </button>
                                     <button type="button" class="btn btn-sm btn-danger" onclick="openDeleteModal({{ $activity->id }}, event)" title="Elimina" style="padding: 0.15rem 0.35rem;">
                                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                                     </button>
@@ -390,6 +384,16 @@
           
           <div class="mb-3">
             <label class="form-label fw-bold">Militari Coinvolti</label>
+            
+            <!-- Info disponibilità -->
+            <div id="disponibilita-info" class="alert alert-info mb-2 py-2 d-none">
+              <i class="fas fa-info-circle me-1"></i>
+              <small>I militari sono colorati in base alla disponibilità per la data selezionata: 
+                <span class="badge bg-success">Disponibile</span> 
+                <span class="badge bg-warning text-dark">Non disponibile</span>
+              </small>
+            </div>
+            
             <div id="availability-warnings" class="alert alert-warning d-none mb-2" role="alert">
               <i class="fas fa-exclamation-triangle me-2"></i>
               <strong>Attenzione - Conflitti rilevati:</strong>
@@ -1290,52 +1294,97 @@
 <script src="{{ asset('vendor/js/sortable.min.js') }}"></script>
 <script src="{{ asset('vendor/js/select2.min.js') }}"></script>
 <script>
-// Controllo disponibilità  militari
+// Controllo disponibilità militari - sistema automatico batch
 let conflittiDisponibilita = {};
+let disponibilitaMilitari = {}; // Cache della disponibilità per data corrente
 
-async function verificaDisponibilita(militareId, startDate, endDate) {
+/**
+ * Carica la disponibilità di tutti i militari per una data usando endpoint batch
+ */
+async function caricaDisponibilitaMilitari(data) {
+    if (!data) return;
+    
     try {
-        const dateRange = [];
-        const start = new Date(startDate);
-        const end = endDate ? new Date(endDate) : new Date(startDate);
+        const response = await fetch('{{ route("servizi.turni.militari-disponibilita") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ data: data })
+        });
         
-        // Genera tutte le date nell'intervallo
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            dateRange.push(new Date(d).toISOString().split('T')[0]);
-        }
+        const result = await response.json();
         
-        // Verifica disponibilità  per ogni data
-        const conflitti = [];
-        for (const data of dateRange) {
-            const response = await fetch(`{{ route('servizi.turni.check-disponibilita') }}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    militare_id: militareId,
-                    data: data
-                })
+        if (result.success) {
+            // Crea mappa di disponibilità
+            disponibilitaMilitari = {};
+            
+            // Militari disponibili
+            result.disponibili.forEach(m => {
+                disponibilitaMilitari[m.id] = { disponibile: true };
             });
             
-            const result = await response.json();
-            if (!result.disponibile) {
-                conflitti.push({
-                    data: data,
-                    motivo: result.motivo,
-                    tipo: result.tipo
-                });
-            }
+            // Militari non disponibili
+            result.non_disponibili.forEach(m => {
+                disponibilitaMilitari[m.id] = { 
+                    disponibile: false, 
+                    motivo: m.motivo 
+                };
+            });
+            
+            // Aggiorna visual nella lista
+            aggiornaVisualDisponibilita();
+            
+            // Mostra info
+            document.getElementById('disponibilita-info').classList.remove('d-none');
         }
-        
-        return conflitti;
     } catch (error) {
-        console.error('Errore verifica disponibilità :', error);
-        return [];
+        console.error('Errore caricamento disponibilità:', error);
     }
 }
 
+/**
+ * Aggiorna l'aspetto visivo dei militari nella lista in base alla disponibilità
+ */
+function aggiornaVisualDisponibilita() {
+    const listContainer = document.getElementById('militari-list');
+    if (!listContainer) return;
+    
+    listContainer.querySelectorAll('.militare-item').forEach(item => {
+        const id = item.dataset.id;
+        const disponibilita = disponibilitaMilitari[id];
+        
+        // Rimuovi classi precedenti
+        item.classList.remove('militare-disponibile', 'militare-non-disponibile');
+        
+        // Rimuovi badge esistente
+        const oldBadge = item.querySelector('.disponibilita-badge');
+        if (oldBadge) oldBadge.remove();
+        
+        if (disponibilita) {
+            if (disponibilita.disponibile) {
+                item.classList.add('militare-disponibile');
+            } else {
+                item.classList.add('militare-non-disponibile');
+                // Aggiungi tooltip con motivo
+                item.title = disponibilita.motivo || 'Non disponibile';
+                
+                // Aggiungi badge
+                const badge = document.createElement('span');
+                badge.className = 'disponibilita-badge badge bg-warning text-dark ms-auto';
+                badge.innerHTML = '<i class="fas fa-calendar-times"></i>';
+                badge.title = disponibilita.motivo;
+                item.appendChild(badge);
+            }
+        }
+    });
+}
+
+/**
+ * Aggiorna i conflitti per i militari selezionati
+ */
 async function aggiornaConflitti() {
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
@@ -1347,45 +1396,29 @@ async function aggiornaConflitti() {
         return;
     }
     
-    // Usa il Set globale militariSelezionati invece del select element
+    // Usa il Set globale militariSelezionati
     if (!window.militariSelezionati || militariSelezionati.size === 0) {
         warningDiv.classList.add('d-none');
         return;
     }
     
-    // Ottieni i dati dei militari selezionati
-    const selectedMilitari = [];
+    // Ottieni i dati dei militari selezionati che NON sono disponibili
+    conflittiDisponibilita = {};
+    
     militariSelezionati.forEach(id => {
         const item = document.querySelector(`[data-id="${id}"]`);
-        if (item) {
-            selectedMilitari.push({
-                id: id,
-                nome: item.dataset.nome
-            });
-        }
-    });
-    
-    if (selectedMilitari.length === 0) {
-        warningDiv.classList.add('d-none');
-        return;
-    }
-    
-    // Verifica disponibilità  per ogni militare
-    conflittiDisponibilita = {};
-    for (const militare of selectedMilitari) {
-        const conflitti = await verificaDisponibilita(
-            militare.id, 
-            startDateInput.value, 
-            endDateInput.value || startDateInput.value
-        );
+        const disponibilita = disponibilitaMilitari[id];
         
-        if (conflitti.length > 0) {
-            conflittiDisponibilita[militare.id] = {
-                nome: militare.nome,
-                conflitti: conflitti
+        if (item && disponibilita && !disponibilita.disponibile) {
+            conflittiDisponibilita[id] = {
+                nome: item.dataset.nome,
+                conflitti: [{
+                    data: startDateInput.value,
+                    motivo: disponibilita.motivo
+                }]
             };
         }
-    }
+    });
     
     // Mostra/nascondi avvisi
     if (Object.keys(conflittiDisponibilita).length > 0) {
@@ -1405,40 +1438,25 @@ async function aggiornaConflitti() {
     }
 }
 
-// Funzioni per aprire modali edit/delete dalle card
-function openEditModal(activityId, event) {
-    event.preventDefault();
-    event.stopPropagation();
-    window.location.href = `{{ url('board/activities') }}/${activityId}#editModal`;
-}
-
-// Variabili globali per il modal di eliminazione
-let activityIdToDelete = null;
-
-function openDeleteModal(activityId, event) {
+// Funzione per aprire conferma eliminazione attività
+async function openDeleteModal(activityId, event) {
     event.preventDefault();
     event.stopPropagation();
     
-    // Salva l'ID dell'attività da eliminare
-    activityIdToDelete = activityId;
+    // Usa il sistema di conferma unificato
+    const confirmed = await SUGECO.Confirm.show({
+        title: 'Elimina Attività',
+        message: 'Eliminare questa attività? Verrà rimossa dal CPT di tutti i militari associati. L\'operazione non può essere annullata.',
+        type: 'danger',
+        confirmText: 'Elimina Definitivamente'
+    });
     
-    // Mostra il modal di conferma
-    const modal = new bootstrap.Modal(document.getElementById('deleteActivityModal'));
-    modal.show();
-}
-
-function confirmDeleteActivity() {
-    if (!activityIdToDelete) return;
+    if (!confirmed) return;
     
-    // Mostra loading sul bottone
-    const btn = document.getElementById('confirmDeleteBtn');
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
-    btn.disabled = true;
-    
+    // Esegui eliminazione via form submit
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = `{{ url('board/activities') }}/${activityIdToDelete}`;
+    form.action = `{{ url('board/activities') }}/${activityId}`;
     
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     const methodField = document.createElement('input');
@@ -1644,11 +1662,16 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Aggiungi listener per date
+    // Aggiungi listener per date - carica automaticamente disponibilità
     const startDateInput = document.getElementById('start_date');
     const endDateInput = document.getElementById('end_date');
     if (startDateInput) {
-        startDateInput.addEventListener('change', aggiornaConflitti);
+        startDateInput.addEventListener('change', async function() {
+            // Carica disponibilità per tutti i militari (chiamata batch)
+            await caricaDisponibilitaMilitari(this.value);
+            // Poi aggiorna i conflitti per i selezionati
+            aggiornaConflitti();
+        });
     }
     if (endDateInput) {
         endDateInput.addEventListener('change', aggiornaConflitti);
@@ -1657,7 +1680,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Gestione submit form
     const activityForm = document.querySelector('#newActivityForm');
     if (activityForm) {
-        activityForm.addEventListener('submit', (e) => {
+        activityForm.addEventListener('submit', async (e) => {
             const compagniaMountingField = document.querySelector('#compagnia_mounting_id');
             const titleField = document.querySelector('#title');
             const startDateField = document.querySelector('#start_date');
@@ -1665,33 +1688,35 @@ window.addEventListener('DOMContentLoaded', () => {
             
             // Verifica campi obbligatori
             if (!titleField.value) {
-                alert('Il titolo è obbligatorio');
+                showWarning('Il titolo è obbligatorio');
                 e.preventDefault();
                 return false;
             }
             if (!startDateField.value) {
-                alert('La data di inizio è obbligatoria');
+                showWarning('La data di inizio è obbligatoria');
                 e.preventDefault();
                 return false;
             }
             if (!columnIdField.value) {
-                alert('Devi selezionare uno stato');
+                showWarning('Devi selezionare uno stato');
                 e.preventDefault();
                 return false;
             }
             if (!compagniaMountingField || !compagniaMountingField.value) {
-                alert('Devi selezionare la compagnia mounting (organizzatrice)');
+                showWarning('Devi selezionare la compagnia mounting (organizzatrice)');
                 e.preventDefault();
                 return false;
             }
             
-            // Avviso se ci sono conflitti
+            // Avviso se ci sono conflitti - usa sistema conferma unificato
             if (Object.keys(conflittiDisponibilita).length > 0) {
-                const conferma = confirm('ATTENZIONE: Alcuni militari selezionati hanno conflitti di disponibilità . Vuoi procedere comunque?');
-                if (!conferma) {
-                    e.preventDefault();
-                    return false;
+                e.preventDefault();
+                const conferma = await SUGECO.Confirm.warning('Alcuni militari selezionati hanno conflitti di disponibilità. Vuoi procedere comunque?', 'Procedi');
+                if (conferma) {
+                    // Rimuovi temporaneamente il listener e invia il form
+                    this.submit();
                 }
+                return false;
             }
             
             });
@@ -1711,11 +1736,16 @@ window.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('createActivityModal');
     if (modal) {
         // Quando si apre il modal
-        modal.addEventListener('show.bs.modal', () => {
+        modal.addEventListener('show.bs.modal', async () => {
             // Imposta la data di inizio ad oggi se non impostata
             const startDateField = document.querySelector('#start_date');
             if (startDateField && !startDateField.value) {
                 startDateField.value = new Date().toISOString().split('T')[0];
+            }
+            
+            // Carica automaticamente la disponibilità per la data selezionata
+            if (startDateField && startDateField.value) {
+                await caricaDisponibilitaMilitari(startDateField.value);
             }
         });
         
@@ -1734,6 +1764,20 @@ window.addEventListener('DOMContentLoaded', () => {
             document.querySelector('#createActivityModal .modal-title').innerHTML =
                 '<i class="fas fa-plus-circle text-primary me-2"></i>Nuova Attività ';
             document.querySelector('#start_date').value = new Date().toISOString().split('T')[0];
+            
+            // Reset indicatori disponibilità
+            disponibilitaMilitari = {};
+            document.getElementById('disponibilita-info').classList.add('d-none');
+            document.getElementById('availability-warnings').classList.add('d-none');
+            const listContainer = document.getElementById('militari-list');
+            if (listContainer) {
+                listContainer.querySelectorAll('.militare-item').forEach(item => {
+                    item.classList.remove('militare-disponibile', 'militare-non-disponibile');
+                    item.title = '';
+                    const badge = item.querySelector('.disponibilita-badge');
+                    if (badge) badge.remove();
+                });
+            }
         });
     }
     
@@ -1877,34 +1921,7 @@ window.addEventListener('DOMContentLoaded', () => {
     <i class="fas fa-file-excel"></i>
 </a>
 
-<!-- Modal Conferma Eliminazione Attività -->
-<div class="modal fade" id="deleteActivityModal" tabindex="-1" aria-labelledby="deleteActivityModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteActivityModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Elimina Attività
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Chiudi"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">Sei sicuro di voler eliminare questa attività?</p>
-                <div class="alert alert-warning mb-0">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <strong>Attenzione:</strong> Questa operazione eliminerà definitivamente l'attività e la rimuoverà dal CPT di tutti i militari associati. Non può essere annullata.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteActivity()">
-                    <i class="fas fa-trash me-1"></i>Elimina Definitivamente
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
 
 @endpush
 

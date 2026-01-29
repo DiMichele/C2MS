@@ -221,33 +221,7 @@
     </div>
 </div>
 
-<!-- Modal Elimina Campo -->
-<div class="modal fade" id="deleteCampoModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Conferma Eliminazione</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="mb-3">Sei sicuro di voler eliminare il campo <strong id="deleteCampoNome"></strong>?</p>
-                <div class="alert alert-warning mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Attenzione:</strong> Eliminando questo campo verranno rimossi anche tutti i valori salvati per i militari.
-                </div>
-                <input type="hidden" id="delete_campo_id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annulla
-                </button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteCampo">
-                    <i class="fas fa-trash me-1"></i>Elimina
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Modal conferma eliminazione gestito da SUGECO.Confirm -->
 
 @if(!isset($isTab) || !$isTab)
 @endsection
@@ -260,8 +234,25 @@
 
 @push('scripts')
 <script>
+// =====================================================================
+// FIX: Protezione contro esecuzione multipla degli event listener
+// La view può essere inclusa come tab, causando registrazione duplicata
+// degli handler. Usiamo un flag globale per prevenire questo problema.
+// =====================================================================
+(function() {
+    // Guard: previeni inizializzazione multipla
+    if (window._gestioneCampiAnagraficaInitialized) {
+        console.log('Gestione Campi Anagrafica: già inizializzato, skip.');
+        return;
+    }
+    window._gestioneCampiAnagraficaInitialized = true;
+
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    
+    // Flag per prevenire doppio submit
+    let isSubmittingCreate = false;
+    let isSubmittingEdit = false;
     
     // Inizializza i tooltip Bootstrap
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -270,105 +261,122 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Mostra/nascondi opzioni in base al tipo campo
-    document.getElementById('tipo_campo_create').addEventListener('change', function() {
-        const opzioniContainer = document.getElementById('opzioni_container_create');
-        const opzioniHelp = document.getElementById('opzioni_help_create');
-        const mostraOpzioni = this.value === 'select' || this.value === 'checkbox';
-        opzioniContainer.style.display = mostraOpzioni ? 'block' : 'none';
-        
-        if (mostraOpzioni) {
-            if (this.value === 'checkbox') {
-                opzioniHelp.textContent = 'Per campi checkbox, inserisci ogni opzione su una riga separata. Ogni opzione verrà mostrata come checkbox separata.';
-            } else {
-                opzioniHelp.textContent = 'Per campi di selezione, inserisci ogni opzione su una riga separata';
+    const tipoCampoCreate = document.getElementById('tipo_campo_create');
+    if (tipoCampoCreate) {
+        tipoCampoCreate.addEventListener('change', function() {
+            const opzioniContainer = document.getElementById('opzioni_container_create');
+            const opzioniHelp = document.getElementById('opzioni_help_create');
+            const mostraOpzioni = this.value === 'select' || this.value === 'checkbox';
+            opzioniContainer.style.display = mostraOpzioni ? 'block' : 'none';
+            
+            if (mostraOpzioni) {
+                if (this.value === 'checkbox') {
+                    opzioniHelp.textContent = 'Per campi checkbox, inserisci ogni opzione su una riga separata. Ogni opzione verrà mostrata come checkbox separata.';
+                } else {
+                    opzioniHelp.textContent = 'Per campi di selezione, inserisci ogni opzione su una riga separata';
+                }
             }
-        }
-    });
+        });
+    }
     
-    // Creazione campo
-    document.getElementById('createCampoForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Verifica che l'etichetta sia compilata
-        const etichettaInput = this.querySelector('input[name="etichetta"]');
-        const etichettaValue = etichettaInput ? etichettaInput.value.trim() : '';
-        if (!etichettaValue) {
-            alert('Errore: Il campo "Nome Campo (Etichetta)" è obbligatorio');
-            etichettaInput?.focus();
-            return;
-        }
-        
-        const formData = new FormData(this);
-        
-        // Assicurati che l'etichetta sia sempre presente nel FormData
-        if (!formData.get('etichetta') || formData.get('etichetta') !== etichettaValue) {
-            formData.set('etichetta', etichettaValue);
-        }
-        
-        // Verifica che tutti i campi obbligatori siano presenti
-        if (!formData.get('etichetta') || !formData.get('tipo_campo')) {
-            alert('Errore: Compila tutti i campi obbligatori');
-            return;
-        }
-        
-        // Converti opzioni da textarea a array
-        if (formData.get('tipo_campo') === 'select' || formData.get('tipo_campo') === 'checkbox') {
-            const opzioniText = formData.get('opzioni_text');
-            const opzioniArray = opzioniText ? opzioniText.split('\n').filter(o => o.trim()) : [];
-            formData.delete('opzioni_text');
-            if (opzioniArray.length > 0) {
-                opzioniArray.forEach((opt, index) => {
-                    formData.append(`opzioni[${index}]`, opt.trim());
-                });
+    // Creazione campo - con protezione anti-doppio submit
+    const createCampoForm = document.getElementById('createCampoForm');
+    if (createCampoForm) {
+        createCampoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Protezione anti-doppio submit
+            if (isSubmittingCreate) {
+                console.log('Creazione già in corso, ignoro submit duplicato');
+                return;
             }
-        }
-        
-        const submitBtn = this.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
-        
-        fetch('{{ route("gestione-campi-anagrafica.store") }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            },
-            body: formData
-        })
-        .then(async response => {
-            const data = await response.json();
-            if (!response.ok) {
-                // Se è un errore di validazione (422) o altro errore
-                if (response.status === 422 || data.errors) {
-                    const errorMessages = data.errors ? Object.values(data.errors).flat() : [data.message || 'Errore di validazione'];
-                    throw new Error(errorMessages.join('\n'));
-                }
-                throw new Error(data.message || 'Errore durante la creazione');
+            
+            // Verifica che l'etichetta sia compilata
+            const etichettaInput = this.querySelector('input[name="etichetta"]');
+            const etichettaValue = etichettaInput ? etichettaInput.value.trim() : '';
+            if (!etichettaValue) {
+                alert('Errore: Il campo "Nome Campo (Etichetta)" è obbligatorio');
+                etichettaInput?.focus();
+                return;
             }
-            return data;
-        })
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('createCampoModal')).hide();
-                location.reload();
-            } else {
-                let errorMsg = data.message || 'Errore sconosciuto';
-                if (data.errors) {
-                    const errorList = Object.values(data.errors).flat().join('\n');
-                    errorMsg = errorList || errorMsg;
+            
+            const formData = new FormData(this);
+            
+            // Assicurati che l'etichetta sia sempre presente nel FormData
+            if (!formData.get('etichetta') || formData.get('etichetta') !== etichettaValue) {
+                formData.set('etichetta', etichettaValue);
+            }
+            
+            // Verifica che tutti i campi obbligatori siano presenti
+            if (!formData.get('etichetta') || !formData.get('tipo_campo')) {
+                alert('Errore: Compila tutti i campi obbligatori');
+                return;
+            }
+            
+            // Converti opzioni da textarea a array
+            if (formData.get('tipo_campo') === 'select' || formData.get('tipo_campo') === 'checkbox') {
+                const opzioniText = formData.get('opzioni_text');
+                const opzioniArray = opzioniText ? opzioniText.split('\n').filter(o => o.trim()) : [];
+                formData.delete('opzioni_text');
+                if (opzioniArray.length > 0) {
+                    opzioniArray.forEach((opt, index) => {
+                        formData.append(`opzioni[${index}]`, opt.trim());
+                    });
                 }
+            }
+            
+            // Attiva flag anti-doppio submit
+            isSubmittingCreate = true;
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creazione...';
+            
+            fetch('{{ route("gestione-campi-anagrafica.store") }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    // Se è un errore di validazione (422) o altro errore
+                    if (response.status === 422 || data.errors) {
+                        const errorMessages = data.errors ? Object.values(data.errors).flat() : [data.message || 'Errore di validazione'];
+                        throw new Error(errorMessages.join('\n'));
+                    }
+                    throw new Error(data.message || 'Errore durante la creazione');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('createCampoModal')).hide();
+                    location.reload();
+                } else {
+                    let errorMsg = data.message || 'Errore sconosciuto';
+                    if (data.errors) {
+                        const errorList = Object.values(data.errors).flat().join('\n');
+                        errorMsg = errorList || errorMsg;
+                    }
+                    alert('Errore: ' + errorMsg);
+                    isSubmittingCreate = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Crea Campo';
+                }
+            })
+            .catch(error => {
+                const errorMsg = error.message || 'Errore durante la creazione';
                 alert('Errore: ' + errorMsg);
+                isSubmittingCreate = false;
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Crea Campo';
-            }
-        })
-        .catch(error => {
-            const errorMsg = error.message || 'Errore durante la creazione';
-            alert('Errore: ' + errorMsg);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Crea Campo';
+            });
         });
-    });
+    }
     
     // Edit campo
     document.querySelectorAll('.edit-campo-btn').forEach(btn => {
@@ -415,139 +423,154 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Submit edit form
-    document.getElementById('editCampoForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Verifica che l'etichetta sia compilata
-        const etichettaInput = this.querySelector('input[name="etichetta"]');
-        const etichettaValue = etichettaInput ? etichettaInput.value.trim() : '';
-        if (!etichettaValue) {
-            alert('Errore: Il campo "Nome Campo (Etichetta)" è obbligatorio');
-            etichettaInput?.focus();
-            return;
-        }
-        
-        // Verifica che il tipo campo sia selezionato
-        const tipoCampoInput = this.querySelector('select[name="tipo_campo"]');
-        const tipoCampoValue = tipoCampoInput ? tipoCampoInput.value : '';
-        if (!tipoCampoValue) {
-            alert('Errore: Il campo "Tipo Campo" è obbligatorio');
-            tipoCampoInput?.focus();
-            return;
-        }
-        
-        const campoId = document.getElementById('edit_campo_id').value;
-        if (!campoId) {
-            alert('Errore: ID campo non trovato');
-            return;
-        }
-        
-        const formData = new FormData(this);
-        
-        // Aggiungi _method per Laravel (necessario per PUT con FormData)
-        formData.append('_method', 'PUT');
-        
-        // Assicurati che etichetta e tipo_campo siano sempre presenti nel FormData
-        formData.set('etichetta', etichettaValue);
-        formData.set('tipo_campo', tipoCampoValue);
-        
-        // Verifica che tutti i campi obbligatori siano presenti
-        if (!formData.get('etichetta') || !formData.get('tipo_campo')) {
-            alert('Errore: Compila tutti i campi obbligatori');
-            return;
-        }
-        
-        // Converti opzioni
-        if (tipoCampoValue === 'select' || tipoCampoValue === 'checkbox') {
-            const opzioniText = formData.get('opzioni_text');
-            const opzioniArray = opzioniText ? opzioniText.split('\n').filter(o => o.trim()) : [];
-            formData.delete('opzioni_text');
-            if (opzioniArray.length > 0) {
-                opzioniArray.forEach((opt, index) => {
-                    formData.append(`opzioni[${index}]`, opt.trim());
-                });
+    // Submit edit form - con protezione anti-doppio submit
+    const editCampoForm = document.getElementById('editCampoForm');
+    if (editCampoForm) {
+        editCampoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Protezione anti-doppio submit
+            if (isSubmittingEdit) {
+                console.log('Modifica già in corso, ignoro submit duplicato');
+                return;
             }
-        }
-        
-        const submitBtn = this.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
-        
-        fetch(`{{ url('gestione-campi-anagrafica') }}/${campoId}/edit`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            },
-            body: formData
-        })
-        .then(async response => {
-            const data = await response.json();
-            if (!response.ok) {
-                // Se è un errore di validazione (422) o altro errore
-                if (response.status === 422 || data.errors) {
-                    const errorMessages = data.errors ? Object.values(data.errors).flat() : [data.message || 'Errore di validazione'];
-                    throw new Error(errorMessages.join('\n'));
-                }
-                throw new Error(data.message || 'Errore durante l\'aggiornamento');
+            
+            // Verifica che l'etichetta sia compilata
+            const etichettaInput = this.querySelector('input[name="etichetta"]');
+            const etichettaValue = etichettaInput ? etichettaInput.value.trim() : '';
+            if (!etichettaValue) {
+                alert('Errore: Il campo "Nome Campo (Etichetta)" è obbligatorio');
+                etichettaInput?.focus();
+                return;
             }
-            return data;
-        })
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('editCampoModal')).hide();
-                location.reload();
-            } else {
-                let errorMsg = data.message || 'Errore sconosciuto';
-                if (data.errors) {
-                    const errorList = Object.values(data.errors).flat().join('\n');
-                    errorMsg = errorList || errorMsg;
+            
+            // Verifica che il tipo campo sia selezionato
+            const tipoCampoInput = this.querySelector('select[name="tipo_campo"]');
+            const tipoCampoValue = tipoCampoInput ? tipoCampoInput.value : '';
+            if (!tipoCampoValue) {
+                alert('Errore: Il campo "Tipo Campo" è obbligatorio');
+                tipoCampoInput?.focus();
+                return;
+            }
+            
+            const campoId = document.getElementById('edit_campo_id').value;
+            if (!campoId) {
+                alert('Errore: ID campo non trovato');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            
+            // Aggiungi _method per Laravel (necessario per PUT con FormData)
+            formData.append('_method', 'PUT');
+            
+            // Assicurati che etichetta e tipo_campo siano sempre presenti nel FormData
+            formData.set('etichetta', etichettaValue);
+            formData.set('tipo_campo', tipoCampoValue);
+            
+            // Verifica che tutti i campi obbligatori siano presenti
+            if (!formData.get('etichetta') || !formData.get('tipo_campo')) {
+                alert('Errore: Compila tutti i campi obbligatori');
+                return;
+            }
+            
+            // Converti opzioni
+            if (tipoCampoValue === 'select' || tipoCampoValue === 'checkbox') {
+                const opzioniText = formData.get('opzioni_text');
+                const opzioniArray = opzioniText ? opzioniText.split('\n').filter(o => o.trim()) : [];
+                formData.delete('opzioni_text');
+                if (opzioniArray.length > 0) {
+                    opzioniArray.forEach((opt, index) => {
+                        formData.append(`opzioni[${index}]`, opt.trim());
+                    });
                 }
+            }
+            
+            // Attiva flag anti-doppio submit
+            isSubmittingEdit = true;
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvataggio...';
+            
+            fetch(`{{ url('gestione-campi-anagrafica') }}/${campoId}/edit`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: formData
+            })
+            .then(async response => {
+                const data = await response.json();
+                if (!response.ok) {
+                    // Se è un errore di validazione (422) o altro errore
+                    if (response.status === 422 || data.errors) {
+                        const errorMessages = data.errors ? Object.values(data.errors).flat() : [data.message || 'Errore di validazione'];
+                        throw new Error(errorMessages.join('\n'));
+                    }
+                    throw new Error(data.message || 'Errore durante l\'aggiornamento');
+                }
+                return data;
+            })
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('editCampoModal')).hide();
+                    location.reload();
+                } else {
+                    let errorMsg = data.message || 'Errore sconosciuto';
+                    if (data.errors) {
+                        const errorList = Object.values(data.errors).flat().join('\n');
+                        errorMsg = errorList || errorMsg;
+                    }
+                    alert('Errore: ' + errorMsg);
+                    isSubmittingEdit = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+                }
+            })
+            .catch(error => {
+                const errorMsg = error.message || 'Errore durante l\'aggiornamento';
                 alert('Errore: ' + errorMsg);
+                isSubmittingEdit = false;
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
-            }
-        })
-        .catch(error => {
-            const errorMsg = error.message || 'Errore durante l\'aggiornamento';
-            alert('Errore: ' + errorMsg);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Salva Modifiche';
+            });
         });
-    });
+    }
     
     // Delete campo
     document.querySelectorAll('.delete-campo-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('delete_campo_id').value = this.dataset.campoId;
-            document.getElementById('deleteCampoNome').textContent = this.dataset.nome;
-            new bootstrap.Modal(document.getElementById('deleteCampoModal')).show();
-        });
-    });
-    
-    document.getElementById('confirmDeleteCampo').addEventListener('click', function() {
-        const campoId = document.getElementById('delete_campo_id').value;
-        this.disabled = true;
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
-        
-        fetch(`{{ url('gestione-campi-anagrafica') }}/${campoId}`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('deleteCampoModal')).hide();
-                location.reload();
-            } else {
-                alert('Errore: ' + data.message);
-                this.disabled = false;
-                this.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
-            }
+        btn.addEventListener('click', async function() {
+            const campoId = this.dataset.campoId;
+            const nome = this.dataset.nome;
+            
+            // Usa il sistema di conferma unificato
+            const confirmed = await SUGECO.Confirm.show({
+                title: 'Conferma Eliminazione',
+                message: `Eliminare il campo "${nome}"? Verranno rimossi anche tutti i valori salvati per i militari.`,
+                type: 'danger',
+                confirmText: 'Elimina'
+            });
+            
+            if (!confirmed) return;
+            
+            // Esegui eliminazione
+            fetch(`{{ url('gestione-campi-anagrafica') }}/${campoId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    showError('Errore: ' + data.message);
+                }
+            });
         });
     });
     
@@ -575,7 +598,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
-});
+}); // Fine DOMContentLoaded
+
+})(); // Fine IIFE - protezione esecuzione multipla
 </script>
 @endpush
 

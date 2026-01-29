@@ -33,6 +33,7 @@
     <link rel="stylesheet" href="{{ asset('css/tooltips.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/layout.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/toast-system.css') }}?v={{ config('app.asset_version', time()) }}">
+    <link rel="stylesheet" href="{{ asset('css/confirm-system.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/table-standard.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ config('app.asset_version', time()) }}">
     <link rel="stylesheet" href="{{ asset('css/militari-selector.css') }}?v={{ config('app.asset_version', time()) }}">
@@ -210,6 +211,15 @@
                         <li class="nav-dropdown-item {{ request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
                             <a href="{{ route('gestione-anagrafica-config.index') }}">Gestione Anagrafica</a>
                         </li>
+                        <li class="nav-dropdown-divider"></li>
+                        @if(Auth::user()->hasPermission('gerarchia.view'))
+                        <li class="nav-dropdown-item {{ request()->is('gerarchia-organizzativa*') ? 'active' : '' }}">
+                            <a href="{{ route('gerarchia.index') }}">Gerarchia Organizzativa</a>
+                        </li>
+                        @endif
+                        <li class="nav-dropdown-item {{ request()->is('admin/registro-attivita*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.audit-logs.index') }}">Registro Attività</a>
+                        </li>
                     </ul>
                 </li>
                 @endif
@@ -221,6 +231,16 @@
         <!-- Auth Menu a destra -->
         <div class="header-auth">
             @auth
+                {{-- Indicatore Unità Organizzativa Corrente --}}
+                @php
+                    $currentUnit = Auth::user()->organizationalUnit ?? null;
+                    $unitName = $currentUnit ? $currentUnit->name : (Auth::user()->compagnia->nome ?? 'Non assegnato');
+                @endphp
+                <span class="unit-badge" title="Unità organizzativa corrente">
+                    <i class="fas fa-sitemap"></i>
+                    {{ Str::limit($unitName, 20) }}
+                </span>
+                
                 <div class="user-menu">
                     <button onclick="window.location='{{ route('profile.index') }}'" class="btn-profile" title="Il Mio Profilo">
                         <i class="fas fa-user-circle me-1"></i>
@@ -270,6 +290,7 @@
     <!-- Scripts Sistema - Caricati nell'ordine corretto delle dipendenze -->
     <script src="{{ asset('js/sugeco-core.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/toast-system.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/confirm-system.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/sugeco-filters.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/search-fixed.js') }}?v={{ time() }}&bust={{ rand(1000,9999) }}&debug=true"></script>
     <script src="{{ asset('js/autosave.js') }}?v={{ time() }}"></script>

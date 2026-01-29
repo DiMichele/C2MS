@@ -127,14 +127,10 @@ class GestioneCampiAnagraficaController extends Controller
         // Carica tutti i campi (sistema + custom) ordinati
         $campi = ConfigurazioneCampoAnagrafica::ordinati()->get();
 
-        // Se tutti gli ordini sono multipli di 10, normalizza a 1,2,3...
-        if ($campi->count() > 0 && $campi->pluck('ordine')->every(fn ($o) => $o % 10 === 0)) {
-            $posizione = 1;
-            foreach ($campi as $campo) {
-                $campo->update(['ordine' => $posizione++]);
-            }
-            $campi = ConfigurazioneCampoAnagrafica::ordinati()->get();
-        }
+        // RIMOSSO: Normalizzazione ordine automatica ad ogni accesso
+        // La normalizzazione era problematica perché modificava il database ad ogni page load.
+        // Se serve normalizzare gli ordini, usare un comando Artisan dedicato:
+        // php artisan campi:normalizza-ordine
         
         return view('gestione-campi-anagrafica.index', compact('campi'));
     }
@@ -201,10 +197,16 @@ class GestioneCampiAnagraficaController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Errore creazione campo anagrafica', ['error' => $e->getMessage()]);
+            // Log dettagliato per debug, messaggio generico per l'utente
+            Log::error('Errore creazione campo anagrafica', [
+                'user_id' => auth()->id(),
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante la creazione del campo. Riprova o contatta l\'amministratore.'
             ], 500);
         }
     }
@@ -281,10 +283,17 @@ class GestioneCampiAnagraficaController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Errore aggiornamento campo anagrafica', ['error' => $e->getMessage()]);
+            // Log dettagliato per debug, messaggio generico per l'utente
+            Log::error('Errore aggiornamento campo anagrafica', [
+                'user_id' => auth()->id(),
+                'campo_id' => $id,
+                'input' => $request->except(['_token']),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova o contatta l\'amministratore.'
             ], 500);
         }
     }
@@ -307,10 +316,14 @@ class GestioneCampiAnagraficaController extends Controller
                 'message' => 'Ordine aggiornato'
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore aggiornamento ordine campo', ['error' => $e->getMessage()]);
+            Log::error('Errore aggiornamento ordine campo', [
+                'user_id' => auth()->id(),
+                'campo_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore: ' . $e->getMessage()
+                'message' => 'Errore durante l\'aggiornamento dell\'ordine. Riprova.'
             ], 500);
         }
     }
@@ -330,10 +343,14 @@ class GestioneCampiAnagraficaController extends Controller
                 'message' => 'Stato aggiornato'
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore toggle attivo campo', ['error' => $e->getMessage()]);
+            Log::error('Errore toggle attivo campo', [
+                'user_id' => auth()->id(),
+                'campo_id' => $id,
+                'error' => $e->getMessage()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore: ' . $e->getMessage()
+                'message' => 'Errore durante l\'aggiornamento dello stato. Riprova.'
             ], 500);
         }
     }
@@ -354,10 +371,15 @@ class GestioneCampiAnagraficaController extends Controller
                 'message' => 'Campo eliminato con successo'
             ]);
         } catch (\Exception $e) {
-            Log::error('Errore eliminazione campo anagrafica', ['error' => $e->getMessage()]);
+            Log::error('Errore eliminazione campo anagrafica', [
+                'user_id' => auth()->id(),
+                'campo_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'eliminazione. Il campo potrebbe essere in uso.'
             ], 500);
         }
     }

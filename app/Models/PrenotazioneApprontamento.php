@@ -45,6 +45,8 @@ class PrenotazioneApprontamento extends Model
         'cattedra',
         'data_prenotazione',
         'stato',
+        'data_conferma',
+        'confirmed_by',
         'note',
         'created_by'
     ];
@@ -54,6 +56,7 @@ class PrenotazioneApprontamento extends Model
      */
     protected $casts = [
         'data_prenotazione' => 'date',
+        'data_conferma' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -91,6 +94,30 @@ class PrenotazioneApprontamento extends Model
     public function creatore()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Utente che ha confermato la prenotazione
+     */
+    public function confermatoDa()
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    /**
+     * Attività Board collegata a questa prenotazione
+     */
+    public function boardActivity()
+    {
+        return $this->hasOne(BoardActivity::class, 'prenotazione_approntamento_id');
+    }
+
+    /**
+     * Pianificazioni giornaliere CPT collegate a questa prenotazione
+     */
+    public function pianificazioniGiornaliere()
+    {
+        return $this->hasMany(PianificazioneGiornaliera::class, 'prenotazione_approntamento_id');
     }
 
     // ==========================================

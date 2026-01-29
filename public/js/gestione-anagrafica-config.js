@@ -154,21 +154,14 @@
         });
     }
 
-    // Eliminazione
+    // Eliminazione - usa sistema conferma unificato SUGECO.Confirm
     document.querySelectorAll('.delete-plotone-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('delete_plotone_id').value = this.dataset.id;
-            document.getElementById('deletePlotoneNome').textContent = this.dataset.nome;
-            new bootstrap.Modal(document.getElementById('deletePlotoneModal')).show();
-        });
-    });
-
-    const confirmDeletePlotone = document.getElementById('confirmDeletePlotone');
-    if (confirmDeletePlotone) {
-        confirmDeletePlotone.addEventListener('click', function() {
-            const plotoneId = document.getElementById('delete_plotone_id').value;
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+        btn.addEventListener('click', async function() {
+            const plotoneId = this.dataset.id;
+            const nome = this.dataset.nome;
+            
+            const confirmed = await SUGECO.Confirm.delete(`Eliminare il plotone "${nome}"? Puoi eliminare solo plotoni senza militari associati.`);
+            if (!confirmed) return;
             
             saveActiveTab();
 
@@ -182,21 +175,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('deletePlotoneModal')).hide();
                     location.reload();
                 } else {
-                    alert('Errore: ' + data.message);
-                    confirmDeletePlotone.disabled = false;
-                    confirmDeletePlotone.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                    showError('Errore: ' + data.message);
                 }
             })
             .catch(error => {
-                alert('Errore: ' + error.message);
-                confirmDeletePlotone.disabled = false;
-                confirmDeletePlotone.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                showError('Errore: ' + error.message);
             });
         });
-    }
+    });
 
     // ==================== UFFICI ====================
     
@@ -291,21 +279,14 @@
         });
     }
 
-    // Eliminazione
+    // Eliminazione - usa sistema conferma unificato SUGECO.Confirm
     document.querySelectorAll('.delete-ufficio-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('delete_ufficio_id').value = this.dataset.id;
-            document.getElementById('deleteUfficioNome').textContent = this.dataset.nome;
-            new bootstrap.Modal(document.getElementById('deleteUfficioModal')).show();
-        });
-    });
-
-    const confirmDeleteUfficio = document.getElementById('confirmDeleteUfficio');
-    if (confirmDeleteUfficio) {
-        confirmDeleteUfficio.addEventListener('click', function() {
-            const ufficioId = document.getElementById('delete_ufficio_id').value;
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+        btn.addEventListener('click', async function() {
+            const ufficioId = this.dataset.id;
+            const nome = this.dataset.nome;
+            
+            const confirmed = await SUGECO.Confirm.delete(`Eliminare l'ufficio "${nome}"? Puoi eliminare solo uffici senza militari associati.`);
+            if (!confirmed) return;
             
             saveActiveTab();
 
@@ -319,21 +300,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('deleteUfficioModal')).hide();
                     location.reload();
                 } else {
-                    alert('Errore: ' + data.message);
-                    confirmDeleteUfficio.disabled = false;
-                    confirmDeleteUfficio.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                    showError('Errore: ' + data.message);
                 }
             })
             .catch(error => {
-                alert('Errore: ' + error.message);
-                confirmDeleteUfficio.disabled = false;
-                confirmDeleteUfficio.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                showError('Errore: ' + error.message);
             });
         });
-    }
+    });
 
     // ==================== INCARICHI ====================
     
@@ -428,21 +404,14 @@
         });
     }
 
-    // Eliminazione
+    // Eliminazione - usa sistema conferma unificato SUGECO.Confirm
     document.querySelectorAll('.delete-incarico-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('delete_incarico_id').value = this.dataset.id;
-            document.getElementById('deleteIncaricoNome').textContent = this.dataset.nome;
-            new bootstrap.Modal(document.getElementById('deleteIncaricoModal')).show();
-        });
-    });
-
-    const confirmDeleteIncarico = document.getElementById('confirmDeleteIncarico');
-    if (confirmDeleteIncarico) {
-        confirmDeleteIncarico.addEventListener('click', function() {
-            const incaricoId = document.getElementById('delete_incarico_id').value;
-            this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Eliminazione...';
+        btn.addEventListener('click', async function() {
+            const incaricoId = this.dataset.id;
+            const nome = this.dataset.nome;
+            
+            const confirmed = await SUGECO.Confirm.delete(`Eliminare l'incarico "${nome}"? Puoi eliminare solo incarichi senza militari associati.`);
+            if (!confirmed) return;
             
             saveActiveTab();
 
@@ -456,21 +425,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('deleteIncaricoModal')).hide();
                     location.reload();
                 } else {
-                    alert('Errore: ' + data.message);
-                    confirmDeleteIncarico.disabled = false;
-                    confirmDeleteIncarico.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                    showError('Errore: ' + data.message);
                 }
             })
             .catch(error => {
-                alert('Errore: ' + error.message);
-                confirmDeleteIncarico.disabled = false;
-                confirmDeleteIncarico.innerHTML = '<i class="fas fa-trash me-1"></i>Elimina';
+                showError('Errore: ' + error.message);
             });
         });
-    }
+    });
 
 })();
 

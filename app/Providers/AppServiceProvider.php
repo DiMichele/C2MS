@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Gate;
 use App\Models\Militare;
 use App\Models\CompagniaSetting;
 use App\Models\ConfigurazioneRuolino;
+use App\Models\OrganizationalUnit;
 use App\Policies\MilitarePolicy;
 use App\Policies\CompagniaSettingPolicy;
+use App\Policies\OrganizationalUnitPolicy;
 use App\Services\CompagniaSettingsService;
 
 class AppServiceProvider extends ServiceProvider
@@ -50,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Registra Observers
         \App\Models\TipoServizio::observe(\App\Observers\TipoServizioObserver::class);
+        \App\Models\MilitareApprontamento::observe(\App\Observers\MilitareApprontamentoObserver::class);
         
         // Registra Policy per Militare (gestione owner/acquired)
         Gate::policy(Militare::class, MilitarePolicy::class);
@@ -57,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
         // Registra Policy per impostazioni compagnia (ruolini)
         Gate::policy(CompagniaSetting::class, CompagniaSettingPolicy::class);
         Gate::policy(ConfigurazioneRuolino::class, CompagniaSettingPolicy::class);
+        
+        // Registra Policy per la gerarchia organizzativa
+        Gate::policy(OrganizationalUnit::class, OrganizationalUnitPolicy::class);
         
         // Registra Gate per i permessi personalizzati
         // Questo permette a @can di usare il nostro sistema di permessi

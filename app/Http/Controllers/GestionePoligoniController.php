@@ -61,7 +61,7 @@ class GestionePoligoniController extends Controller
             
             return view('gestione-poligoni.index', [
                 'poligoni' => collect()
-            ])->with('error', 'Errore durante il caricamento: ' . $e->getMessage());
+            ])->with('error', 'Si è verificato un errore durante il caricamento. Contatta l\'amministratore.');
         }
     }
     
@@ -75,8 +75,6 @@ class GestionePoligoniController extends Controller
                 'codice' => 'teatro_operativo',
                 'nome' => 'Teatro Operativo',
                 'descrizione' => 'Qualifica per teatro operativo',
-                'punteggio_minimo' => 60,
-                'punteggio_massimo' => 100,
                 'durata_mesi' => 6,
                 'ordine' => 1,
                 'attivo' => true
@@ -85,8 +83,6 @@ class GestionePoligoniController extends Controller
                 'codice' => 'mantenimento_arma_lunga',
                 'nome' => 'Mantenimento Arma Lunga',
                 'descrizione' => 'Mantenimento qualifica con arma lunga (fucile)',
-                'punteggio_minimo' => 55,
-                'punteggio_massimo' => 100,
                 'durata_mesi' => 6,
                 'ordine' => 2,
                 'attivo' => true
@@ -95,8 +91,6 @@ class GestionePoligoniController extends Controller
                 'codice' => 'mantenimento_arma_corta',
                 'nome' => 'Mantenimento Arma Corta',
                 'descrizione' => 'Mantenimento qualifica con arma corta (pistola)',
-                'punteggio_minimo' => 50,
-                'punteggio_massimo' => 100,
                 'durata_mesi' => 6,
                 'ordine' => 3,
                 'attivo' => true
@@ -122,8 +116,6 @@ class GestionePoligoniController extends Controller
             'nome' => 'required|string|max:255',
             'descrizione' => 'nullable|string',
             'durata_mesi' => 'required|integer|min:0',
-            'punteggio_minimo' => 'nullable|integer|min:0',
-            'punteggio_massimo' => 'nullable|integer|min:0',
         ]);
 
         try {
@@ -147,12 +139,17 @@ class GestionePoligoniController extends Controller
             // Genera codice univoco
             $codice = \Str::slug($validated['nome'], '_');
             
-            // Verifica unicità del codice
+            // FIX: Verifica unicità del codice con protezione anti-loop infinito
             $baseCode = $codice;
             $counter = 1;
+            $maxIterations = 1000;
             while (TipoPoligono::where('codice', $codice)->exists()) {
                 $codice = $baseCode . '_' . $counter;
                 $counter++;
+                
+                if ($counter > $maxIterations) {
+                    throw new \RuntimeException('Impossibile generare un codice univoco.');
+                }
             }
 
             // Determina ordine
@@ -163,8 +160,6 @@ class GestionePoligoniController extends Controller
                 'nome' => $validated['nome'],
                 'descrizione' => $validated['descrizione'] ?? null,
                 'durata_mesi' => $validated['durata_mesi'],
-                'punteggio_minimo' => $validated['punteggio_minimo'] ?? 0,
-                'punteggio_massimo' => $validated['punteggio_massimo'] ?? 100,
                 'attivo' => true,
                 'ordine' => $maxOrdine + 1,
             ]);
@@ -182,19 +177,21 @@ class GestionePoligoniController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore creazione tipo poligono', [
+                'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
-                'data' => $validated
+                'data' => $validated,
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante la creazione: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante la creazione. Riprova o contatta l\'amministratore.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la creazione'])
+                ->withErrors(['error' => 'Si è verificato un errore durante la creazione. Riprova.'])
                 ->withInput();
         }
     }
@@ -219,13 +216,14 @@ class GestionePoligoniController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore aggiornamento tipo poligono', [
+                'user_id' => auth()->id(),
                 'id' => $id,
                 'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore durante l\'aggiornamento: ' . $e->getMessage()
+                'message' => 'Si è verificato un errore durante l\'aggiornamento. Riprova.'
             ], 500);
         }
     }
@@ -239,8 +237,6 @@ class GestionePoligoniController extends Controller
             'nome' => 'required|string|max:255',
             'descrizione' => 'nullable|string',
             'durata_mesi' => 'required|integer|min:0',
-            'punteggio_minimo' => 'nullable|integer|min:0',
-            'punteggio_massimo' => 'nullable|integer|min:0',
         ]);
 
         try {
@@ -250,12 +246,17 @@ class GestionePoligoniController extends Controller
             if ($poligono->nome !== $validated['nome']) {
                 $nuovoCodice = \Str::slug($validated['nome'], '_');
                 
-                // Verifica unicità del nuovo codice (escludendo il tipo corrente)
+                // FIX: Verifica unicità del nuovo codice con protezione anti-loop infinito
                 $baseCode = $nuovoCodice;
                 $counter = 1;
+                $maxIterations = 1000;
                 while (TipoPoligono::where('codice', $nuovoCodice)->where('id', '!=', $id)->exists()) {
                     $nuovoCodice = $baseCode . '_' . $counter;
                     $counter++;
+                    
+                    if ($counter > $maxIterations) {
+                        throw new \RuntimeException('Impossibile generare un codice univoco.');
+                    }
                 }
                 
                 $validated['codice'] = $nuovoCodice;
@@ -276,19 +277,21 @@ class GestionePoligoniController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore modifica tipo poligono', [
+                'user_id' => auth()->id(),
                 'id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante la modifica: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante la modifica. Riprova.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante la modifica'])
+                ->withErrors(['error' => 'Si è verificato un errore durante la modifica. Riprova.'])
                 ->withInput();
         }
     }
@@ -302,16 +305,18 @@ class GestionePoligoniController extends Controller
             $poligono = TipoPoligono::findOrFail($id);
             $nome = $poligono->nome;
             
-            // Elimina prima le scadenze associate (se la tabella esiste)
-            if (Schema::hasTable('scadenze_poligoni')) {
-                $countScadenze = $poligono->scadenzePoligoni()->count();
-                $poligono->scadenzePoligoni()->delete();
-            } else {
-                $countScadenze = 0;
-            }
-            
-            // Elimina il tipo di poligono
-            $poligono->delete();
+            // FIX: Usa transazione per eliminazione atomica
+            $countScadenze = 0;
+            \Illuminate\Support\Facades\DB::transaction(function() use ($poligono, &$countScadenze) {
+                // Elimina prima le scadenze associate (se la tabella esiste)
+                if (Schema::hasTable('scadenze_poligoni')) {
+                    $countScadenze = $poligono->scadenzePoligoni()->count();
+                    $poligono->scadenzePoligoni()->delete();
+                }
+                
+                // Elimina il tipo di poligono
+                $poligono->delete();
+            });
             
             $message = 'Tipo di poligono "' . $nome . '" eliminato con successo';
             if ($countScadenze > 0) {
@@ -330,19 +335,21 @@ class GestionePoligoniController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Errore eliminazione tipo poligono', [
+                'user_id' => auth()->id(),
                 'id' => $id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Errore durante l\'eliminazione: ' . $e->getMessage()
+                    'message' => 'Si è verificato un errore durante l\'eliminazione. Potrebbe essere in uso.'
                 ], 500);
             }
 
             return redirect()->back()
-                ->withErrors(['error' => 'Errore durante l\'eliminazione']);
+                ->withErrors(['error' => 'Si è verificato un errore durante l\'eliminazione. Riprova.']);
         }
     }
 }

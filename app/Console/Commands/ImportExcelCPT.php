@@ -6,7 +6,7 @@ use Illuminate\Console\Command;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Models\Militare;
 use App\Models\Grado;
-use App\Models\Approntamento;
+use App\Models\TeatroOperativo;
 use App\Models\TipoServizio;
 use App\Models\PatenteMilitare;
 use App\Models\PianificazioneMensile;
@@ -279,25 +279,26 @@ class ImportExcelCPT extends Command
         
         $approntamentoNome = trim($approntamentoNome);
         
-        $approntamento = Approntamento::where('nome', $approntamentoNome)->first();
+        // Usa TeatroOperativo invece di Approntamento (deprecato)
+        $teatroOperativo = TeatroOperativo::where('nome', $approntamentoNome)->first();
         
-        if (!$approntamento) {
-            $approntamento = Approntamento::create([
+        if (!$teatroOperativo) {
+            $teatroOperativo = TeatroOperativo::create([
                 'nome' => $approntamentoNome,
                 'codice' => strtoupper(substr($approntamentoNome, 0, 5)),
-                'descrizione' => "Approntamento importato: {$approntamentoNome}",
+                'descrizione' => "Teatro Operativo importato: {$approntamentoNome}",
                 'stato' => 'attivo',
                 'colore_badge' => $this->getColoreApprontamento($approntamentoNome)
             ]);
             
-            $this->info("Nuovo approntamento creato: {$approntamentoNome}");
+            $this->info("Nuovo teatro operativo creato: {$approntamentoNome}");
         }
         
-        return $approntamento;
+        return $teatroOperativo;
     }
 
     /**
-     * Ottiene un colore per l'approntamento
+     * Ottiene un colore per il teatro operativo (ex approntamento)
      */
     private function getColoreApprontamento($nome)
     {

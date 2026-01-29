@@ -95,9 +95,9 @@
                     <i class="fas fa-envelope"></i> Email
                 </div>
                 <div class="info-value">
-                    @if($militare->email_istituzionale)
-                        <a href="mailto:{{ $militare->email_istituzionale }}" class="text-decoration-none">
-                            {{ $militare->email_istituzionale }}
+                    @if($militare->email)
+                        <a href="mailto:{{ $militare->email }}" class="text-decoration-none">
+                            {{ $militare->email }}
                         </a>
                     @else
                         <span class="text-muted">-</span>
