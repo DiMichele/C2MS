@@ -88,6 +88,7 @@
                 <th>NOME</th>
                 <th>USERNAME</th>
                 <th>RUOLO</th>
+                <th><i class="fas fa-sitemap me-1"></i>UNITÀ</th>
                 <th>COMPAGNIA</th>
                 <th>CREATO</th>
                 <th>AZIONI</th>
@@ -109,6 +110,15 @@
                             @foreach($user->roles as $role)
                                 {{ $role->display_name }}@if(!$loop->last), @endif
                             @endforeach
+                        </td>
+                        <td>
+                            @if($user->organizationalUnit)
+                                <span class="badge" style="background-color: {{ $user->organizationalUnit->type->color ?? '#0A2342' }}; color: white;">
+                                    {{ $user->organizationalUnit->name }}
+                                </span>
+                            @else
+                                <span class="text-muted small">Non assegnata</span>
+                            @endif
                         </td>
                         <td>
                             @if($user->compagnia)

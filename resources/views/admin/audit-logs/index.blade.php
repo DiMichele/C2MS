@@ -43,6 +43,37 @@
     <h1 class="page-title">Registro Attività</h1>
 </div>
 
+<!-- Selettore Mese/Anno -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-center">
+            <form method="GET" action="{{ route('admin.audit-logs.index') }}" class="d-flex gap-2 align-items-center">
+                @php
+                    $mesiItaliani = [
+                        1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile',
+                        5 => 'Maggio', 6 => 'Giugno', 7 => 'Luglio', 8 => 'Agosto',
+                        9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre'
+                    ];
+                    $meseCorrente = request('mese', now()->month);
+                    $annoCorrente = request('anno', now()->year);
+                @endphp
+                <select name="mese" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 140px; border-radius: 6px !important;">
+                    @for($m = 1; $m <= 12; $m++)
+                        <option value="{{ $m }}" {{ $meseCorrente == $m ? 'selected' : '' }}>
+                            {{ $mesiItaliani[$m] }}
+                        </option>
+                    @endfor
+                </select>
+                <select name="anno" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 100px; border-radius: 6px !important;">
+                    @for($a = 2024; $a <= 2030; $a++)
+                        <option value="{{ $a }}" {{ $annoCorrente == $a ? 'selected' : '' }}>{{ $a }}</option>
+                    @endfor
+                </select>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Filtri e azioni su riga separata -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
@@ -51,8 +82,8 @@
         </span>
     </button>
     
-    <a href="{{ route('admin.audit-logs.export', request()->query()) }}" class="btn btn-success" style="border-radius: 6px !important;">
-        Esporta CSV
+    <a href="{{ route('admin.audit-logs.export', array_merge(request()->query(), ['mese' => $meseCorrente, 'anno' => $annoCorrente])) }}" class="btn btn-success" style="border-radius: 6px !important;">
+        Esporta Excel
     </a>
 </div>
 
@@ -222,13 +253,23 @@
                 <th style="width: 160px;">DATA/ORA</th>
                 <th style="width: 150px;">UTENTE</th>
                 <th style="width: 120px;">AZIONE</th>
+                <th style="width: 120px;">PAGINA</th>
                 <th>DESCRIZIONE</th>
-                <th style="width: 80px;">STATO</th>
             </tr>
         </thead>
         <tbody>
             @forelse($logs as $log)
-                <tr class="{{ $log->status === 'failed' ? 'table-danger' : ($log->status === 'warning' ? 'status-warning' : '') }}">
+                @php
+                    // Colore riga basato sullo stato: verde=success, rosso=failed
+                    $rowClass = '';
+                    $rowStyle = '';
+                    if ($log->status === 'success') {
+                        $rowStyle = 'background-color: rgba(25, 135, 84, 0.1);';
+                    } elseif ($log->status === 'failed') {
+                        $rowStyle = 'background-color: rgba(220, 53, 69, 0.15);';
+                    }
+                @endphp
+                <tr style="{{ $rowStyle }}">
                     <td>
                         <div class="fw-semibold">{{ $log->created_at->format('d/m/Y') }}</div>
                         <small class="text-muted">{{ $log->created_at->format('H:i:s') }}</small>
@@ -251,16 +292,14 @@
                         </span>
                     </td>
                     <td>
-                        <span style="word-break: break-word; white-space: pre-wrap;">{{ $log->description }}</span>
+                        @if($log->page_context)
+                            <small class="text-muted">{{ $log->page_context }}</small>
+                        @else
+                            <small class="text-muted">-</small>
+                        @endif
                     </td>
                     <td>
-                        @if($log->status === 'success')
-                            <span class="badge bg-success">OK</span>
-                        @elseif($log->status === 'failed')
-                            <span class="badge bg-danger">Fallito</span>
-                        @else
-                            <span class="badge bg-warning text-dark" title="Operazione completata con avvisi o anomalie non critiche">Attenzione</span>
-                        @endif
+                        <span style="word-break: break-word; white-space: pre-wrap;">{{ $log->description }}</span>
                     </td>
                 </tr>
             @empty
@@ -274,15 +313,10 @@
     </table>
 </div>
 
-{{-- PAGINAZIONE --}}
-@if($logs->hasPages())
-    <div class="d-flex justify-content-between align-items-center mt-3">
-        <small class="text-muted">
-            Mostrati {{ $logs->firstItem() }}-{{ $logs->lastItem() }} di {{ number_format($logs->total()) }} risultati
-        </small>
-        {{ $logs->links() }}
-    </div>
-@endif
+{{-- Info count senza paginazione --}}
+<div class="text-muted mt-2">
+    <small>{{ $logs->count() }} attività nel mese di {{ $mesiItaliani[$meseCorrente] ?? '' }} {{ $annoCorrente }}</small>
+</div>
 
 @push('scripts')
 <script>

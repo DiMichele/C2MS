@@ -42,6 +42,10 @@ class OrganizationalUnitScope implements Scope
 
     /**
      * Applica lo scope al query builder.
+     * 
+     * NOTA IMPORTANTE: Rispetta l'unità attiva anche per gli admin.
+     * Quando un utente (anche admin) seleziona un'unità dal dropdown,
+     * vede solo i dati di quell'unità e dei suoi discendenti.
      */
     public function apply(Builder $builder, Model $model): void
     {
@@ -53,12 +57,23 @@ class OrganizationalUnitScope implements Scope
             return;
         }
 
-        // Admin globali vedono tutto
+        // PRIORITÀ: Rispetta l'unità attiva selezionata (anche per admin)
+        $activeUnitId = activeUnitId();
+        
+        if ($activeUnitId) {
+            // Filtra per unità attiva + suoi discendenti
+            $unitIdsToShow = $this->getUnitWithDescendants($activeUnitId);
+            $this->applyFilter($builder, $model, $unitIdsToShow);
+            return;
+        }
+
+        // FALLBACK: Se non c'è unità attiva
+        // Admin globali senza unità attiva vedono tutto
         if ($this->isGlobalAdmin($user)) {
             return;
         }
 
-        // Ottieni le unità visibili all'utente
+        // Utenti normali senza unità attiva: usa le unità visibili
         $visibleUnitIds = $this->getVisibleUnitIds($user);
 
         // Se non ha unità visibili, usa fallback legacy
@@ -77,6 +92,36 @@ class OrganizationalUnitScope implements Scope
 
         // Applica il filtro in base al tipo di modello
         $this->applyFilter($builder, $model, $visibleUnitIds);
+    }
+    
+    /**
+     * Ottiene l'ID dell'unità attiva + tutti i suoi discendenti.
+     * Usa la closure table per efficienza.
+     */
+    protected function getUnitWithDescendants(int $unitId): array
+    {
+        $cacheKey = 'unit_descendants_' . $unitId;
+        
+        if (isset(self::$unitCache[$cacheKey])) {
+            return self::$unitCache[$cacheKey];
+        }
+        
+        try {
+            // Usa la closure table per ottenere tutti i discendenti
+            $descendantIds = DB::table('unit_closure')
+                ->where('ancestor_id', $unitId)
+                ->pluck('descendant_id')
+                ->toArray();
+            
+            // Assicurati che l'unità stessa sia inclusa
+            $descendantIds = array_unique(array_merge([$unitId], $descendantIds));
+            
+            self::$unitCache[$cacheKey] = $descendantIds;
+            return $descendantIds;
+        } catch (\Exception $e) {
+            // Fallback: solo l'unità stessa
+            return [$unitId];
+        }
     }
 
     /**
@@ -216,11 +261,9 @@ class OrganizationalUnitScope implements Scope
 
         // Verifica se il modello ha una colonna organizational_unit_id
         if ($this->hasColumn($model, 'organizational_unit_id')) {
-            // Permetti anche record senza unità assegnata (per retrocompatibilità)
-            $builder->where(function ($q) use ($table, $visibleUnitIds) {
-                $q->whereIn("{$table}.organizational_unit_id", $visibleUnitIds)
-                  ->orWhereNull("{$table}.organizational_unit_id");
-            });
+            // Segregazione stretta: ogni macro-entità vede SOLO i propri dati.
+            // I record con organizational_unit_id null non sono mostrati (devono essere assegnati a un'unità).
+            $builder->whereIn("{$table}.organizational_unit_id", $visibleUnitIds);
             return;
         }
 

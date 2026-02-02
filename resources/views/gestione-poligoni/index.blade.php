@@ -3,37 +3,96 @@
 @section('title', 'Gestione Poligoni - SUGECO')
 
 @section('content')
+<style>
+/* Pulsante clear search */
+.btn-clear-search {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px 8px;
+    z-index: 5;
+}
+.btn-clear-search:hover {
+    color: #dc3545;
+}
+</style>
 <div class="container-fluid">
     <!-- Header Centrato -->
     <div class="text-center mb-4">
         <h1 class="page-title">Gestione Poligoni</h1>
     </div>
 
+    <!-- Barra di ricerca centrata (stile CPT) -->
+    <div class="d-flex justify-content-center mb-3">
+        <div class="search-container" style="position: relative; width: 500px;">
+            <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 5;"></i>
+            <input 
+                type="text" 
+                id="searchPoligono" 
+                class="form-control" 
+                placeholder="Cerca tipo poligono..." 
+                aria-label="Cerca tipo poligono" 
+                autocomplete="off"
+                style="padding-left: 40px; border-radius: 6px !important;">
+            <button type="button" id="clearSearch" class="btn-clear-search" style="display: none;" title="Pulisci ricerca">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Pulsante Rimuovi filtri (appare quando ricerca attiva) -->
+    <div id="resetFiltersContainer" class="d-flex justify-content-center mb-3" style="display: none !important;">
+        <button type="button" id="resetAllFilters" class="btn btn-danger btn-sm" style="border-radius: 6px !important;">
+            <i class="fas fa-times-circle me-1"></i>Rimuovi filtri
+        </button>
+    </div>
+
     <!-- Tabella Tipi Poligono -->
-    <div class="table-responsive" style="max-width: 900px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
-        <table class="sugeco-table" id="poligoniTable" style="width: 100%;">
+    <div class="table-container-ruolini" style="max-width: 900px; margin: 0 auto;">
+        <table class="sugeco-table" id="poligoniTable">
             <thead>
                 <tr>
+                    <th style="width: 40px;"></th>
                     <th>Nome Tipo Poligono</th>
-                    <th style="width: 180px;">Durata Validità</th>
-                    <th style="width: 100px;">Azioni</th>
+                    <th style="width: 150px;">Durata (mesi)</th>
+                    <th style="width: 120px;">Azioni</th>
                 </tr>
             </thead>
             <tbody id="poligoniTableBody">
+                @php
+                    // Codici dei tipi standard che non possono essere eliminati
+                    $codiciStandard = ['teatro_operativo', 'mantenimento_arma_lunga', 'mantenimento_arma_corta'];
+                @endphp
                 @forelse($poligoni as $poligono)
+                @php
+                    $isStandard = in_array($poligono->codice, $codiciStandard);
+                @endphp
                 <tr data-poligono-id="{{ $poligono->id }}" 
-                    data-nome="{{ $poligono->nome }}">
-                    <td><strong>{{ $poligono->nome }}</strong></td>
+                    data-id="{{ $poligono->id }}"
+                    data-nome="{{ $poligono->nome }}"
+                    data-is-standard="{{ $isStandard ? 'true' : 'false' }}">
+                    <td class="text-center drag-handle" style="cursor: move;">
+                        <i class="fas fa-grip-vertical text-muted"></i>
+                    </td>
                     <td>
-                        <div class="input-group" style="max-width: 150px; margin: 0 auto;">
-                            <input type="number" 
-                                   class="form-control durata-input text-center" 
-                                   data-poligono-id="{{ $poligono->id }}"
-                                   value="{{ $poligono->durata_mesi }}" 
-                                   min="0"
-                                   style="font-weight: 600;">
-                            <span class="input-group-text">mesi</span>
-                        </div>
+                        <strong>{{ $poligono->nome }}</strong>
+                        @if($isStandard)
+                            <span class="badge bg-secondary ms-1" title="Tipo di sistema protetto">Sistema</span>
+                        @endif
+                    </td>
+                    <td>
+                        <input type="number" 
+                               class="form-control durata-input" 
+                               data-poligono-id="{{ $poligono->id }}"
+                               value="{{ $poligono->durata_mesi }}" 
+                               min="0"
+                               placeholder="0 = Nessuna scadenza"
+                               style="width: 120px; margin: 0 auto; text-align: center;">
                         @if($poligono->durata_mesi == 0)
                         <small class="text-muted d-block text-center">Nessuna scadenza</small>
                         @endif
@@ -46,17 +105,25 @@
                                 title="Rinomina">
                             <i class="fas fa-edit"></i>
                         </button>
+                        @if(!$isStandard)
                         <button class="btn btn-sm btn-danger delete-poligono-btn" 
                                 data-poligono-id="{{ $poligono->id }}"
                                 data-nome="{{ $poligono->nome }}"
                                 title="Elimina">
                             <i class="fas fa-trash"></i>
                         </button>
+                        @else
+                        <button class="btn btn-sm btn-secondary" 
+                                disabled
+                                title="Tipo di sistema protetto - Non eliminabile">
+                            <i class="fas fa-lock"></i>
+                        </button>
+                        @endif
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="3" class="text-center text-muted py-5">
+                    <td colspan="4" class="text-center text-muted py-5">
                         <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
                         <p class="mb-0">Nessun tipo di poligono configurato</p>
                     </td>
@@ -68,7 +135,7 @@
 </div>
 
 <!-- Floating Action Button -->
-<button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createPoligonoModal" title="Nuovo Tipo Poligono">
+<button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createPoligonoModal" data-tooltip="Nuovo Tipo Poligono" aria-label="Nuovo Tipo Poligono">
     <i class="fas fa-plus"></i>
 </button>
 
@@ -182,6 +249,65 @@
             return;
         }
         const csrfToken = csrfMeta.getAttribute('content');
+        const tbody = document.getElementById('poligoniTableBody');
+
+        // Filtro ricerca client-side
+        const searchInput = document.getElementById('searchPoligono');
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const resetFiltersContainer = document.getElementById('resetFiltersContainer');
+        const resetAllFiltersBtn = document.getElementById('resetAllFilters');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', filterTable);
+            searchInput.addEventListener('keyup', filterTable);
+        }
+        
+        // Clear search button
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                filterTable();
+                searchInput.focus();
+            });
+        }
+        
+        // Reset all filters
+        if (resetAllFiltersBtn) {
+            resetAllFiltersBtn.addEventListener('click', function() {
+                if (searchInput) searchInput.value = '';
+                filterTable();
+            });
+        }
+
+        function filterTable() {
+            if (!tbody) return;
+            
+            const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+            const rows = tbody.querySelectorAll('tr[data-poligono-id]');
+            let visibili = 0;
+
+            rows.forEach(function(row) {
+                const nome = (row.dataset.nome || '').toLowerCase();
+                const matchesSearch = nome.includes(searchTerm);
+
+                if (matchesSearch) {
+                    row.style.display = '';
+                    visibili++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // Aggiorna visibilità pulsante clear search
+            if (clearSearchBtn) {
+                clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+            }
+            
+            // Aggiorna visibilità pulsante reset filtri
+            if (resetFiltersContainer) {
+                resetFiltersContainer.style.display = searchTerm ? 'flex' : 'none';
+            }
+        }
 
         // Salvataggio durata inline
         document.querySelectorAll('.durata-input').forEach(function(input) {
@@ -389,6 +515,41 @@
                 });
             });
         });
+
+        // SortableJS per drag & drop riordino
+        if (tbody && typeof Sortable !== 'undefined') {
+            new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function(evt) {
+                    const rows = tbody.querySelectorAll('tr[data-id]');
+                    const ordini = [];
+                    rows.forEach(function(row) {
+                        ordini.push(row.dataset.id);
+                    });
+                    
+                    // Salva il nuovo ordine
+                    fetch('{{ route("gestione-poligoni.update-order") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ ordini: ordini })
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            showSuccess('Ordine aggiornato!');
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Errore salvataggio ordine:', error);
+                    });
+                }
+            });
+        }
     }
 })();
 </script>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CodiciServizioGerarchia;
 use App\Models\TipoServizio;
+use App\Scopes\OrganizationalUnitScope;
 use App\Services\ExcelStyleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -81,87 +82,38 @@ class GestioneCptController extends Controller
 
     /**
      * Visualizza l'elenco di tutti i codici CPT
+     * 
+     * I codici sono isolati per unità organizzativa:
+     * - Ogni unità vede SOLO i propri codici (e quelli delle sottounità)
+     * - Non esistono più codici "globali"
+     * 
+     * La vista è organizzata in accordion per tipo di impiego
      */
     public function index(Request $request)
     {
-        $query = CodiciServizioGerarchia::query();
+        // Carica tutti i codici ordinati per tipo impiego e poi per ordine
+        // Senza paginazione - tabella scrollabile
+        $codici = CodiciServizioGerarchia::orderBy('impiego')
+            ->orderBy('ordine')
+            ->orderBy('codice')
+            ->get();
 
-        // Filtro per macro attività
-        if ($request->filled('macro_attivita')) {
-            $query->where('macro_attivita', $request->macro_attivita);
-        }
+        // Raggruppa per tipo di impiego per la struttura accordion
+        $codiciPerImpiego = $codici->groupBy('impiego');
 
-        // Filtro per tipo attività
-        if ($request->filled('tipo_attivita')) {
-            $query->where('tipo_attivita', $request->tipo_attivita);
-        }
-
-        // Filtro per impiego
-        if ($request->filled('impiego')) {
-            $query->where('impiego', $request->impiego);
-        }
-
-        // Filtro per attivo/inattivo
-        if ($request->filled('attivo')) {
-            $query->where('attivo', $request->attivo === '1');
-        }
-
-        // Ricerca per codice o descrizione
-        if ($request->filled('search')) {
-            // Sanitizza il termine di ricerca
-            $search = trim($request->search);
-            $query->where(function($q) use ($search) {
-                $q->where('codice', 'like', "%{$search}%")
-                  ->orWhere('attivita_specifica', 'like', "%{$search}%")
-                  ->orWhere('descrizione_impiego', 'like', "%{$search}%");
-            });
-        }
-
-        // =====================================================================
-        // FIX SICUREZZA: Validazione parametri orderBy con whitelist
-        // Previene SQL injection validando i valori contro liste consentite
-        // =====================================================================
-        $allowedSortColumns = ['ordine', 'codice', 'attivita_specifica', 'impiego', 'macro_attivita', 'attivo', 'id'];
-        $allowedSortDirections = ['asc', 'desc'];
-        
-        $sortBy = $request->get('sort_by', 'ordine');
-        $sortDir = strtolower($request->get('sort_dir', 'asc'));
-        
-        // Valida sortBy contro whitelist, fallback a 'ordine' se non valido
-        if (!in_array($sortBy, $allowedSortColumns, true)) {
-            $sortBy = 'ordine';
-        }
-        
-        // Valida sortDir contro whitelist, fallback a 'asc' se non valido
-        if (!in_array($sortDir, $allowedSortDirections, true)) {
-            $sortDir = 'asc';
-        }
-        
-        $query->orderBy($sortBy, $sortDir);
-
-        // Paginazione per evitare timeout con molti record
-        $codici = $query->paginate(50)->withQueryString();
-
-        // Ottieni valori unici per i filtri
-        $macroAttivita = CodiciServizioGerarchia::select('macro_attivita')
-            ->distinct()
-            ->whereNotNull('macro_attivita')
-            ->pluck('macro_attivita');
-
-        $tipiAttivita = CodiciServizioGerarchia::select('tipo_attivita')
-            ->distinct()
-            ->whereNotNull('tipo_attivita')
-            ->pluck('tipo_attivita');
-
+        // Ottieni valori unici per i filtri (lo scope filtra automaticamente per unità attiva)
         $impieghi = CodiciServizioGerarchia::select('impiego')
             ->distinct()
             ->pluck('impiego');
 
+        // Etichette leggibili per i tipi di impiego
+        $tipiImpiego = CodiciServizioGerarchia::getTipiImpiego();
+
         return view('gestione-cpt.index', compact(
             'codici',
-            'macroAttivita',
-            'tipiAttivita',
-            'impieghi'
+            'codiciPerImpiego',
+            'impieghi',
+            'tipiImpiego'
         ));
     }
 
@@ -170,7 +122,7 @@ class GestioneCptController extends Controller
      */
     public function create()
     {
-        // Ottieni valori esistenti per i dropdown
+        // Lo scope filtra automaticamente per unità attiva
         $macroAttivita = CodiciServizioGerarchia::select('macro_attivita')
             ->distinct()
             ->whereNotNull('macro_attivita')
@@ -217,7 +169,9 @@ class GestioneCptController extends Controller
             $maxOrdine = CodiciServizioGerarchia::where('macro_attivita', $request->macro_attivita)
                 ->max('ordine') ?? 0;
 
+            // Il codice è sempre associato all'unità attiva (non esistono più codici globali)
             $codice = CodiciServizioGerarchia::create([
+                'organizational_unit_id' => activeUnitId(),
                 'codice' => strtoupper($request->codice),
                 'macro_attivita' => $request->macro_attivita,
                 'tipo_attivita' => null,
@@ -254,9 +208,11 @@ class GestioneCptController extends Controller
     /**
      * Mostra il form per modificare un codice CPT esistente
      */
-    public function edit(CodiciServizioGerarchia $codice)
+    public function edit($codice)
     {
-        // Ottieni valori esistenti per i dropdown
+        // Lo scope filtra automaticamente per unità attiva
+        $codice = CodiciServizioGerarchia::findOrFail($codice);
+        
         $macroAttivita = CodiciServizioGerarchia::select('macro_attivita')
             ->distinct()
             ->whereNotNull('macro_attivita')
@@ -281,8 +237,10 @@ class GestioneCptController extends Controller
     /**
      * Aggiorna un codice CPT esistente
      */
-    public function update(Request $request, CodiciServizioGerarchia $codice)
+    public function update(Request $request, $codice)
     {
+        // Lo scope filtra automaticamente per unità attiva
+        $codice = CodiciServizioGerarchia::findOrFail($codice);
         $validator = Validator::make($request->all(), [
             'codice' => 'required|string|max:20|unique:codici_servizio_gerarchia,codice,' . $codice->id,
             'macro_attivita' => 'required|string|max:100',
@@ -313,7 +271,11 @@ class GestioneCptController extends Controller
                 'attivita_specifica' => $request->attivita_specifica,
                 'impiego' => $request->impiego,
                 'colore_badge' => $request->colore_badge,
-                'ordine' => $ordine
+                'ordine' => $ordine,
+                // Campi configurazione ruolini
+                'conta_come_presente' => $request->boolean('conta_come_presente'),
+                'esenzione_alzabandiera' => $request->boolean('esenzione_alzabandiera'),
+                'disponibilita_limitata' => $request->boolean('disponibilita_limitata'),
             ]);
 
             // SINCRONIZZA con tipi_servizio
@@ -348,8 +310,11 @@ class GestioneCptController extends Controller
         try {
             $codiceTesto = $codice->codice;
             
-            // Elimina anche da tipi_servizio se esiste
-            TipoServizio::where('codice', $codice->codice)->delete();
+            // Elimina anche da tipi_servizio se esiste (stesso codice e stessa unità)
+            TipoServizio::withoutGlobalScope(OrganizationalUnitScope::class)
+                ->where('codice', $codice->codice)
+                ->where('organizational_unit_id', $codice->organizational_unit_id)
+                ->delete();
             
             // Elimina da codici_servizio_gerarchia
             $codice->delete();
@@ -376,8 +341,10 @@ class GestioneCptController extends Controller
     /**
      * Aggiorna lo stato attivo/inattivo di un codice
      */
-    public function toggleAttivo(CodiciServizioGerarchia $codice)
+    public function toggleAttivo($codice)
     {
+        // Lo scope filtra automaticamente per unità attiva
+        $codice = CodiciServizioGerarchia::findOrFail($codice);
         DB::beginTransaction();
         try {
             $codice->update(['attivo' => !$codice->attivo]);
@@ -409,9 +376,12 @@ class GestioneCptController extends Controller
     /**
      * Duplica un codice CPT esistente
      */
-    public function duplicate(CodiciServizioGerarchia $codice)
+    public function duplicate($codice)
     {
-        // Trova un codice univoco
+        // Lo scope filtra automaticamente per unità attiva
+        $codice = CodiciServizioGerarchia::findOrFail($codice);
+        
+        // Trova un codice univoco (nell'ambito dell'unità attiva)
         $nuovoCodice = $codice->codice . '_COPIA';
         $counter = 1;
         while (CodiciServizioGerarchia::where('codice', $nuovoCodice)->exists()) {
@@ -430,11 +400,19 @@ class GestioneCptController extends Controller
 
     /**
      * Esporta i codici in formato Excel con formattazione
-     * Le colonne sono sincronizzate automaticamente con COLONNE_TABELLA
+     * Raggruppati per tipo di impiego con intestazioni di sezione
+     * I badge mantengono i colori originali
      */
     public function export()
     {
-        $codici = CodiciServizioGerarchia::orderBy('ordine')->get();
+        // Carica codici raggruppati per tipo di impiego
+        $codici = CodiciServizioGerarchia::orderBy('impiego')
+            ->orderBy('ordine')
+            ->orderBy('codice')
+            ->get();
+        
+        $codiciPerImpiego = $codici->groupBy('impiego');
+        $tipiImpiego = CodiciServizioGerarchia::getTipiImpiego();
         
         // Usa ExcelStyleService per stili consistenti
         $excelService = new ExcelStyleService();
@@ -442,60 +420,129 @@ class GestioneCptController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Codici CPT');
         
-        // --- HEADER ---
-        $col = 'A';
-        $headerRow = 1;
+        // Imposta larghezze colonne
+        $sheet->getColumnDimension('A')->setWidth(15); // Codice
+        $sheet->getColumnDimension('B')->setWidth(50); // Descrizione
+        $sheet->getColumnDimension('C')->setWidth(15); // Stato
         
-        foreach (self::COLONNE_TABELLA as $key => $config) {
-            $sheet->setCellValue($col . $headerRow, $config['header']);
-            $sheet->getColumnDimension($col)->setWidth($config['width']);
-            $col++;
-        }
+        $row = 1;
         
-        // Applica stile header
-        $lastCol = chr(ord('A') + count(self::COLONNE_TABELLA) - 1);
-        $excelService->applyHeaderStyle($sheet, "A{$headerRow}:{$lastCol}{$headerRow}");
-        $sheet->getRowDimension($headerRow)->setRowHeight(25);
-        
-        // --- DATI ---
-        $row = 2;
-        foreach ($codici as $codice) {
-            $col = 'A';
+        foreach ($codiciPerImpiego as $impiego => $codiciGruppo) {
+            // --- INTESTAZIONE SEZIONE (Tipo Impiego) ---
+            $titoloSezione = $tipiImpiego[$impiego] ?? str_replace('_', ' ', ucfirst(strtolower($impiego)));
+            $colori = self::COLORI_IMPIEGO[$impiego] ?? ['bg' => '0A2342', 'text' => 'FFFFFF'];
             
-            foreach (self::COLONNE_TABELLA as $key => $config) {
-                $cell = $col . $row;
-                $valore = $this->getValoreCella($codice, $config);
-                $sheet->setCellValue($cell, $valore);
+            $sheet->setCellValue("A{$row}", $titoloSezione . ' (' . $codiciGruppo->count() . ' codici)');
+            $sheet->mergeCells("A{$row}:C{$row}");
+            
+            // Stile intestazione sezione
+            $sheet->getStyle("A{$row}")->applyFromArray([
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => $colori['bg']]
+                ],
+                'font' => [
+                    'bold' => true,
+                    'size' => 12,
+                    'color' => ['rgb' => $colori['text']]
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_LEFT,
+                    'vertical' => Alignment::VERTICAL_CENTER
+                ]
+            ]);
+            $sheet->getRowDimension($row)->setRowHeight(28);
+            $row++;
+            
+            // --- HEADER COLONNE ---
+            $sheet->setCellValue("A{$row}", 'Codice');
+            $sheet->setCellValue("B{$row}", 'Descrizione');
+            $sheet->setCellValue("C{$row}", 'Stato');
+            
+            $sheet->getStyle("A{$row}:C{$row}")->applyFromArray([
+                'fill' => [
+                    'fillType' => Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => 'e9ecef']
+                ],
+                'font' => [
+                    'bold' => true,
+                    'size' => 10,
+                    'color' => ['rgb' => '495057']
+                ],
+                'alignment' => [
+                    'horizontal' => Alignment::HORIZONTAL_CENTER,
+                    'vertical' => Alignment::VERTICAL_CENTER
+                ]
+            ]);
+            $sheet->getRowDimension($row)->setRowHeight(22);
+            $row++;
+            
+            // --- DATI CODICI ---
+            foreach ($codiciGruppo as $codice) {
+                // Colonna Codice con colore badge originale
+                $coloreHex = ltrim($codice->colore_badge, '#');
+                $testoColore = $this->isColorChiaro($coloreHex) ? '000000' : 'FFFFFF';
                 
-                // Applica formattazione in base al tipo
-                $this->applicaFormattazioneCella($sheet, $cell, $codice, $config, $excelService);
+                $sheet->setCellValue("A{$row}", $codice->codice);
+                $sheet->getStyle("A{$row}")->applyFromArray([
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => $coloreHex]
+                    ],
+                    'font' => [
+                        'bold' => true,
+                        'color' => ['rgb' => $testoColore]
+                    ],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER
+                    ]
+                ]);
                 
-                $col++;
+                // Colonna Descrizione
+                $sheet->setCellValue("B{$row}", $codice->attivita_specifica);
+                $sheet->getStyle("B{$row}")->getAlignment()->setWrapText(true);
+                
+                // Colonna Stato
+                $sheet->setCellValue("C{$row}", $codice->attivo ? 'Attivo' : 'Inattivo');
+                if ($codice->attivo) {
+                    $excelService->applyBadgeStyle($sheet, "C{$row}", 'success');
+                } else {
+                    $sheet->getStyle("C{$row}")->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => '6c757d']
+                        ],
+                        'font' => [
+                            'color' => ['rgb' => 'FFFFFF']
+                        ],
+                        'alignment' => [
+                            'horizontal' => Alignment::HORIZONTAL_CENTER
+                        ]
+                    ]);
+                }
+                
+                $sheet->getRowDimension($row)->setRowHeight(-1); // Auto-height
+                $row++;
             }
             
-            // Altezza riga per testo su più linee
-            $sheet->getRowDimension($row)->setRowHeight(-1); // Auto-height
+            // Riga vuota tra sezioni
             $row++;
         }
         
-        // Stile generale dati
-        $lastRow = $row - 1;
-        if ($lastRow >= 2) {
-            $excelService->applyDataStyle($sheet, "A2:{$lastCol}{$lastRow}", false);
-            $excelService->applyAlternateRowColors($sheet, 2, $lastRow, 'A', $lastCol);
-        }
+        // Bordi per tutte le celle dati
+        $sheet->getStyle("A1:C{$row}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
         
-        // Freeze header
-        $excelService->freezeHeader($sheet);
+        // Freeze header (prima riga)
+        $sheet->freezePane('A2');
         
         // Info generazione
-        $excelService->addGenerationInfo($sheet, $lastRow + 2);
+        $excelService->addGenerationInfo($sheet, $row + 1);
         
         // Genera file
         $writer = new Xlsx($spreadsheet);
         $filename = 'Codici_CPT_' . date('Y-m-d') . '.xlsx';
         
-        // Output
         $tempFile = tempnam(sys_get_temp_dir(), 'excel');
         $writer->save($tempFile);
         
@@ -640,11 +687,15 @@ class GestioneCptController extends Controller
             return response()->json(['success' => false, 'message' => 'Dati non validi'], 400);
         }
 
-        // FIX: Usa transazione per aggiornamenti multipli atomici
+        // FIX: Usa transazione per aggiornamenti multipli atomici; aggiorna solo codici dell'unità attiva
         try {
-            DB::transaction(function() use ($request) {
+            $visibleIds = CodiciServizioGerarchia::pluck('id')->toArray();
+            DB::transaction(function() use ($request, $visibleIds) {
                 foreach ($request->ordini as $ordine => $id) {
-                    CodiciServizioGerarchia::where('id', $id)->update(['ordine' => $ordine]);
+                    if (in_array((int) $id, $visibleIds, true)) {
+                        CodiciServizioGerarchia::where('id', $id)
+                            ->update(['ordine' => $ordine]);
+                    }
                 }
             });
             
@@ -678,18 +729,23 @@ class GestioneCptController extends Controller
 
         $categoria = $mappaCategorie[$codiceGerarchia->macro_attivita] ?? 'servizio';
 
-        // Crea o aggiorna il tipo servizio corrispondente
-        TipoServizio::updateOrCreate(
-            ['codice' => $codiceGerarchia->codice],
-            [
-                'nome' => $codiceGerarchia->attivita_specifica,
-                'descrizione' => $codiceGerarchia->descrizione_impiego ?? $codiceGerarchia->attivita_specifica,
-                'colore_badge' => $codiceGerarchia->colore_badge,
-                'categoria' => $categoria,
-                'attivo' => $codiceGerarchia->attivo,
-                'ordine' => $codiceGerarchia->ordine
-            ]
-        );
+        // Crea o aggiorna il tipo servizio corrispondente (isolato per unità)
+        // Cerchiamo per codice + organizational_unit_id per mantenere l'isolamento
+        TipoServizio::withoutGlobalScope(OrganizationalUnitScope::class)
+            ->updateOrCreate(
+                [
+                    'codice' => $codiceGerarchia->codice,
+                    'organizational_unit_id' => $codiceGerarchia->organizational_unit_id,
+                ],
+                [
+                    'nome' => $codiceGerarchia->attivita_specifica,
+                    'descrizione' => $codiceGerarchia->descrizione_impiego ?? $codiceGerarchia->attivita_specifica,
+                    'colore_badge' => $codiceGerarchia->colore_badge,
+                    'categoria' => $categoria,
+                    'attivo' => $codiceGerarchia->attivo,
+                    'ordine' => $codiceGerarchia->ordine
+                ]
+            );
     }
 }
 

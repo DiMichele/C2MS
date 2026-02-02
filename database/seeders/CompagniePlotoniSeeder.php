@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Compagnia;
 use App\Models\Plotone;
 use App\Models\Polo;
+use App\Models\OrganizationalUnit;
 
 class CompagniePlotoniSeeder extends Seeder
 {
@@ -25,6 +26,13 @@ class CompagniePlotoniSeeder extends Seeder
             'nome' => '124^ Compagnia Trasmissioni'
         ]);
 
+        // Ottieni l'unità organizzativa corrispondente (o la prima disponibile)
+        $orgUnit = OrganizationalUnit::where('legacy_compagnia_id', $compagnia->id)->first()
+            ?? OrganizationalUnit::where('depth', 1)->where('is_active', true)->first()
+            ?? OrganizationalUnit::where('is_active', true)->first();
+        
+        $orgUnitId = $orgUnit?->id;
+
         // Crea i plotoni
         $plotoni = [
             '1° Plotone Operativo',
@@ -35,9 +43,10 @@ class CompagniePlotoniSeeder extends Seeder
 
         $plotoniCreati = [];
         foreach ($plotoni as $nomePlotone) {
-            $plotoniCreati[] = Plotone::create([
+            $plotoniCreati[] = Plotone::withoutGlobalScopes()->create([
                 'nome' => $nomePlotone,
-                'compagnia_id' => $compagnia->id
+                'compagnia_id' => $compagnia->id,
+                'organizational_unit_id' => $orgUnitId,
             ]);
         }
 
@@ -56,9 +65,10 @@ class CompagniePlotoniSeeder extends Seeder
         ];
 
         foreach ($poli as $nomePolo) {
-            Polo::create([
+            Polo::withoutGlobalScopes()->create([
                 'nome' => $nomePolo,
-                'compagnia_id' => $compagnia->id
+                'compagnia_id' => $compagnia->id,
+                'organizational_unit_id' => $orgUnitId,
             ]);
         }
 
@@ -66,5 +76,8 @@ class CompagniePlotoniSeeder extends Seeder
         $this->command->info('   - 1 Compagnia: 124^ Compagnia Trasmissioni');
         $this->command->info('   - 4 Plotoni operativi');
         $this->command->info('   - 10 Poli specialistici');
+        if ($orgUnit) {
+            $this->command->info('   - Associati a unità organizzativa: ' . $orgUnit->name);
+        }
     }
 }

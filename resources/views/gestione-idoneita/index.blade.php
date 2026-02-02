@@ -3,6 +3,24 @@
 @section('title', 'Gestione Idoneità - SUGECO')
 
 @section('content')
+<style>
+/* Pulsante clear search */
+.btn-clear-search {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px 8px;
+    z-index: 5;
+}
+.btn-clear-search:hover {
+    color: #dc3545;
+}
+</style>
 <div class="container-fluid">
     <!-- Header Centrato -->
     <div class="text-center mb-4">
@@ -21,31 +39,39 @@
                 aria-label="Cerca tipo di idoneità" 
                 autocomplete="off"
                 style="padding-left: 40px; border-radius: 6px !important;">
+            <button type="button" id="clearSearch" class="btn-clear-search" style="display: none;" title="Pulisci ricerca">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
+    </div>
+    
+    <!-- Pulsante Rimuovi filtri (appare quando ricerca attiva) -->
+    <div id="resetFiltersContainer" class="d-flex justify-content-center mb-3" style="display: none !important;">
+        <button type="button" id="resetAllFilters" class="btn btn-danger btn-sm" style="border-radius: 6px !important;">
+            <i class="fas fa-times-circle me-1"></i>Rimuovi filtri
+        </button>
     </div>
 
     <!-- Tabella Tipi Idoneità -->
-    <div class="table-container-ruolini" style="max-width: 1200px; margin: 0 auto;">
+    <div class="table-container-ruolini" style="max-width: 900px; margin: 0 auto;">
         <table class="sugeco-table" id="idoneitaTable">
             <thead>
                 <tr>
+                    <th style="width: 40px;"></th>
                     <th>Nome Tipo Idoneità</th>
-                    <th>Durata (mesi)</th>
-                    <th>Stato</th>
-                    <th>Azioni</th>
+                    <th style="width: 150px;">Durata (mesi)</th>
+                    <th style="width: 120px;">Azioni</th>
                 </tr>
             </thead>
             <tbody id="idoneitaTableBody">
                 @forelse($idoneita as $tipo)
                 <tr data-idoneita-id="{{ $tipo->id }}" 
-                    data-nome="{{ $tipo->nome }}"
-                    data-attivo="{{ $tipo->attivo ? '1' : '0' }}">
-                    <td>
-                        <strong>{{ $tipo->nome }}</strong>
-                        @if($tipo->descrizione)
-                        <br><small class="text-muted">{{ $tipo->descrizione }}</small>
-                        @endif
+                    data-id="{{ $tipo->id }}"
+                    data-nome="{{ $tipo->nome }}">
+                    <td class="text-center drag-handle" style="cursor: move;">
+                        <i class="fas fa-grip-vertical text-muted"></i>
                     </td>
+                    <td><strong>{{ $tipo->nome }}</strong></td>
                     <td>
                         <input type="number" 
                                class="form-control durata-input" 
@@ -55,29 +81,21 @@
                                placeholder="0 = Nessuna scadenza"
                                style="width: 120px; margin: 0 auto; text-align: center;">
                         @if($tipo->durata_mesi == 0)
-                        <small class="text-muted d-block">Nessuna scadenza</small>
+                        <small class="text-muted d-block text-center">Nessuna scadenza</small>
                         @endif
                     </td>
-                    <td>
-                        @if($tipo->attivo)
-                            <span class="badge bg-success">Attivo</span>
-                        @else
-                            <span class="badge bg-secondary">Inattivo</span>
-                        @endif
-                    </td>
-                    <td>
+                    <td class="text-center">
                         <button class="btn btn-sm btn-primary edit-idoneita-btn" 
                                 data-idoneita-id="{{ $tipo->id }}"
                                 data-nome="{{ $tipo->nome }}"
-                                data-descrizione="{{ $tipo->descrizione }}"
                                 data-durata="{{ $tipo->durata_mesi }}"
-                                title="Modifica tipo idoneità">
+                                title="Modifica">
                             <i class="fas fa-edit"></i>
                         </button>
                         <button class="btn btn-sm btn-danger delete-idoneita-btn" 
                                 data-idoneita-id="{{ $tipo->id }}"
                                 data-nome="{{ $tipo->nome }}"
-                                title="Elimina tipo idoneità">
+                                title="Elimina">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -96,7 +114,7 @@
 </div>
 
 <!-- Floating Action Button -->
-<button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createIdoneitaModal" title="Nuovo Tipo Idoneità">
+<button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createIdoneitaModal" data-tooltip="Nuovo Tipo Idoneità" aria-label="Nuovo Tipo Idoneità">
     <i class="fas fa-plus"></i>
 </button>
 
@@ -105,9 +123,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header" style="background: linear-gradient(135deg, #0A2342 0%, #1a3a5a 100%); color: white;">
-                <h5 class="modal-title" id="createIdoneitaModalLabel">
-                    <i class="fas fa-plus-circle me-2"></i>Nuovo Tipo Idoneità
-                </h5>
+                <h5 class="modal-title" id="createIdoneitaModalLabel">Nuovo Tipo Idoneità</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="createIdoneitaForm">
@@ -115,7 +131,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="nome" class="form-label">
-                            <i class="fas fa-heartbeat me-1"></i>Nome Tipo Idoneità <span class="text-danger">*</span>
+                            Nome Tipo Idoneità <span class="text-danger">*</span>
                         </label>
                         <input type="text" 
                                class="form-control" 
@@ -126,19 +142,8 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="descrizione" class="form-label">
-                            <i class="fas fa-align-left me-1"></i>Descrizione
-                        </label>
-                        <textarea class="form-control" 
-                                  id="descrizione" 
-                                  name="descrizione" 
-                                  rows="2"
-                                  placeholder="Descrizione dettagliata (opzionale)"></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
                         <label for="durata_mesi" class="form-label">
-                            <i class="fas fa-clock me-1"></i>Durata Validità (mesi) <span class="text-danger">*</span>
+                            Durata Validità (mesi) <span class="text-danger">*</span>
                         </label>
                         <input type="number" 
                                class="form-control" 
@@ -151,12 +156,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Annulla
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save me-1"></i>Crea Tipo Idoneità
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-success">Crea</button>
                 </div>
             </form>
         </div>
@@ -168,9 +169,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header" style="background: linear-gradient(135deg, #0A2342 0%, #1a3a5a 100%); color: white;">
-                <h5 class="modal-title" id="editIdoneitaModalLabel">
-                    <i class="fas fa-edit me-2"></i>Modifica Tipo Idoneità
-                </h5>
+                <h5 class="modal-title" id="editIdoneitaModalLabel">Modifica Tipo Idoneità</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="editIdoneitaForm">
@@ -179,7 +178,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="edit_nome" class="form-label">
-                            <i class="fas fa-heartbeat me-1"></i>Nome Tipo Idoneità <span class="text-danger">*</span>
+                            Nome Tipo Idoneità <span class="text-danger">*</span>
                         </label>
                         <input type="text" 
                                class="form-control" 
@@ -189,19 +188,8 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label for="edit_descrizione" class="form-label">
-                            <i class="fas fa-align-left me-1"></i>Descrizione
-                        </label>
-                        <textarea class="form-control" 
-                                  id="edit_descrizione" 
-                                  name="descrizione" 
-                                  rows="2"
-                                  placeholder="Descrizione dettagliata (opzionale)"></textarea>
-                    </div>
-                    
-                    <div class="mb-3">
                         <label for="edit_durata_mesi" class="form-label">
-                            <i class="fas fa-clock me-1"></i>Durata Validità (mesi) <span class="text-danger">*</span>
+                            Durata Validità (mesi) <span class="text-danger">*</span>
                         </label>
                         <input type="number" 
                                class="form-control" 
@@ -455,9 +443,30 @@
         });
 
         // Ricerca
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const resetFiltersContainer = document.getElementById('resetFiltersContainer');
+        const resetAllFiltersBtn = document.getElementById('resetAllFilters');
+        
         if (searchInput) {
             searchInput.addEventListener('input', filterTable);
             searchInput.addEventListener('keyup', filterTable);
+        }
+        
+        // Clear search button
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                filterTable();
+                searchInput.focus();
+            });
+        }
+        
+        // Reset all filters
+        if (resetAllFiltersBtn) {
+            resetAllFiltersBtn.addEventListener('click', function() {
+                if (searchInput) searchInput.value = '';
+                filterTable();
+            });
         }
 
         function filterTable() {
@@ -477,6 +486,51 @@
                     visibili++;
                 } else {
                     row.style.display = 'none';
+                }
+            });
+            
+            // Aggiorna visibilità pulsante clear search
+            if (clearSearchBtn) {
+                clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+            }
+            
+            // Aggiorna visibilità pulsante reset filtri
+            if (resetFiltersContainer) {
+                resetFiltersContainer.style.display = searchTerm ? 'flex' : 'none';
+            }
+        }
+
+        // SortableJS per drag & drop riordino
+        if (tbody && typeof Sortable !== 'undefined') {
+            new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function(evt) {
+                    const rows = tbody.querySelectorAll('tr[data-id]');
+                    const ordini = [];
+                    rows.forEach(function(row) {
+                        ordini.push(row.dataset.id);
+                    });
+                    
+                    // Salva il nuovo ordine
+                    fetch('{{ route("gestione-idoneita.update-order") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ ordini: ordini })
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            showSuccess('Ordine aggiornato!');
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Errore salvataggio ordine:', error);
+                    });
                 }
             });
         }

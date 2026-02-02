@@ -510,57 +510,7 @@
     background: #f8f9fa;
 }
 
-/* === FAB Export Button Floating === */
-.fab-export {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    color: white;
-    text-decoration: none;
-    box-shadow: 0 6px 20px rgba(33, 115, 70, 0.4);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
-    background: linear-gradient(135deg, #217346 0%, #1e6b3e 100%);
-    border: none;
-}
-
-.fab-export:hover {
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 10px 30px rgba(33, 115, 70, 0.5);
-    color: white;
-    text-decoration: none;
-}
-
-.fab-export:active {
-    transform: translateY(-2px) scale(1.02);
-}
-
-.fab-export .fab-tooltip {
-    position: absolute;
-    right: 70px;
-    background: #0a2342;
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    font-weight: 500;
-}
-
-.fab-export:hover .fab-tooltip {
-    opacity: 1;
-    visibility: visible;
-}
+/* Floating buttons usano gli stili globali da global.css */
 
 /* === Select Teatro Professionale === */
 #selectTeatro {
@@ -1232,13 +1182,13 @@
 @if(isset($teatroSelezionato) && $teatroSelezionato)
 <div class="fab-vertical-stack">
     @if($canEdit ?? false)
-    <button type="button" class="fab-button fab-prenotazioni" onclick="openModalPrenotazioniAttive()" title="Prenotazioni Attive">
+    <button type="button" class="fab fab-prenotazioni" onclick="openModalPrenotazioniAttive()" data-tooltip="Prenotazioni Attive" aria-label="Prenotazioni Attive">
         <i class="fas fa-calendar-check"></i>
         <span class="fab-counter" id="fabBadgePrenotazioni" style="display: none;">0</span>
     </button>
     @endif
     <a href="{{ route('approntamenti.export-excel', ['teatro_id' => $teatroSelezionato->id]) }}" 
-       class="fab-button fab-excel" title="Esporta Excel">
+       class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
         <i class="fas fa-file-excel"></i>
     </a>
 </div>
@@ -1440,54 +1390,31 @@
     text-decoration: underline;
 }
 
-/* FAB Vertical Stack */
+/* FAB Vertical Stack - per posizionare più FAB in verticale */
 .fab-vertical-stack {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    bottom: 30px;
+    right: 30px;
     display: flex;
     flex-direction: column;
     gap: 12px;
     z-index: 1040;
 }
 
-.fab-button {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    transition: all 0.3s ease;
+.fab-vertical-stack .fab {
     position: relative;
-    text-decoration: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    margin: 0;
 }
 
-.fab-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-}
-
+/* FAB Prenotazioni - variante navy */
 .fab-prenotazioni {
     background: linear-gradient(135deg, #0a2342, #1a3a5c);
-    color: white;
+    box-shadow: 0 4px 20px rgba(10, 35, 66, 0.4);
 }
 
 .fab-prenotazioni:hover {
+    box-shadow: 0 6px 25px rgba(10, 35, 66, 0.5);
     color: #d4af37;
-}
-
-.fab-excel {
-    background: linear-gradient(135deg, #28a745, #218838);
-    color: white;
-}
-
-.fab-excel:hover {
-    color: white;
 }
 
 .fab-counter {

@@ -1,10 +1,7 @@
 @extends('layouts.app')
-@section('title', 'Gerarchia Organizzativa - SUGECO')
+@section('title', 'Organigramma - SUGECO')
 
 @section('styles')
-{{-- jsTree CSS (locale) --}}
-<link rel="stylesheet" href="{{ asset('css/jstree-default.min.css') }}" />
-
 <style>
     :root {
         --navy-dark: #0A1E38;
@@ -16,300 +13,92 @@
         --gray-200: #e9ecef;
         --gray-300: #dee2e6;
         --gray-500: #adb5bd;
-        --gray-700: #495057;
-        --success: #2E7D32;
+        --success: #28a745;
         --danger: #D32F2F;
-        --warning: #FF8F00;
-        --transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        --ufficio-color: #6f42c1;
     }
 
-    /* Layout principale */
-    .hierarchy-container {
-        display: grid;
-        grid-template-columns: 350px 1fr;
-        gap: 1.5rem;
+    /* Container principale */
+    .organigramma-wrapper {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(10, 35, 66, 0.08);
         min-height: calc(100vh - 200px);
     }
 
-    @media (max-width: 992px) {
-        .hierarchy-container {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    /* Pannello albero */
-    .tree-panel {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 8px 25px rgba(10, 35, 66, 0.08);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .tree-panel-header {
-        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-        color: white;
-        padding: 1.25rem 1.5rem;
+    /* Header con controlli */
+    .organigramma-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--gray-200);
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        background: var(--gray-100);
     }
 
-    .tree-panel-header h5 {
-        margin: 0;
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    .tree-toolbar {
-        padding: 1rem;
-        border-bottom: 1px solid var(--gray-200);
+    .organigramma-controls {
         display: flex;
-        gap: 0.5rem;
+        align-items: center;
+        gap: 1rem;
         flex-wrap: wrap;
     }
 
-    .tree-toolbar .btn {
-        font-size: 0.85rem;
+    /* Toggle switches */
+    .control-switch {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         padding: 0.4rem 0.8rem;
-    }
-
-    .tree-search {
-        padding: 1rem;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .tree-search input {
-        border-radius: 20px;
-        padding-left: 2.5rem;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%236c757d'%3E%3Cpath d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: 12px center;
-        background-size: 16px;
-    }
-
-    .tree-content {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem;
-    }
-
-    /* Customizzazione jsTree */
-    .jstree-default .jstree-node {
-        margin-left: 1rem;
-    }
-
-    .jstree-default .jstree-anchor {
-        padding: 6px 10px;
-        border-radius: 6px;
-        transition: var(--transition);
-    }
-
-    .jstree-default .jstree-anchor:hover {
-        background-color: var(--gray-100);
-    }
-
-    .jstree-default .jstree-clicked {
-        background-color: rgba(191, 157, 94, 0.15) !important;
-        border: 1px solid var(--gold);
-        color: var(--navy) !important;
-    }
-
-    .jstree-default .jstree-icon.jstree-themeicon {
-        margin-right: 6px;
-    }
-
-    .node-type-badge {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        margin-left: 6px;
-        text-transform: uppercase;
-    }
-
-    /* Pannello dettagli */
-    .details-panel {
         background: white;
-        border-radius: 16px;
-        box-shadow: 0 8px 25px rgba(10, 35, 66, 0.08);
+        border-radius: 6px;
+        border: 1px solid var(--gray-300);
+        font-size: 0.875rem;
+    }
+
+    .control-switch .form-check-input:checked {
+        background-color: var(--navy);
+        border-color: var(--navy);
+    }
+
+    /* Toggle Vista Plotoni/Uffici */
+    .view-toggle {
+        display: flex;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid var(--gray-300);
         overflow: hidden;
     }
 
-    .details-panel-header {
-        background: var(--gray-100);
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .details-panel-header h5 {
-        margin: 0;
-        font-weight: 600;
-        color: var(--navy);
-    }
-
-    .details-content {
-        padding: 1.5rem;
-    }
-
-    .details-placeholder {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: var(--gray-500);
-    }
-
-    .details-placeholder i {
-        font-size: 4rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
-    }
-
-    /* Card unità */
-    .unit-card {
-        border: 2px solid var(--gray-200);
-        border-radius: 12px;
-        overflow: hidden;
-        margin-bottom: 1.5rem;
-    }
-
-    .unit-card-header {
-        padding: 1.25rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .unit-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-    }
-
-    .unit-info h4 {
-        margin: 0 0 0.25rem;
-        font-weight: 700;
-        color: var(--navy);
-    }
-
-    .unit-info .unit-type {
-        font-size: 0.85rem;
-        color: var(--gray-700);
-    }
-
-    .unit-card-body {
-        padding: 1.25rem;
-        border-top: 1px solid var(--gray-200);
-    }
-
-    /* Breadcrumb */
-    .unit-breadcrumb {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.25rem;
-        font-size: 0.85rem;
-        color: var(--gray-700);
-        margin-bottom: 1rem;
-        padding: 0.75rem 1rem;
-        background: var(--gray-100);
-        border-radius: 8px;
-    }
-
-    .unit-breadcrumb-item {
-        display: flex;
-        align-items: center;
-    }
-
-    .unit-breadcrumb-item:not(:last-child)::after {
-        content: '\f105';
-        font-family: 'Font Awesome 6 Free';
-        font-weight: 900;
-        margin: 0 0.5rem;
-        opacity: 0.5;
-    }
-
-    .unit-breadcrumb-link {
-        color: var(--navy-light);
-        text-decoration: none;
+    .view-toggle-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        font-size: 0.875rem;
         cursor: pointer;
-    }
-
-    .unit-breadcrumb-link:hover {
-        color: var(--gold);
-    }
-
-    /* Stats grid */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-
-    .stat-card {
-        background: var(--gray-100);
-        border-radius: 10px;
-        padding: 1rem;
-        text-align: center;
-    }
-
-    .stat-card .stat-value {
-        font-size: 1.5rem;
-        font-weight: 700;
+        transition: all 0.2s;
         color: var(--navy);
-        line-height: 1;
     }
 
-    .stat-card .stat-label {
-        font-size: 0.75rem;
-        color: var(--gray-700);
-        margin-top: 0.25rem;
-        text-transform: uppercase;
+    .view-toggle-btn:hover {
+        background: var(--gray-100);
     }
 
-    /* Azioni */
-    .unit-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--gray-200);
-    }
-
-    /* Modal */
-    .modal-header {
-        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    .view-toggle-btn.active {
+        background: var(--navy);
         color: white;
     }
 
-    .modal-header .btn-close {
-        filter: brightness(0) invert(1);
+    .view-toggle-btn i {
+        margin-right: 0.4rem;
     }
 
-    /* Form */
-    .form-label {
-        font-weight: 600;
-        color: var(--navy);
-        margin-bottom: 0.5rem;
-    }
-
-    .form-control, .form-select {
-        border-radius: 8px;
-        border: 2px solid var(--gray-200);
-        padding: 0.6rem 1rem;
-    }
-
-    .form-control:focus, .form-select:focus {
-        border-color: var(--gold);
-        box-shadow: 0 0 0 0.2rem rgba(191, 157, 94, 0.25);
+    /* Area organigramma scrollabile */
+    .organigramma-scroll {
+        overflow: auto;
+        padding: 2rem;
+        min-height: 500px;
     }
 
     /* Loading */
@@ -323,103 +112,382 @@
         z-index: 100;
     }
 
-    .spinner-wrapper {
-        text-align: center;
-    }
-
     .spinner-wrapper .spinner-border {
-        width: 3rem;
-        height: 3rem;
+        width: 2.5rem;
+        height: 2.5rem;
         color: var(--navy);
     }
 
-    /* Context menu */
-    .jstree-contextmenu {
-        border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    /* ============================================
+       ORGANIGRAMMA - STRUTTURA AD ALBERO
+       ============================================ */
+    .org-tree {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: fit-content;
+    }
+
+    .org-tree ul {
+        padding-top: 20px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        list-style: none;
+        margin: 0;
+        padding-left: 0;
+    }
+
+    .org-tree li {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        padding: 20px 10px 0 10px;
+    }
+
+    /* Linee di connessione */
+    .org-tree li::before,
+    .org-tree li::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        width: 50%;
+        height: 20px;
+        border-top: 2px solid var(--navy);
+    }
+
+    .org-tree li::before {
+        right: 50%;
+        border-right: 2px solid var(--navy);
+    }
+
+    .org-tree li::after {
+        left: 50%;
+        border-left: 2px solid var(--navy);
+    }
+
+    /* Rimuovi linee per primo e ultimo figlio */
+    .org-tree li:first-child::before {
         border: none;
-        overflow: hidden;
     }
 
-    .vakata-context li > a {
-        padding: 8px 16px;
-        font-size: 0.9rem;
+    .org-tree li:last-child::after {
+        border: none;
     }
 
-    .vakata-context li > a:hover {
+    .org-tree li:only-child::before,
+    .org-tree li:only-child::after {
+        border: none;
+    }
+
+    /* Linea verticale dal parent */
+    .org-tree ul::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px solid var(--navy);
+        height: 20px;
+    }
+
+    /* Primo livello non ha linea sopra */
+    .org-tree > ul::before {
+        display: none;
+    }
+
+    /* ============================================
+       NODI ORGANIGRAMMA
+       ============================================ */
+    .org-node {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding-bottom: 15px;
+    }
+
+    .org-node:hover {
+        transform: translateY(-2px);
+    }
+
+    .org-node-box {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        text-align: center;
+        min-width: 130px;
+        max-width: 200px;
+        box-shadow: 0 4px 12px rgba(10, 35, 66, 0.25);
+        position: relative;
+    }
+
+    .org-node.has-children .org-node-box::after {
+        content: '';
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 20px;
+        background: var(--navy);
+    }
+
+    .org-node-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        line-height: 1.3;
+        margin-bottom: 2px;
+    }
+
+
+    /* Pulsante Toggle - COMPLETAMENTE RIFATTO */
+    .org-toggle-btn {
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 26px;
+        height: 26px;
+        background: var(--navy);
+        color: white;
+        border: 3px solid white;
+        border-radius: 50%;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 50;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+
+    .org-toggle-btn:hover {
+        background: var(--gold);
+        transform: translateX(-50%) scale(1.15);
+    }
+
+    .org-toggle-btn:active {
+        transform: translateX(-50%) scale(0.95);
+    }
+
+    /* Stili per profondità diverse - Palette distintiva per livello */
+    /* Reggimento (depth 0) - Blu navy scuro */
+    .depth-0 .org-node-box {
+        background: linear-gradient(135deg, #1a365d 0%, #234876 100%);
+        min-width: 160px;
+        padding: 14px 20px;
+    }
+
+    .depth-0 .org-node-name {
+        font-size: 0.95rem;
+    }
+
+    /* Battaglione (depth 1) - Blu medio */
+    .depth-1 .org-node-box {
+        background: linear-gradient(135deg, #2c5282 0%, #3d6898 100%);
+    }
+
+    /* Compagnia (depth 2) - Blu chiaro */
+    .depth-2 .org-node-box {
+        background: linear-gradient(135deg, #2b6cb0 0%, #3c7dc1 100%);
+    }
+
+    /* Plotone (depth 3) - Azzurro */
+    .depth-3 .org-node-box {
+        background: linear-gradient(135deg, #4299e1 0%, #54aaf0 100%);
+    }
+
+    /* Ufficio/Sezione (depth 4+) - Azzurro chiaro */
+    .depth-4 .org-node-box,
+    .depth-5 .org-node-box {
+        background: linear-gradient(135deg, #63b3ed 0%, #75c4fc 100%);
+        min-width: 110px;
+        padding: 10px 12px;
+    }
+
+    .depth-4 .org-node-name,
+    .depth-5 .org-node-name {
+        font-size: 0.8rem;
+    }
+
+    /* Nodo Ufficio */
+    .org-node.ufficio .org-node-box {
+        background: linear-gradient(135deg, var(--ufficio-color) 0%, #5a32a3 100%);
+    }
+
+    /* Nodo Militare */
+    .org-node.militare .org-node-box {
+        background: linear-gradient(135deg, var(--success) 0%, #218838 100%);
+        min-width: 100px;
+        max-width: 150px;
+        padding: 8px 10px;
+    }
+
+    .org-node.militare .org-node-name {
+        font-size: 0.75rem;
+    }
+
+    /* Linee per militari - colore diverso */
+    .has-militari > ul::before,
+    .has-militari li::before,
+    .has-militari li::after {
+        border-color: var(--success);
+    }
+
+    /* Figli nascosti (collapsed) */
+    .org-tree li.collapsed > ul {
+        display: none !important;
+    }
+
+    .org-tree li.collapsed .org-node.has-children .org-node-box::after {
+        display: none;
+    }
+
+    /* ============================================
+       MODAL STYLES
+       ============================================ */
+    .modal-header {
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+        color: white;
+    }
+
+    .modal-header .btn-close {
+        filter: brightness(0) invert(1);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--navy);
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 2px solid var(--gray-200);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--gold);
+        box-shadow: 0 0 0 0.2rem rgba(191, 157, 94, 0.25);
+    }
+
+    /* Lista azioni */
+    .actions-list .list-group-item {
+        border: none;
+        padding: 12px 16px;
+        cursor: pointer;
+    }
+
+    .actions-list .list-group-item:hover {
         background: var(--gray-100);
+    }
+
+    .actions-list .list-group-item.text-danger:hover {
+        background: rgba(211, 47, 47, 0.08);
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 992px) {
+        .org-node-box {
+            min-width: 100px;
+            max-width: 140px;
+            padding: 10px 12px;
+        }
+
+        .org-node-name {
+            font-size: 0.75rem;
+        }
+
+        .org-tree li {
+            padding: 15px 5px 0 5px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .organigramma-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
     }
 </style>
 @endsection
 
 @section('content')
 <div class="container-fluid px-4">
-    {{-- Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="page-title mb-1">Gerarchia Organizzativa</h1>
-            <p class="text-muted mb-0">Struttura organizzativa ad albero del Reggimento</p>
-        </div>
-        @if($canEdit)
-        <button type="button" class="btn btn-primary" id="btnAddRoot">
-            <i class="fas fa-plus me-2"></i>Aggiungi Unità Root
-        </button>
-        @endif
+    {{-- Header pagina --}}
+    <div class="text-center mb-4">
+        <h1 class="page-title">Organigramma</h1>
     </div>
 
     {{-- Container principale --}}
-    <div class="hierarchy-container">
-        {{-- Pannello albero --}}
-        <div class="tree-panel">
-            <div class="tree-panel-header">
-                <h5><i class="fas fa-sitemap me-2"></i>Struttura</h5>
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-light btn-sm" id="btnExpandAll" title="Espandi tutto">
-                        <i class="fas fa-expand-alt"></i>
+    <div class="organigramma-wrapper position-relative">
+        {{-- Header con controlli --}}
+        <div class="organigramma-header">
+            <div class="organigramma-controls">
+                {{-- Toggle Vista --}}
+                <div class="view-toggle">
+                    <button type="button" class="view-toggle-btn active" data-view="plotoni">
+                        <i class="fas fa-users"></i> Plotoni
                     </button>
-                    <button type="button" class="btn btn-outline-light btn-sm" id="btnCollapseAll" title="Comprimi tutto">
-                        <i class="fas fa-compress-alt"></i>
-                    </button>
-                    <button type="button" class="btn btn-outline-light btn-sm" id="btnRefresh" title="Aggiorna">
-                        <i class="fas fa-sync-alt"></i>
+                    <button type="button" class="view-toggle-btn" data-view="uffici">
+                        <i class="fas fa-building"></i> Uffici
                     </button>
                 </div>
-            </div>
 
-            <div class="tree-search">
-                <input type="text" class="form-control" id="treeSearch" placeholder="Cerca unità...">
-            </div>
-
-            <div class="tree-content position-relative">
-                <div id="organizationTree"></div>
-                <div class="loading-overlay" id="treeLoading">
-                    <div class="spinner-wrapper">
-                        <div class="spinner-border" role="status"></div>
-                        <p class="mt-2 mb-0">Caricamento...</p>
+                {{-- Switch Militari --}}
+                <div class="control-switch">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="showMilitari">
+                        <label class="form-check-label" for="showMilitari">Mostra Militari</label>
                     </div>
                 </div>
             </div>
+
+            {{-- Pulsanti azioni --}}
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnExpandAll">
+                    <i class="fas fa-expand-alt me-1"></i> Espandi
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCollapseAll">
+                    <i class="fas fa-compress-alt me-1"></i> Comprimi
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnRefresh">
+                    <i class="fas fa-sync-alt me-1"></i> Aggiorna
+                </button>
+            </div>
         </div>
 
-        {{-- Pannello dettagli --}}
-        <div class="details-panel">
-            <div class="details-panel-header">
-                <h5><i class="fas fa-info-circle me-2"></i>Dettagli Unità</h5>
+        {{-- Area organigramma --}}
+        <div class="organigramma-scroll" id="organigrammaScroll">
+            <div class="org-tree" id="orgTree">
+                {{-- Generato dinamicamente --}}
             </div>
-            <div class="details-content" id="detailsContent">
-                <div class="details-placeholder">
-                    <i class="fas fa-hand-pointer"></i>
-                    <h5>Seleziona un'unità</h5>
-                    <p class="mb-0">Clicca su un nodo dell'albero per visualizzarne i dettagli.</p>
-                </div>
+        </div>
+
+        {{-- Loading --}}
+        <div class="loading-overlay" id="treeLoading" style="display: none;">
+            <div class="spinner-wrapper text-center">
+                <div class="spinner-border" role="status"></div>
+                <p class="mt-2 mb-0">Caricamento...</p>
             </div>
         </div>
     </div>
 </div>
 
+{{-- Modal solo se in modalità edit --}}
+@if($canEdit)
 {{-- Modal Crea/Modifica Unità --}}
 <div class="modal fade" id="unitModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="unitModalTitle">Nuova Unità</h5>
@@ -429,41 +497,14 @@
                 <div class="modal-body">
                     <input type="hidden" id="unitUuid" name="uuid">
                     <input type="hidden" id="parentUuid" name="parent_uuid">
+                    <input type="hidden" id="unitType" name="type_id">
+                    <input type="hidden" id="unitCode" name="code">
+                    <input type="hidden" id="unitOrder" name="sort_order" value="0">
+                    <input type="hidden" id="unitDescription" name="description">
                     
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label">Nome <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="unitName" name="name" required maxlength="150">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Codice</label>
-                            <input type="text" class="form-control" id="unitCode" name="code" maxlength="50">
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Tipo <span class="text-danger">*</span></label>
-                            <select class="form-select" id="unitType" name="type_id" required>
-                                <option value="">Seleziona tipo...</option>
-                                @foreach($unitTypes as $type)
-                                <option value="{{ $type->id }}" 
-                                        data-icon="{{ $type->icon }}"
-                                        data-color="{{ $type->color }}">
-                                    {{ $type->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Ordine</label>
-                            <input type="number" class="form-control" id="unitOrder" name="sort_order" min="0" value="0">
-                        </div>
-                    </div>
-
                     <div class="mb-3">
-                        <label class="form-label">Descrizione</label>
-                        <textarea class="form-control" id="unitDescription" name="description" rows="3" maxlength="1000"></textarea>
+                        <label class="form-label">Nome <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="unitName" name="name" required maxlength="150" placeholder="Es: 1a Compagnia, Plotone Alfa, Ufficio S1...">
                     </div>
 
                     <div class="form-check mb-3">
@@ -473,9 +514,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-primary" id="btnSaveUnit">
-                        <i class="fas fa-save me-2"></i>Salva
-                    </button>
+                    <button type="submit" class="btn btn-primary" id="btnSaveUnit">Salva</button>
                 </div>
             </form>
         </div>
@@ -492,78 +531,133 @@
             </div>
             <div class="modal-body">
                 <p>Sei sicuro di voler eliminare l'unità <strong id="deleteUnitName"></strong>?</p>
-                <div class="mb-3">
-                    <label class="form-label">Cosa fare con le unità figlie?</label>
-                    <select class="form-select" id="childStrategy">
-                        <option value="orphan">Sposta a livello root</option>
-                        <option value="promote">Sposta al parent di questa unità</option>
-                        <option value="cascade">Elimina anche le unità figlie</option>
-                    </select>
-                </div>
-                <div class="alert alert-warning">
+                <div class="alert alert-warning mb-0">
                     <i class="fas fa-exclamation-triangle me-2"></i>
                     Questa azione non può essere annullata.
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <button type="button" class="btn btn-danger" id="btnConfirmDelete">
-                    <i class="fas fa-trash me-2"></i>Elimina
-                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDelete">Elimina</button>
             </div>
         </div>
     </div>
 </div>
+
+{{-- Modal Azioni --}}
+<div class="modal fade" id="actionsModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="actionsModalTitle">Azioni</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" id="actionsModalBody"></div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Cambio Unità Militare --}}
+<div class="modal fade" id="militareUnitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Trasferisci Militare</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="militareTransferInfo" class="mb-3"></p>
+                <div class="mb-3">
+                    <label class="form-label">Nuova Unità</label>
+                    <select class="form-select" id="newUnitSelect" required>
+                        <option value="">Seleziona unità...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmTransfer">Trasferisci</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')
-{{-- jsTree (locale) --}}
-<script src="{{ asset('js/jstree.min.js') }}"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const canEdit = @json($canEdit);
     const baseUrl = '{{ route('gerarchia.index') }}';
-    let currentUnit = null;
-    let unitModal, deleteModal;
+    
+    // Stato
+    let showMilitari = false;
+    let currentView = 'plotoni'; // 'plotoni' o 'uffici'
+    let treeData = [];
+    let allUnits = [];
+    let currentMilitareId = null;
+    
+    // Modal (solo se canEdit è true)
+    let unitModal, deleteModal, actionsModal, militareUnitModal;
+    
+    // Inizializza modal solo se esistono (in modalità edit)
+    if (canEdit) {
+        const unitModalEl = document.getElementById('unitModal');
+        const deleteModalEl = document.getElementById('deleteModal');
+        const actionsModalEl = document.getElementById('actionsModal');
+        const militareUnitModalEl = document.getElementById('militareUnitModal');
+        
+        if (unitModalEl) unitModal = new bootstrap.Modal(unitModalEl);
+        if (deleteModalEl) deleteModal = new bootstrap.Modal(deleteModalEl);
+        if (actionsModalEl) actionsModal = new bootstrap.Modal(actionsModalEl);
+        if (militareUnitModalEl) militareUnitModal = new bootstrap.Modal(militareUnitModalEl);
+    }
 
-    // Inizializza modal
-    unitModal = new bootstrap.Modal(document.getElementById('unitModal'));
-    deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-
-    // Carica l'albero
+    // Carica l'albero iniziale
     loadTree();
+    loadAllUnits();
 
-    // Event listeners
-    document.getElementById('btnExpandAll').addEventListener('click', () => $('#organizationTree').jstree('open_all'));
-    document.getElementById('btnCollapseAll').addEventListener('click', () => $('#organizationTree').jstree('close_all'));
-    document.getElementById('btnRefresh').addEventListener('click', loadTree);
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
 
-    // Ricerca
-    let searchTimeout;
-    document.getElementById('treeSearch').addEventListener('input', function(e) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            $('#organizationTree').jstree('search', e.target.value);
-        }, 300);
+    // Toggle Vista Plotoni/Uffici
+    document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentView = this.dataset.view;
+            renderOrgChart(treeData);
+        });
     });
 
-    // Aggiungi root
+    // Toggle militari
+    document.getElementById('showMilitari').addEventListener('change', (e) => {
+        showMilitari = e.target.checked;
+        loadTree();
+    });
+
+    // Pulsanti
+    document.getElementById('btnExpandAll').addEventListener('click', expandAll);
+    document.getElementById('btnCollapseAll').addEventListener('click', collapseAll);
+    document.getElementById('btnRefresh').addEventListener('click', loadTree);
     document.getElementById('btnAddRoot')?.addEventListener('click', () => openUnitModal(null));
 
-    // Form submit
-    document.getElementById('unitForm').addEventListener('submit', saveUnit);
+    // Form submit (solo se canEdit è true)
+    if (canEdit) {
+        document.getElementById('unitForm')?.addEventListener('submit', saveUnit);
+        document.getElementById('btnConfirmDelete')?.addEventListener('click', confirmDelete);
+        document.getElementById('btnConfirmTransfer')?.addEventListener('click', confirmMilitareTransfer);
+    }
 
-    // Conferma eliminazione
-    document.getElementById('btnConfirmDelete').addEventListener('click', confirmDelete);
+    // ============================================
+    // FUNZIONI PRINCIPALI
+    // ============================================
 
-    /**
-     * Carica l'albero dalla API
-     */
     function loadTree() {
         showLoading(true);
 
-        fetch(`${baseUrl}/api/tree`, {
+        fetch(`${baseUrl}/api/tree?include_militari=${showMilitari}`, {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
@@ -572,114 +666,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                initTree(transformTreeData(data.data));
+                treeData = data.data;
+                renderOrgChart(treeData);
             } else {
-                showToast('Errore nel caricamento dell\'albero', 'error');
+                window.showToast('Errore nel caricamento', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showToast('Errore di connessione', 'error');
+            window.showToast('Errore di connessione', 'error');
         })
         .finally(() => showLoading(false));
     }
 
-    /**
-     * Trasforma i dati per jsTree
-     */
-    function transformTreeData(nodes) {
-        return nodes.map(node => ({
-            id: node.uuid,
-            text: node.name + (node.code ? ` <small class="text-muted">(${node.code})</small>` : ''),
-            icon: node.type?.icon || 'fa fa-building',
-            state: { opened: node.depth < 2 },
-            data: node,
-            children: node.children ? transformTreeData(node.children) : node.has_children,
-            li_attr: {
-                'data-type': node.type?.code,
-                style: `--node-color: ${node.type?.color || '#0A2342'}`
-            }
-        }));
-    }
-
-    /**
-     * Inizializza jsTree
-     */
-    function initTree(data) {
-        $('#organizationTree').jstree('destroy');
-
-        $('#organizationTree').jstree({
-            core: {
-                data: data,
-                themes: {
-                    name: 'default',
-                    responsive: true
-                },
-                check_callback: canEdit,
-                multiple: false
-            },
-            plugins: ['search', 'wholerow', canEdit ? 'contextmenu' : '', canEdit ? 'dnd' : ''].filter(Boolean),
-            search: {
-                show_only_matches: true,
-                show_only_matches_children: true
-            },
-            contextmenu: canEdit ? {
-                items: contextMenuItems
-            } : false,
-            dnd: canEdit ? {
-                copy: false,
-                inside_pos: 'last'
-            } : false
-        })
-        .on('select_node.jstree', function(e, data) {
-            loadUnitDetails(data.node.id);
-        })
-        .on('move_node.jstree', function(e, data) {
-            moveNode(data.node.id, data.parent === '#' ? null : data.parent);
-        });
-    }
-
-    /**
-     * Menu contestuale
-     */
-    function contextMenuItems(node) {
-        const items = {
-            view: {
-                label: 'Visualizza dettagli',
-                icon: 'fa fa-eye',
-                action: () => loadUnitDetails(node.id)
-            }
-        };
-
-        if (canEdit) {
-            items.create = {
-                label: 'Aggiungi sotto-unità',
-                icon: 'fa fa-plus',
-                action: () => openUnitModal(node.id)
-            };
-            items.edit = {
-                label: 'Modifica',
-                icon: 'fa fa-edit',
-                action: () => openEditModal(node.id)
-            };
-            items.delete = {
-                label: 'Elimina',
-                icon: 'fa fa-trash',
-                action: () => openDeleteModal(node)
-            };
-        }
-
-        return items;
-    }
-
-    /**
-     * Carica i dettagli di un'unità
-     */
-    function loadUnitDetails(uuid) {
-        const detailsContent = document.getElementById('detailsContent');
-        detailsContent.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div></div>';
-
-        fetch(`${baseUrl}/api/units/${uuid}`, {
+    function loadAllUnits() {
+        fetch(`${baseUrl}/api/tree?include_militari=false`, {
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest'
@@ -688,116 +689,331 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                currentUnit = data.data;
-                renderUnitDetails(data.data);
+                allUnits = flattenUnits(data.data);
+            }
+        });
+    }
+
+    function flattenUnits(nodes, result = [], prefix = '') {
+        nodes.forEach(node => {
+            if (node.type !== 'militare') {
+                result.push({
+                    id: node.id,
+                    uuid: node.uuid,
+                    name: prefix + node.name,
+                    depth: node.depth,
+                    type: node.type
+                });
+                if (node.children && node.children.length > 0) {
+                    flattenUnits(node.children, result, prefix + '— ');
+                }
+            }
+        });
+        return result;
+    }
+
+    // ============================================
+    // RENDERING ORGANIGRAMMA
+    // ============================================
+
+    function renderOrgChart(data) {
+        const container = document.getElementById('orgTree');
+        const scrollContainer = document.getElementById('organigrammaScroll');
+        
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p class="text-center text-muted py-5">Nessuna unità organizzativa trovata.</p>';
+            return;
+        }
+
+        // Filtra i dati in base alla vista corrente
+        const filteredData = filterDataByView(data);
+
+        // Crea la struttura HTML
+        const ul = document.createElement('ul');
+        filteredData.forEach(node => {
+            ul.appendChild(createNodeElement(node, 0));
+        });
+        
+        container.innerHTML = '';
+        container.appendChild(ul);
+
+        // Centra lo scroll orizzontalmente
+        setTimeout(() => {
+            const scrollWidth = scrollContainer.scrollWidth;
+            const clientWidth = scrollContainer.clientWidth;
+            if (scrollWidth > clientWidth) {
+                scrollContainer.scrollLeft = (scrollWidth - clientWidth) / 2;
+            }
+        }, 100);
+    }
+
+    function filterDataByView(data) {
+        // Struttura: Reggimento > Battaglione > Compagnia > (Plotoni | Uffici)
+        // Vista Plotoni: mostra plotoni sotto le compagnie, nasconde uffici
+        // Vista Uffici: mostra uffici sotto le compagnie, nasconde plotoni
+        return data.map(node => filterNodeByView(node, null)).filter(n => n !== null);
+    }
+
+    function filterNodeByView(node, parentTypeCode) {
+        if (!node) return null;
+        
+        // Determina il tipo del nodo
+        const nodeTypeCode = node.type?.code || '';
+        const isMilitare = node.type === 'militare';
+        const isUfficio = nodeTypeCode === 'ufficio';
+        const isPlotone = nodeTypeCode === 'plotone';
+        const isCompagnia = nodeTypeCode === 'compagnia';
+        
+        // I militari passano sempre (se abilitati)
+        if (isMilitare) {
+            return node;
+        }
+        
+        // Filtra i figli delle compagnie in base alla vista
+        // (uffici e plotoni sono sotto le compagnie)
+        if (parentTypeCode === 'compagnia') {
+            if (currentView === 'plotoni' && isUfficio) return null;
+            if (currentView === 'uffici' && isPlotone) return null;
+        }
+
+        // Processa ricorsivamente i figli, passando il tipo corrente come parent
+        let filteredChildren = [];
+        if (node.children && node.children.length > 0) {
+            filteredChildren = node.children
+                .map(child => filterNodeByView(child, nodeTypeCode))
+                .filter(c => c !== null);
+        }
+
+        return {
+            ...node,
+            children: filteredChildren
+        };
+    }
+
+    function createNodeElement(node, depth) {
+        const isMilitare = node.type === 'militare';
+        const hasChildren = node.children && node.children.length > 0;
+        const hasMilitariChildren = hasChildren && node.children.some(c => c.type === 'militare');
+        const nodeTypeCode = node.type?.code || '';
+        const isUfficio = nodeTypeCode === 'ufficio';
+        
+        const li = document.createElement('li');
+        li.className = `depth-${depth}`;
+        li.dataset.uuid = node.uuid || '';
+        if (hasMilitariChildren) li.classList.add('has-militari');
+        
+        // Nodo principale
+        const nodeDiv = document.createElement('div');
+        nodeDiv.className = 'org-node';
+        if (isMilitare) nodeDiv.classList.add('militare');
+        if (isUfficio && !isMilitare) nodeDiv.classList.add('ufficio');
+        if (hasChildren) nodeDiv.classList.add('has-children');
+        
+        nodeDiv.dataset.uuid = node.uuid || '';
+        nodeDiv.dataset.id = isMilitare ? node.militare_id : node.id;
+        nodeDiv.dataset.type = isMilitare ? 'militare' : 'unit';
+        nodeDiv.dataset.name = node.name;
+        
+        // Box del nodo
+        const boxDiv = document.createElement('div');
+        boxDiv.className = 'org-node-box';
+        boxDiv.innerHTML = `<div class="org-node-name">${escapeHtml(node.name)}</div>`;
+        
+        // Click handler sul box
+        if (canEdit) {
+            boxDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (isMilitare) {
+                    openMilitareActions(node.militare_id, node);
+                } else {
+                    openUnitActions(node.uuid, node);
+                }
+            });
+        }
+        
+        nodeDiv.appendChild(boxDiv);
+        
+        // Pulsante Toggle per espandere/comprimere - SOLO SE HA FIGLI
+        if (hasChildren) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.className = 'org-toggle-btn';
+            toggleBtn.innerHTML = '−';
+            toggleBtn.title = 'Comprimi/Espandi';
+            
+            toggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const isCollapsed = li.classList.toggle('collapsed');
+                this.innerHTML = isCollapsed ? '+' : '−';
+            });
+            
+            nodeDiv.appendChild(toggleBtn);
+        }
+        
+        li.appendChild(nodeDiv);
+        
+        // Figli
+        if (hasChildren) {
+            const childUl = document.createElement('ul');
+            node.children.forEach(child => {
+                childUl.appendChild(createNodeElement(child, depth + 1));
+            });
+            li.appendChild(childUl);
+        }
+        
+        return li;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ============================================
+    // ESPANDI / COMPRIMI
+    // ============================================
+
+    function expandAll() {
+        document.querySelectorAll('#orgTree li.collapsed').forEach(li => {
+            li.classList.remove('collapsed');
+            const btn = li.querySelector('.org-toggle-btn');
+            if (btn) btn.innerHTML = '−';
+        });
+    }
+
+    function collapseAll() {
+        document.querySelectorAll('#orgTree li').forEach(li => {
+            if (li.querySelector(':scope > ul')) {
+                li.classList.add('collapsed');
+                const btn = li.querySelector('.org-toggle-btn');
+                if (btn) btn.innerHTML = '+';
+            }
+        });
+    }
+
+    // ============================================
+    // MODAL AZIONI
+    // ============================================
+
+    function openUnitActions(uuid, nodeData) {
+        document.getElementById('actionsModalTitle').textContent = nodeData?.name || 'Azioni Unità';
+        document.getElementById('actionsModalBody').innerHTML = `
+            <div class="list-group actions-list">
+                <button class="list-group-item list-group-item-action" onclick="window.orgFunctions.openEditModal('${uuid}')">
+                    <i class="fas fa-edit me-2"></i> Rinomina / Modifica
+                </button>
+                <button class="list-group-item list-group-item-action" onclick="window.orgFunctions.openUnitModal('${uuid}')">
+                    <i class="fas fa-plus me-2"></i> Aggiungi Sotto-Unità
+                </button>
+                <button class="list-group-item list-group-item-action text-danger" onclick="window.orgFunctions.openDeleteModal('${uuid}', '${(nodeData?.name || '').replace(/'/g, "\\'")}')">
+                    <i class="fas fa-trash me-2"></i> Elimina Unità
+                </button>
+            </div>
+        `;
+        actionsModal.show();
+    }
+
+    function openMilitareActions(militareId, nodeData) {
+        const nome = nodeData?.name || `Militare #${militareId}`;
+        document.getElementById('actionsModalTitle').textContent = nome;
+        document.getElementById('actionsModalBody').innerHTML = `
+            <div class="list-group actions-list">
+                <button class="list-group-item list-group-item-action" onclick="window.orgFunctions.openMilitareTransferModal(${militareId}, '${nome.replace(/'/g, "\\'")}', ${nodeData?.unit_id || 'null'})">
+                    <i class="fas fa-exchange-alt me-2"></i> Cambia Unità
+                </button>
+                <button class="list-group-item list-group-item-action" onclick="window.location.href='{{ url('anagrafica') }}/${militareId}';">
+                    <i class="fas fa-user me-2"></i> Vedi Scheda Militare
+                </button>
+            </div>
+        `;
+        actionsModal.show();
+    }
+
+    function openMilitareTransferModal(militareId, nome, currentUnitId) {
+        actionsModal.hide();
+        currentMilitareId = militareId;
+        document.getElementById('militareTransferInfo').textContent = `Trasferisci: ${nome}`;
+        
+        const select = document.getElementById('newUnitSelect');
+        select.innerHTML = '<option value="">Seleziona unità...</option>';
+        
+        allUnits.forEach(unit => {
+            if (unit.id !== currentUnitId) {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = unit.name;
+                select.appendChild(option);
+            }
+        });
+        
+        militareUnitModal.show();
+    }
+
+    function confirmMilitareTransfer() {
+        const newUnitId = document.getElementById('newUnitSelect').value;
+        
+        if (!newUnitId) {
+            window.showToast('Seleziona un\'unità di destinazione', 'warning');
+            return;
+        }
+        
+        updateMilitareUnit(currentMilitareId, newUnitId);
+        militareUnitModal.hide();
+    }
+
+    function updateMilitareUnit(militareId, newUnitId) {
+        fetch(`{{ url('militari') }}/${militareId}/update-unit`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ organizational_unit_id: newUnitId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.showToast(`${data.data.militare_nome}: ${data.data.old_unit} → ${data.data.new_unit}`, 'success');
+                loadTree();
             } else {
-                detailsContent.innerHTML = '<div class="alert alert-danger">Errore nel caricamento</div>';
+                window.showToast(data.message || 'Errore nel trasferimento', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            detailsContent.innerHTML = '<div class="alert alert-danger">Errore di connessione</div>';
+            window.showToast('Errore di connessione', 'error');
         });
     }
 
-    /**
-     * Renderizza i dettagli dell'unità
-     */
-    function renderUnitDetails(data) {
-        const unit = data.unit;
-        const stats = data.stats;
-        const breadcrumb = data.breadcrumb;
+    // ============================================
+    // GESTIONE UNITÀ (CRUD)
+    // ============================================
 
-        const html = `
-            <div class="unit-breadcrumb">
-                ${breadcrumb.map((b, i) => `
-                    <span class="unit-breadcrumb-item">
-                        ${i < breadcrumb.length - 1 
-                            ? `<a class="unit-breadcrumb-link" onclick="selectNode('${b.uuid}')">${b.name}</a>` 
-                            : `<strong>${b.name}</strong>`}
-                    </span>
-                `).join('')}
-            </div>
-
-            <div class="unit-card">
-                <div class="unit-card-header" style="border-left: 4px solid ${unit.type?.color || '#0A2342'}">
-                    <div class="unit-icon" style="background-color: ${unit.type?.color || '#0A2342'}">
-                        <i class="${unit.type?.icon || 'fa fa-building'}"></i>
-                    </div>
-                    <div class="unit-info">
-                        <h4>${unit.name}${unit.code ? ` <small class="text-muted">(${unit.code})</small>` : ''}</h4>
-                        <span class="unit-type">
-                            ${unit.type?.name || 'Tipo sconosciuto'}
-                            ${!unit.is_active ? '<span class="badge bg-secondary ms-2">Inattiva</span>' : ''}
-                        </span>
-                    </div>
-                </div>
-
-                ${unit.description ? `
-                    <div class="unit-card-body">
-                        <p class="mb-0">${unit.description}</p>
-                    </div>
-                ` : ''}
-            </div>
-
-            <h6 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Statistiche</h6>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">${stats.direct_children}</div>
-                    <div class="stat-label">Sotto-unità dirette</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.total_descendants}</div>
-                    <div class="stat-label">Discendenti totali</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.total_militari}</div>
-                    <div class="stat-label">Militari</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${stats.depth}</div>
-                    <div class="stat-label">Profondità</div>
-                </div>
-            </div>
-
-            ${canEdit ? `
-                <div class="unit-actions">
-                    <button class="btn btn-primary btn-sm" onclick="openUnitModal('${unit.uuid}')">
-                        <i class="fas fa-plus me-1"></i>Aggiungi sotto-unità
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="openEditModal('${unit.uuid}')">
-                        <i class="fas fa-edit me-1"></i>Modifica
-                    </button>
-                    <button class="btn btn-outline-danger btn-sm" onclick="openDeleteModal({id: '${unit.uuid}', text: '${unit.name}'})">
-                        <i class="fas fa-trash me-1"></i>Elimina
-                    </button>
-                </div>
-            ` : ''}
-        `;
-
-        document.getElementById('detailsContent').innerHTML = html;
-    }
-
-    /**
-     * Apre il modal per creare un'unità
-     */
-    window.openUnitModal = function(parentUuid) {
+    function openUnitModal(parentUuid) {
+        actionsModal.hide();
         document.getElementById('unitModalTitle').textContent = 'Nuova Unità';
         document.getElementById('unitForm').reset();
         document.getElementById('unitUuid').value = '';
         document.getElementById('parentUuid').value = parentUuid || '';
         document.getElementById('unitActive').checked = true;
+        
+        // Imposta valori di default per i campi nascosti
+        document.getElementById('unitCode').value = '';
+        document.getElementById('unitOrder').value = '0';
+        document.getElementById('unitDescription').value = '';
 
-        // Carica i tipi contenibili
-        loadContainableTypes(parentUuid);
-
+        // Carica e imposta automaticamente il primo tipo disponibile
+        loadContainableTypes(parentUuid, true);
         unitModal.show();
-    };
+    }
 
-    /**
-     * Apre il modal per modificare un'unità
-     */
-    window.openEditModal = function(uuid) {
+    function openEditModal(uuid) {
+        actionsModal.hide();
         fetch(`${baseUrl}/api/units/${uuid}`, {
             headers: {
                 'Accept': 'application/json',
@@ -818,15 +1034,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('unitDescription').value = unit.description || '';
                 document.getElementById('unitActive').checked = unit.is_active;
 
+                // Carica tipi disponibili ma non sovrascrivere il tipo corrente
+                loadContainableTypes(unit.parent?.uuid, false);
                 unitModal.show();
             }
         });
-    };
+    }
 
-    /**
-     * Carica i tipi contenibili per un parent
-     */
-    function loadContainableTypes(parentUuid) {
+    function loadContainableTypes(parentUuid, autoSelectFirst = false) {
         const url = parentUuid 
             ? `${baseUrl}/api/types/containable/${parentUuid}`
             : `${baseUrl}/api/types`;
@@ -839,26 +1054,21 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                const select = document.getElementById('unitType');
-                const currentValue = select.value;
-                select.innerHTML = '<option value="">Seleziona tipo...</option>';
-                data.data.forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type.id;
-                    option.textContent = type.name;
-                    option.dataset.icon = type.icon;
-                    option.dataset.color = type.color;
-                    select.appendChild(option);
-                });
-                if (currentValue) select.value = currentValue;
+            if (data.success && data.data && data.data.length > 0) {
+                const typeInput = document.getElementById('unitType');
+                const currentValue = typeInput.value;
+                
+                // Se non c'è già un valore o dobbiamo auto-selezionare, usa il primo tipo disponibile
+                if (autoSelectFirst || !currentValue) {
+                    typeInput.value = data.data[0].id;
+                }
             }
+        })
+        .catch(error => {
+            console.error('Errore caricamento tipi:', error);
         });
     }
 
-    /**
-     * Salva un'unità
-     */
     function saveUnit(e) {
         e.preventDefault();
         
@@ -868,9 +1078,15 @@ document.addEventListener('DOMContentLoaded', function() {
             ? `${baseUrl}/api/units/${uuid}`
             : `${baseUrl}/api/units`;
 
+        const typeValue = document.getElementById('unitType').value;
+        if (!typeValue) {
+            window.showToast('Tipo unità mancante. Riprova.', 'error');
+            return;
+        }
+
         const formData = {
             name: document.getElementById('unitName').value,
-            type_id: parseInt(document.getElementById('unitType').value),
+            type_id: parseInt(typeValue),
             parent_uuid: document.getElementById('parentUuid').value || null,
             code: document.getElementById('unitCode').value || null,
             description: document.getElementById('unitDescription').value || null,
@@ -891,37 +1107,31 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showToast(data.message || 'Operazione completata', 'success');
+                window.showToast(data.message || 'Operazione completata', 'success');
                 unitModal.hide();
                 loadTree();
-                if (isEdit) loadUnitDetails(uuid);
+                loadAllUnits();
             } else {
-                showToast(data.message || 'Errore', 'error');
+                window.showToast(data.message || 'Errore', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showToast('Errore di connessione', 'error');
+            window.showToast('Errore di connessione', 'error');
         });
     }
 
-    /**
-     * Apre il modal di conferma eliminazione
-     */
-    window.openDeleteModal = function(node) {
-        document.getElementById('deleteUnitName').textContent = node.text || node.name;
-        document.getElementById('btnConfirmDelete').dataset.uuid = node.id;
+    function openDeleteModal(uuid, name) {
+        actionsModal.hide();
+        document.getElementById('deleteUnitName').textContent = name;
+        document.getElementById('btnConfirmDelete').dataset.uuid = uuid;
         deleteModal.show();
-    };
+    }
 
-    /**
-     * Conferma eliminazione
-     */
     function confirmDelete() {
         const uuid = document.getElementById('btnConfirmDelete').dataset.uuid;
-        const strategy = document.getElementById('childStrategy').value;
 
-        fetch(`${baseUrl}/api/units/${uuid}?child_strategy=${strategy}`, {
+        fetch(`${baseUrl}/api/units/${uuid}`, {
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
@@ -932,81 +1142,35 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showToast(data.message || 'Unità eliminata', 'success');
+                window.showToast(data.message || 'Unità eliminata', 'success');
                 deleteModal.hide();
                 loadTree();
-                document.getElementById('detailsContent').innerHTML = `
-                    <div class="details-placeholder">
-                        <i class="fas fa-hand-pointer"></i>
-                        <h5>Seleziona un'unità</h5>
-                        <p class="mb-0">Clicca su un nodo dell'albero per visualizzarne i dettagli.</p>
-                    </div>
-                `;
+                loadAllUnits();
             } else {
-                showToast(data.message || 'Errore', 'error');
+                window.showToast(data.message || 'Errore', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showToast('Errore di connessione', 'error');
+            window.showToast('Errore di connessione', 'error');
         });
     }
 
-    /**
-     * Sposta un nodo
-     */
-    function moveNode(nodeUuid, newParentUuid) {
-        fetch(`${baseUrl}/api/units/${nodeUuid}/move`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({ parent_uuid: newParentUuid })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('Unità spostata', 'success');
-            } else {
-                showToast(data.message || 'Errore nello spostamento', 'error');
-                loadTree(); // Ricarica per annullare lo spostamento visuale
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Errore di connessione', 'error');
-            loadTree();
-        });
-    }
+    // ============================================
+    // UTILITÀ
+    // ============================================
 
-    /**
-     * Seleziona un nodo
-     */
-    window.selectNode = function(uuid) {
-        $('#organizationTree').jstree('select_node', uuid);
-    };
-
-    /**
-     * Mostra/nascondi loading
-     */
     function showLoading(show) {
         document.getElementById('treeLoading').style.display = show ? 'flex' : 'none';
     }
 
-    /**
-     * Mostra toast
-     */
-    function showToast(message, type = 'info') {
-        // Usa il sistema di toast esistente se disponibile
-        if (typeof toastr !== 'undefined') {
-            toastr[type](message);
-        } else {
-            alert(message);
-        }
-    }
+    // Esponi funzioni globalmente per i click handler negli innerHTML
+    window.orgFunctions = {
+        openUnitModal,
+        openEditModal,
+        openDeleteModal,
+        openMilitareTransferModal
+    };
 });
 </script>
 @endpush

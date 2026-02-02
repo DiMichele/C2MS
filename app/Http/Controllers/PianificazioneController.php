@@ -22,6 +22,7 @@ use App\Services\ExcelStyleService;
 use App\Services\AuditService;
 use App\Services\PrenotazioneApprontamentoService;
 use App\Models\PrenotazioneApprontamento;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Controller per la gestione della pianificazione mensile
@@ -57,8 +58,8 @@ class PianificazioneController extends Controller
         }
         
         // Ottieni tutti i militari con le loro informazioni e applica filtri
-        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
-        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+        // ARCHITETTURA MULTI-TENANCY: OrganizationalUnitScope filtra automaticamente
+        // per activeUnitId() (incluso per admin). CompagniaScope è mantenuto per legacy.
         //
         // Lo scope withVisibilityFlags() aggiunge is_owner e is_acquired calcolati
         // direttamente in SQL per evitare N+1 nelle liste.
@@ -72,6 +73,7 @@ class PianificazioneController extends Controller
                 'scadenzaApprontamento',
                 'teatriOperativi',
                 'patenti',
+                'organizationalUnit', // Multi-tenancy
                 'pianificazioniGiornaliere' => function($query) use ($pianificazioneMensile) {
                     $query->where('pianificazione_mensile_id', $pianificazioneMensile->id)
                           ->with(['tipoServizio', 'tipoServizio.codiceGerarchia']);
@@ -694,37 +696,48 @@ class PianificazioneController extends Controller
             }
         }
 
-        $pianificazione = PianificazioneGiornaliera::updateOrCreate(
-            [
-                'militare_id' => $militare->id,
+        $unitId = activeUnitId();
+        // withoutGlobalScope: trova il record per (militare, mese, giorno) anche se organizational_unit_id era null
+        $pianificazione = PianificazioneGiornaliera::withoutGlobalScope(OrganizationalUnitScope::class)
+            ->updateOrCreate(
+                [
+                    'militare_id' => $militare->id,
                     'pianificazione_mensile_id' => $pianificazioneMensile->id,
-                'giorno' => $request->giorno
-            ],
-            [
-                'tipo_servizio_id' => $tipoServizioId
-            ]
-        );
+                    'giorno' => $request->giorno
+                ],
+                [
+                    'tipo_servizio_id' => $tipoServizioId,
+                    'organizational_unit_id' => $unitId,
+                ]
+            );
         
-        // Salva e ricarica i dati
-        $pianificazione->save();
         $pianificazione->refresh();
         
         // SINCRONIZZAZIONE BIDIREZIONALE: CPT -> Turni
         $this->sincronizzaCptVersoTurni($militare, $anno, $mese, $request->giorno, $tipoServizioId);
         
-            // Registra la modifica nel log di audit
-            AuditService::log(
-                'update',
-                "Aggiornato CPT giorno {$request->giorno}/{$mese}/{$anno} per {$militare->cognome} {$militare->nome}",
-                $militare,
-                ['giorno' => $request->giorno, 'mese' => $mese, 'anno' => $anno, 'tipo_servizio_id' => $tipoServizioId]
-            );
+            try {
+                AuditService::log(
+                    'update',
+                    "Aggiornato CPT giorno {$request->giorno}/{$mese}/{$anno} per {$militare->cognome} {$militare->nome}",
+                    $militare,
+                    ['giorno' => $request->giorno, 'mese' => $mese, 'anno' => $anno, 'tipo_servizio_id' => $tipoServizioId]
+                );
+            } catch (\Throwable $auditE) {
+                \Log::warning('Audit log skip in updateGiorno', ['error' => $auditE->getMessage()]);
+            }
         
             return response()->json([
                 'success' => true,
                 'pianificazione' => $pianificazione->load(['tipoServizio', 'tipoServizio.codiceGerarchia'])
             ]);
             
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->validator->errors()->first() ?? 'Dati non validi.',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Exception $e) {
             \Log::error('Errore updateGiorno', [
                 'error' => $e->getMessage(),
@@ -734,7 +747,7 @@ class PianificazioneController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Errore nel salvataggio: ' . $e->getMessage()
-            ], 200); // Cambio da 500 a 200 per garantire che il JSON venga processato
+            ], 200);
         }
     }
 
@@ -783,6 +796,7 @@ class PianificazioneController extends Controller
             }
             
             $pianificazioni = [];
+            $unitId = activeUnitId();
             
             foreach ($request->giorni as $giornoData) {
                 // Trova o crea la pianificazione mensile per questo mese/anno
@@ -798,16 +812,18 @@ class PianificazioneController extends Controller
                     ]
                 );
                 
-                $pianificazione = PianificazioneGiornaliera::updateOrCreate(
-                    [
-                        'militare_id' => $militare->id,
-                        'pianificazione_mensile_id' => $pianificazioneMensile->id,
-                        'giorno' => $giornoData['giorno']
-                    ],
-                    [
-                        'tipo_servizio_id' => $tipoServizioId
-                    ]
-                );
+                $pianificazione = PianificazioneGiornaliera::withoutGlobalScope(OrganizationalUnitScope::class)
+                    ->updateOrCreate(
+                        [
+                            'militare_id' => $militare->id,
+                            'pianificazione_mensile_id' => $pianificazioneMensile->id,
+                            'giorno' => $giornoData['giorno']
+                        ],
+                        [
+                            'tipo_servizio_id' => $tipoServizioId,
+                            'organizational_unit_id' => $unitId,
+                        ]
+                    );
                 
                 $pianificazioni[] = $pianificazione->load(['tipoServizio', 'tipoServizio.codiceGerarchia']);
                 
@@ -820,7 +836,13 @@ class PianificazioneController extends Controller
                 'pianificazioni' => $pianificazioni
             ]);
             
-        } catch (\Exception $e) {
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->validator->errors()->first() ?? 'Dati non validi.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Throwable $e) {
             \Log::error('Errore updateGiorniRange', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -829,7 +851,7 @@ class PianificazioneController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Errore nel salvataggio: ' . $e->getMessage()
-            ], 200); // Cambio da 500 a 200 per garantire che il JSON venga processato
+            ], 200);
         }
     }
     

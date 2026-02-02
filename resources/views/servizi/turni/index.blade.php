@@ -1045,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- Floating Button Export Excel -->
 <a href="{{ route('servizi.turni.export-excel', ['data' => $turno->data_inizio->format('Y-m-d')]) }}" 
-   class="fab fab-excel" title="Esporta in Excel" aria-label="Esporta Excel">
+   class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
     <i class="fas fa-file-excel"></i>
 </a>
 

@@ -7,7 +7,6 @@
     <!-- Header Centrato -->
     <div class="text-center mb-4">
         <h1 class="page-title">Gestione Approntamenti</h1>
-        <p class="text-muted">Configura le colonne e scadenze per la pagina Approntamenti</p>
     </div>
 
     <!-- Pulsante Aggiungi Colonna -->
@@ -19,8 +18,7 @@
 
     <!-- Info Card -->
     <div class="alert alert-info mb-4" style="max-width: 900px; margin: 0 auto;">
-        <i class="fas fa-info-circle me-2"></i>
-        <strong>Nota:</strong> Le colonne con l'icona <i class="fas fa-link text-warning"></i> sono condivise con il sistema SPP e non possono essere eliminate. Trascina le righe per riordinare le colonne.
+        Trascina le righe per riordinare le colonne. Le colonne condivise con il sistema SPP non possono essere eliminate.
     </div>
 
     <!-- Tabella Colonne -->
@@ -79,79 +77,6 @@
         </table>
     </div>
 
-    <!-- Legenda -->
-    <div class="mt-4" style="max-width: 900px; margin: 0 auto;">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header" style="background: #0a2342; color: white;">
-                <i class="fas fa-palette me-2"></i>Legenda Colori nella pagina Approntamenti
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="color-sample me-2" style="background-color: #d4edda; width: 30px; height: 20px; border-radius: 4px;"></span>
-                            <span>Valido</span>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="color-sample me-2" style="background-color: #fff3cd; width: 30px; height: 20px; border-radius: 4px;"></span>
-                            <span>In scadenza (30gg)</span>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="color-sample me-2" style="background-color: #ffcccc; width: 30px; height: 20px; border-radius: 4px;"></span>
-                            <span>Scaduto</span>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="color-sample me-2" style="background-color: #e2e3e5; width: 30px; height: 20px; border-radius: 4px;"></span>
-                            <span>Non presente</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Statistiche -->
-    <div class="mt-4" style="max-width: 900px; margin: 0 auto;">
-        <div class="row">
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm text-center">
-                    <div class="card-body">
-                        <h3 class="text-primary mb-1">{{ $colonne->count() }}</h3>
-                        <small class="text-muted">Colonne Totali</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm text-center">
-                    <div class="card-body">
-                        <h3 class="text-success mb-1">{{ $colonne->where('attivo', true)->count() }}</h3>
-                        <small class="text-muted">Attive</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm text-center">
-                    <div class="card-body">
-                        <h3 class="text-info mb-1">{{ $colonne->whereNotNull('scadenza_mesi')->count() }}</h3>
-                        <small class="text-muted">Con Scadenza</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Pulsante Vai agli Approntamenti -->
-    <div class="text-center mt-4">
-        <a href="{{ route('approntamenti.index') }}" class="btn btn-primary btn-lg">
-            <i class="fas fa-arrow-right me-2"></i>Vai agli Approntamenti
-        </a>
-    </div>
 </div>
 
 <!-- Modal Aggiungi/Modifica Colonna -->

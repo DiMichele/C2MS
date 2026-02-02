@@ -399,6 +399,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Verifica se l'utente ha un permesso in una specifica unità.
+     * Alias per hasPermissionOnUnit().
+     * 
+     * @param string $permission Nome del permesso
+     * @param int $unitId ID dell'unità
+     * @return bool
+     */
+    public function hasPermissionInUnit(string $permission, int $unitId): bool
+    {
+        return $this->hasPermissionOnUnit($permission, $unitId);
+    }
+
+    /**
      * Ottiene gli ID delle unità visibili all'utente nella gerarchia.
      * 
      * @return array

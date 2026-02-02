@@ -231,11 +231,8 @@ function setupSaveButton() {
             const giorno = parseInt(giornoEl ? giornoEl.value : '');
             const pianificazioneMensileId = pianificazioneMensileIdEl ? pianificazioneMensileIdEl.value : '';
             
-            let tipoServizioId = '';
-            if (tipoServizioEl && tipoServizioEl.value) {
-                const selectedOption = tipoServizioEl.options[tipoServizioEl.selectedIndex];
-                tipoServizioId = selectedOption.getAttribute('data-id') || '';
-            }
+            // value dell'option è l'ID numerico (tipo_servizio_id)
+            let tipoServizioId = tipoServizioEl && tipoServizioEl.value ? tipoServizioEl.value : '';
             
             const giornoFine = giornoFineEl ? giornoFineEl.value : '';
             
@@ -443,10 +440,20 @@ function saveSingleDay(militareId, giorno, pianificazioneMensileId, tipoServizio
         headers: {
             'X-CSRF-TOKEN': csrfToken,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify(requestData)
     })
-    .then(response => response.json());
+    .then(response => {
+        return response.text().then(text => {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error('Risposta non valida dal server. Riprova.');
+            }
+        });
+    });
 }
 
 function saveDaysRange(militareId, giorniDaSalvare, tipoServizioId) {
@@ -463,14 +470,29 @@ function saveDaysRange(militareId, giorniDaSalvare, tipoServizioId) {
         headers: {
             'X-CSRF-TOKEN': csrfToken,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify(bodyData)
     })
     .then(response => {
-        if (!response.ok) {
-            throw new Error('Errore nella risposta del server: ' + response.status);
-        }
-        return response.json();
+        return response.text().then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (!response.ok && data.message) {
+                    throw new Error(data.message);
+                }
+                if (!response.ok) {
+                    throw new Error('Errore nella risposta del server: ' + response.status);
+                }
+                return data;
+            } catch (e) {
+                if (e instanceof SyntaxError) {
+                    throw new Error('Risposta non valida dal server. Riprova.');
+                }
+                throw e;
+            }
+        });
     });
 }
 

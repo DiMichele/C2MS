@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\BoardActivity;
 use App\Models\BoardColumn;
+use App\Models\OrganizationalUnit;
 use Carbon\Carbon;
 
 class BoardActivitiesSeeder extends Seeder
@@ -30,6 +31,11 @@ class BoardActivitiesSeeder extends Seeder
                 'password' => bcrypt('password'),
             ]);
         }
+        
+        // Ottieni l'unità organizzativa di default
+        $defaultUnit = OrganizationalUnit::where('depth', 1)->where('is_active', true)->first()
+            ?? OrganizationalUnit::where('is_active', true)->first();
+        $defaultUnitId = $defaultUnit?->id;
 
         $activities = [
             [
@@ -110,10 +116,14 @@ class BoardActivitiesSeeder extends Seeder
             }
             
             $activityData['column_id'] = $columns[$columnSlug]->id;
+            $activityData['organizational_unit_id'] = $defaultUnitId;
             
-            BoardActivity::create($activityData);
+            BoardActivity::withoutGlobalScopes()->create($activityData);
         }
 
         $this->command->info('Creati ' . count($activities) . ' attività del board.');
+        if ($defaultUnit) {
+            $this->command->info('   - Associati a unità organizzativa: ' . $defaultUnit->name);
+        }
     }
 }

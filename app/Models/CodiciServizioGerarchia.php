@@ -4,12 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\OrganizationalUnit;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Modello per la gerarchia dei codici servizio
  * 
  * Rappresenta la struttura gerarchica dei codici servizio
  * come definita nella pagina CODICI del file Excel CPT.xlsx
+ * 
+ * NOTA: Questo modello NON usa BelongsToOrganizationalUnit standard
+ * perché i codici CPT sono configurazioni ereditate dalla gerarchia.
+ * Un'unità subordinata deve vedere i codici della propria macro-entità.
  * 
  * @property int $id
  * @property string $codice
@@ -29,6 +35,53 @@ use Illuminate\Database\Eloquent\Model;
 class CodiciServizioGerarchia extends Model
 {
     use HasFactory;
+    
+    /**
+     * Boot del modello: applica scope personalizzato per ereditarietà configurazioni
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('inheritedConfig', function ($builder) {
+            $activeUnitId = activeUnitId();
+            
+            if (!$activeUnitId) {
+                return;
+            }
+            
+            // Per le configurazioni, mostra sia i codici dell'unità attiva 
+            // che quelli degli ANCESTOR (macro-entità parent)
+            $unitIds = self::getUnitWithAncestors($activeUnitId);
+            
+            $builder->whereIn('organizational_unit_id', $unitIds);
+        });
+    }
+    
+    /**
+     * Ottiene l'unità attiva + tutti i suoi ancestor (per ereditarietà configurazioni)
+     */
+    protected static function getUnitWithAncestors(int $unitId): array
+    {
+        try {
+            // Usa la closure table per ottenere tutti gli ancestor
+            $ancestorIds = DB::table('unit_closure')
+                ->where('descendant_id', $unitId)
+                ->pluck('ancestor_id')
+                ->toArray();
+            
+            // Assicurati che l'unità stessa sia inclusa
+            return array_unique(array_merge([$unitId], $ancestorIds));
+        } catch (\Exception $e) {
+            return [$unitId];
+        }
+    }
+    
+    /**
+     * Relazione con l'unità organizzativa
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
+    }
 
     /**
      * Nome della tabella associata al modello
@@ -39,6 +92,7 @@ class CodiciServizioGerarchia extends Model
      * Attributi assegnabili in massa
      */
     protected $fillable = [
+        'organizational_unit_id', // null = codice globale
         'codice',
         'macro_attivita',
         'tipo_attivita',
@@ -47,7 +101,11 @@ class CodiciServizioGerarchia extends Model
         'descrizione_impiego',
         'colore_badge',
         'attivo',
-        'ordine'
+        'ordine',
+        // Campi configurazione ruolini (integrati da Gestione Ruolini)
+        'esenzione_alzabandiera',
+        'disponibilita_limitata',
+        'conta_come_presente'
     ];
 
     /**
@@ -56,6 +114,9 @@ class CodiciServizioGerarchia extends Model
     protected $casts = [
         'attivo' => 'boolean',
         'ordine' => 'integer',
+        'esenzione_alzabandiera' => 'boolean',
+        'disponibilita_limitata' => 'boolean',
+        'conta_come_presente' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

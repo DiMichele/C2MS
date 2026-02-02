@@ -10,6 +10,18 @@
     if ($militare && $campo) {
         // Per campi speciali, usa i dati diretti del militare
         switch($campo->nome_campo) {
+            case 'unita_battaglione':
+                // Colonna Unità (Battaglione) - mostra il battaglione a cui appartiene il militare
+                $unit = $militare->organizationalUnit;
+                if ($unit && $unit->parent) {
+                    // Se l'unità ha un parent (battaglione), mostra quello
+                    $valore = $unit->parent->name;
+                } elseif ($unit) {
+                    $valore = $unit->name;
+                } else {
+                    $valore = '-';
+                }
+                break;
             case 'compagnia':
                 $valore = $militare->compagnia_id;
                 break;
@@ -59,6 +71,12 @@
 @endphp
 
 @switch($campo->nome_campo)
+    @case('unita_battaglione')
+        {{-- Colonna Unità (Battaglione) - di sistema, solo lettura --}}
+        <td class="text-center">
+            <span class="badge bg-secondary" style="font-weight: 500;">{{ $valore }}</span>
+        </td>
+        @break
     @case('compagnia')
         <td class="text-center">
             <select class="form-select form-select-sm editable-field compagnia-select" 

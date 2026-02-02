@@ -242,4 +242,36 @@ class GestioneSppController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Aggiorna l'ordine dei corsi tramite drag & drop
+     */
+    public function updateOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'ordini' => 'required|array',
+            'ordini.*' => 'required|integer|exists:configurazione_corsi_spp,id'
+        ]);
+
+        try {
+            foreach ($validated['ordini'] as $ordine => $id) {
+                ConfigurazioneCorsoSpp::where('id', $id)->update(['ordine' => $ordine]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ordine aggiornato con successo'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento ordine corsi SPP', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante l\'aggiornamento dell\'ordine'
+            ], 500);
+        }
+    }
 }

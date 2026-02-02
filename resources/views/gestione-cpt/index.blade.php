@@ -1,21 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Codici CPT')
+@section('title', 'Gestione CPT')
 
 @section('content')
 <style>
-/* Stili specifici per questa pagina */
-/* (Stili base tabelle in table-standard.css) */
+/* =============================================
+   GESTIONE CPT - STILI ACCORDION
+   ============================================= */
 
 .form-control, .form-select {
     border-radius: 0 !important;
 }
 
-.filter-select {
-    border-radius: 0 !important;
-}
-
-/* Badge con colori CPT esatti */
+/* Badge CPT con colori esatti */
 .codice-badge {
     display: inline-block;
     padding: 6px 12px;
@@ -25,76 +22,158 @@
     min-width: 60px;
     text-align: center;
     font-family: 'Courier New', monospace;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* 
- * Colonne tabella CPT
- * Le larghezze sono flessibili per non tagliare il testo
- * L'ordine delle colonne è sincronizzato con COLONNE_TABELLA nel controller
- */
-.sugeco-table th,
-.sugeco-table td {
-    white-space: normal !important;
-    word-wrap: break-word;
+/* Accordion per tipo impiego */
+.impiego-accordion {
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 1rem;
 }
 
-.sugeco-table th:nth-child(1),
-.sugeco-table td:nth-child(1) {
-    /* Colonna Codice */
-    width: 100px;
-    min-width: 80px;
-    text-align: center;
+.impiego-accordion-header {
+    width: 100%;
+    text-align: left;
+    border: none;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 8px;
 }
 
-.sugeco-table th:nth-child(2),
-.sugeco-table td:nth-child(2) {
-    /* Colonna Descrizione - si espande per contenere tutto il testo */
-    width: auto;
-    min-width: 250px;
-    text-align: left !important;
+.impiego-accordion-header:hover {
+    filter: brightness(1.1);
 }
 
-.sugeco-table th:nth-child(3),
-.sugeco-table td:nth-child(3) {
-    /* Colonna Tipo Impiego */
-    width: 180px;
-    min-width: 150px;
+.impiego-accordion-header:focus {
+    outline: none;
 }
 
-.sugeco-table th:nth-child(4),
-.sugeco-table td:nth-child(4) {
-    /* Colonna Stato */
-    width: 100px;
-    min-width: 80px;
+.impiego-accordion-header h5 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
 }
 
-.sugeco-table th:nth-child(5),
-.sugeco-table td:nth-child(5) {
-    /* Colonna Azioni */
-    width: 120px;
-    min-width: 110px;
+.impiego-accordion-header .badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.impiego-accordion-icon {
+    color: #fff;
+    transition: transform 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.impiego-accordion-header[aria-expanded="true"] .impiego-accordion-icon {
+    transform: rotate(180deg);
+}
+
+.impiego-accordion-header[aria-expanded="true"] {
+    border-radius: 8px 8px 0 0;
+}
+
+/* Colori per tipo impiego */
+.impiego-DISPONIBILE { background: linear-gradient(135deg, #198754 0%, #20c997 100%); }
+.impiego-INDISPONIBILE { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); }
+.impiego-NON_DISPONIBILE { background: linear-gradient(135deg, #dc3545 0%, #e35d6a 100%); }
+.impiego-PRESENTE_SERVIZIO { background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%); }
+.impiego-DISPONIBILE_ESIGENZA { background: linear-gradient(135deg, #0dcaf0 0%, #20c997 100%); }
+
+/* Contenuto accordion */
+.impiego-content {
+    background: #fff;
+}
+
+.impiego-content .codici-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.impiego-content .codice-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.impiego-content .codice-item:hover {
+    background: #f8f9fa;
+}
+
+.impiego-content .codice-item:last-child {
+    border-bottom: none;
+}
+
+.codice-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+}
+
+.codice-descrizione {
+    font-size: 0.95rem;
+    color: #495057;
+}
+
+.codice-stato {
+    font-size: 0.8rem;
+}
+
+.codice-azioni {
+    display: flex;
+    gap: 8px;
+}
+
+/* Container scrollabile */
+.accordions-container {
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Filtri senza icone */
+.filter-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 4px;
+}
+
+/* Stato inattivo */
+.codice-item.inattivo {
+    opacity: 0.6;
+    background: #f8f9fa;
+}
+
+.codice-item.inattivo .codice-badge {
+    filter: grayscale(50%);
 }
 </style>
 
-@php
-    // Check if any filters are active
-    $activeFilters = [];
-    foreach(['impiego', 'attivo'] as $filter) {
-        if(request()->filled($filter)) $activeFilters[] = $filter;
-    }
-    $hasActiveFilters = count($activeFilters) > 0;
-    
-    // SINGLE SOURCE OF TRUTH: Colonne tabella dal controller
-    // Se modifichi le colonne nel controller, si aggiornano automaticamente qui e nell'export Excel
-    $colonneTabella = \App\Http\Controllers\GestioneCptController::getColonneTabella();
-@endphp
-
-<!-- Header Minimal Solo Titolo -->
+<!-- Header -->
 <div class="text-center mb-4">
-    <h1 class="page-title">CODICI CPT</h1>
+    <h1 class="page-title">GESTIONE CPT</h1>
 </div>
 
-<!-- Barra di ricerca centrata sotto il titolo -->
+<!-- Barra di ricerca centrata -->
 <div class="d-flex justify-content-center mb-3">
     <div class="search-container" style="position: relative; width: 500px;">
         <i class="fas fa-search search-icon" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
@@ -102,23 +181,35 @@
             type="text" 
             id="searchCodice" 
             class="form-control" 
-            data-search-type="codice"
-            data-target-container="codiciTableBody"
-            placeholder="Cerca codice..." 
+            placeholder="Cerca codice o descrizione..." 
             aria-label="Cerca codice" 
             style="padding-left: 40px; border-radius: 6px !important;">
     </div>
 </div>
 
-<!-- Filtri e azioni su riga separata -->
+<!-- Filtri e azioni -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <button id="toggleFilters" class="btn btn-primary {{ $hasActiveFilters ? 'active' : '' }}" style="border-radius: 6px !important;">
-            <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
-            <span id="toggleFiltersText">
-                {{ $hasActiveFilters ? 'Nascondi filtri' : 'Mostra filtri' }}
-            </span>
-        </button>
+    <div class="d-flex align-items-center gap-3">
+        <!-- Filtro Stato (senza icone) -->
+        <div>
+            <label for="filtroStato" class="filter-label d-block">Stato</label>
+            <select id="filtroStato" class="form-select form-select-sm" style="min-width: 150px; border-radius: 6px !important;">
+                <option value="">Tutti</option>
+                <option value="attivo">Solo Attivi</option>
+                <option value="inattivo">Solo Inattivi</option>
+            </select>
+        </div>
+        
+        <!-- Filtro Tipo Impiego (senza icone) -->
+        <div>
+            <label for="filtroImpiego" class="filter-label d-block">Tipo Impiego</label>
+            <select id="filtroImpiego" class="form-select form-select-sm" style="min-width: 200px; border-radius: 6px !important;">
+                <option value="">Tutti i tipi</option>
+                @foreach($tipiImpiego as $key => $label)
+                    <option value="{{ $key }}">{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
     </div>
     
     <div>
@@ -143,137 +234,52 @@
     </div>
 @endif
 
-<!-- Filtri con sezione migliorata -->
-<div id="filtersContainer" class="filter-section {{ $hasActiveFilters ? 'visible' : '' }}">
-    <div class="filter-card mb-4">
-        <div class="filter-card-header d-flex justify-content-between align-items-center">
-            <div>
-                <i class="fas fa-filter me-2"></i> Filtri avanzati
+<!-- Accordion per tipo di impiego -->
+<div class="accordions-container">
+    @forelse($codiciPerImpiego as $impiego => $codiciGruppo)
+    <div class="impiego-accordion" data-impiego="{{ $impiego }}">
+        <button class="impiego-accordion-header impiego-{{ $impiego }} collapsed" 
+                type="button" 
+                data-bs-toggle="collapse" 
+                data-bs-target="#impiego-{{ Str::slug($impiego) }}" 
+                aria-expanded="false" 
+                aria-controls="impiego-{{ Str::slug($impiego) }}">
+            <div class="d-flex align-items-center gap-3">
+                <h5>{{ $tipiImpiego[$impiego] ?? str_replace('_', ' ', ucfirst(strtolower($impiego))) }}</h5>
+                <span class="badge codici-count">{{ $codiciGruppo->count() }} codici</span>
             </div>
-        </div>
-        <div class="card-body p-3">
-            <form id="filtroForm" action="{{ route('codici-cpt.index') }}" method="GET">
-                {{-- Prima riga filtri --}}
-                <div class="row mb-3">
-                    {{-- Filtro Impiego --}}
-                    <div class="col-md-6">
-                        <label for="impiego" class="form-label">
-                            <i class="fas fa-tasks me-1"></i> Tipo Impiego
-                        </label>
-                        <div class="select-wrapper">
-                            <select name="impiego" id="impiego" class="form-select filter-select {{ request()->filled('impiego') ? 'applied' : '' }}">
-                                <option value="">Tutti i tipi</option>
-                                @foreach($impieghi as $impiego)
-                                    <option value="{{ $impiego }}" {{ request('impiego') == $impiego ? 'selected' : '' }}>
-                                        {{ str_replace('_', ' ', ucfirst(strtolower($impiego))) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @if(request()->filled('impiego'))
-                                <span class="clear-filter" data-filter="impiego" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
+            <i class="fas fa-chevron-down impiego-accordion-icon"></i>
+        </button>
+        <div id="impiego-{{ Str::slug($impiego) }}" class="collapse">
+            <div class="impiego-content">
+                <ul class="codici-list">
+                    @foreach($codiciGruppo as $codice)
+                    @php
+                        // Calcola contrasto testo automatico
+                        $hex = ltrim($codice->colore_badge, '#');
+                        $r = hexdec(substr($hex, 0, 2));
+                        $g = hexdec(substr($hex, 2, 2));
+                        $b = hexdec(substr($hex, 4, 2));
+                        $luminosita = ($r * 299 + $g * 587 + $b * 114) / 1000;
+                        $testoColore = $luminosita > 128 ? '#000' : '#fff';
+                    @endphp
+                    <li class="codice-item {{ !$codice->attivo ? 'inattivo' : '' }}" 
+                        data-codice="{{ strtolower($codice->codice) }}"
+                        data-descrizione="{{ strtolower($codice->attivita_specifica) }}"
+                        data-attivo="{{ $codice->attivo ? 'attivo' : 'inattivo' }}">
+                        <div class="codice-info">
+                            <span class="codice-badge" 
+                                  style="background-color: {{ $codice->colore_badge }}; color: {{ $testoColore }};">
+                                {{ $codice->codice }}
+                            </span>
+                            <span class="codice-descrizione">{{ $codice->attivita_specifica }}</span>
+                            @if(!$codice->attivo)
+                                <span class="badge bg-secondary codice-stato">Inattivo</span>
                             @endif
                         </div>
-                    </div>
-                    
-                    {{-- Filtro Stato --}}
-                    <div class="col-md-6">
-                        <label for="attivo" class="form-label">
-                            <i class="fas fa-toggle-on me-1"></i> Stato
-                        </label>
-                        <div class="select-wrapper">
-                            <select name="attivo" id="attivo" class="form-select filter-select {{ request()->filled('attivo') ? 'applied' : '' }}">
-                                <option value="">Tutti</option>
-                                <option value="1" {{ request('attivo') === '1' ? 'selected' : '' }}>Solo Attivi</option>
-                                <option value="0" {{ request('attivo') === '0' ? 'selected' : '' }}>Solo Inattivi</option>
-                            </select>
-                            @if(request()->filled('attivo'))
-                                <span class="clear-filter" data-filter="attivo" title="Rimuovi questo filtro"><i class="fas fa-times"></i></span>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-                
-                {{-- Pulsanti reset --}}
-                <div class="d-flex justify-content-end align-items-center mt-3 pt-3 border-top">
-                    <a href="{{ route('codici-cpt.index') }}" class="btn btn-outline-secondary" id="resetAllFilters" style="border-radius: 6px !important;">
-                        <i class="fas fa-redo me-1"></i> Reset filtri
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- 
-    TABELLA CODICI CPT
-    Le colonne sono definite in GestioneCptController::COLONNE_TABELLA
-    per mantenere sincronizzazione automatica con l'export Excel
---}}
-<div class="table-responsive">
-    <table class="sugeco-table">
-        <thead>
-            <tr>
-                {{-- Colonne da SINGLE SOURCE OF TRUTH --}}
-                @foreach($colonneTabella as $key => $config)
-                    <th>{{ $config['header'] }}</th>
-                @endforeach
-                {{-- Colonna Azioni (solo vista, non in export) --}}
-                <th>Azioni</th>
-            </tr>
-        </thead>
-        <tbody id="codiciTableBody">
-            @forelse($codici as $codice)
-                <tr data-searchable>
-                    {{-- Colonne da SINGLE SOURCE OF TRUTH --}}
-                    @foreach($colonneTabella as $key => $config)
-                        @switch($config['tipo'])
-                            @case('badge_colorato')
-                                <td>
-                                    @php
-                                        // Calcola contrasto testo automatico
-                                        $hex = ltrim($codice->colore_badge, '#');
-                                        $r = hexdec(substr($hex, 0, 2));
-                                        $g = hexdec(substr($hex, 2, 2));
-                                        $b = hexdec(substr($hex, 4, 2));
-                                        $luminosita = ($r * 299 + $g * 587 + $b * 114) / 1000;
-                                        $testoColore = $luminosita > 128 ? '#000' : '#fff';
-                                    @endphp
-                                    <span class="codice-badge" 
-                                          style="background-color: {{ $codice->colore_badge }}; color: {{ $testoColore }};">
-                                        {{ $codice->{$config['campo']} }}
-                                    </span>
-                                </td>
-                                @break
-                            
-                            @case('impiego')
-                                <td>
-                                    <small class="text-muted">
-                                        {{ str_replace('_', ' ', ucfirst(strtolower($codice->{$config['campo']}))) }}
-                                    </small>
-                                </td>
-                                @break
-                            
-                            @case('stato')
-                                <td class="text-center">
-                                    @if($codice->{$config['campo']})
-                                        <span class="badge bg-success">Attivo</span>
-                                    @else
-                                        <span class="badge bg-secondary">Inattivo</span>
-                                    @endif
-                                </td>
-                                @break
-                            
-                            @default
-                                <td>{{ $codice->{$config['campo']} }}</td>
-                        @endswitch
-                    @endforeach
-                    
-                    {{-- Colonna Azioni (solo vista) --}}
-                    <td class="text-center">
-                        <div class="btn-group btn-group-sm" role="group">
+                        <div class="codice-azioni">
                             <a href="{{ route('codici-cpt.edit', $codice) }}" 
-                               class="btn btn-outline-primary"
-                               data-bs-toggle="tooltip" 
+                               class="btn btn-sm btn-outline-primary"
                                title="Modifica">
                                 <i class="fas fa-edit"></i>
                             </a>
@@ -281,14 +287,13 @@
                                 @csrf
                                 @method('PATCH')
                                 <button type="submit" 
-                                        class="btn btn-outline-{{ $codice->attivo ? 'warning' : 'success' }}"
-                                        data-bs-toggle="tooltip" 
+                                        class="btn btn-sm btn-outline-{{ $codice->attivo ? 'warning' : 'success' }}"
                                         title="{{ $codice->attivo ? 'Disattiva' : 'Attiva' }}">
                                     <i class="fas fa-{{ $codice->attivo ? 'eye-slash' : 'eye' }}"></i>
                                 </button>
                             </form>
                             <button type="button" 
-                                    class="btn btn-outline-danger delete-codice-btn"
+                                    class="btn btn-sm btn-outline-danger delete-codice-btn"
                                     data-codice-id="{{ $codice->id }}"
                                     data-codice-nome="{{ $codice->codice }}"
                                     data-delete-url="{{ route('codici-cpt.destroy', $codice) }}"
@@ -296,49 +301,30 @@
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    {{-- colspan dinamico basato sul numero di colonne + 1 (azioni) --}}
-                    <td colspan="{{ count($colonneTabella) + 1 }}" class="text-center py-5">
-                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Nessun codice trovato</h5>
-                        <p class="text-muted mb-3">Inizia creando il tuo primo codice CPT</p>
-                        <a href="{{ route('codici-cpt.create') }}" class="btn btn-success">
-                            <i class="fas fa-plus"></i> Crea Codice
-                        </a>
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-</div>
-
-{{-- Paginazione --}}
-@if($codici->hasPages())
-<div class="d-flex justify-content-between align-items-center mt-3">
-    <div class="text-muted">
-        <small>
-            Mostrando {{ $codici->firstItem() }}-{{ $codici->lastItem() }} di {{ $codici->total() }} codici
-        </small>
+                    </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
     </div>
-    <div>
-        {{ $codici->links() }}
+    @empty
+    <div class="text-center py-5">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Nessun codice trovato</h5>
+        <p class="text-muted mb-3">Inizia creando il tuo primo codice CPT</p>
+        <a href="{{ route('codici-cpt.create') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Crea Codice
+        </a>
     </div>
+    @endforelse
 </div>
-@else
-<div class="text-muted mt-2">
-    <small>Totale: {{ $codici->count() }} codici</small>
-</div>
-@endif
 
 <!-- Floating Button Export Excel -->
 <a href="{{ route('codici-cpt.export') }}" class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
     <i class="fas fa-file-excel"></i>
 </a>
 
-<!-- Form nascosto per eliminazione codici -->
+<!-- Form nascosto per eliminazione -->
 <form id="deleteCodiceForm" method="POST" style="display: none;">
     @csrf
     @method('DELETE')
@@ -346,23 +332,76 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Inizializza il sistema di filtri SUGECO (auto-submit)
-    if (typeof SUGECO !== 'undefined' && typeof SUGECO.Filters !== 'undefined') {
-        SUGECO.Filters.init();
+    const searchInput = document.getElementById('searchCodice');
+    const filtroStato = document.getElementById('filtroStato');
+    const filtroImpiego = document.getElementById('filtroImpiego');
+    const accordions = document.querySelectorAll('.impiego-accordion');
+    
+    // Funzione per applicare i filtri client-side
+    function applyFilters() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const statoFilter = filtroStato.value;
+        const impiegoFilter = filtroImpiego.value;
+        
+        let visibleCount = 0;
+        
+        accordions.forEach(accordion => {
+            const impiego = accordion.dataset.impiego;
+            const items = accordion.querySelectorAll('.codice-item');
+            const countBadge = accordion.querySelector('.codici-count');
+            
+            // Filtra per tipo impiego
+            if (impiegoFilter && impiego !== impiegoFilter) {
+                accordion.style.display = 'none';
+                return;
+            }
+            
+            accordion.style.display = '';
+            let accordionVisibleCount = 0;
+            
+            items.forEach(item => {
+                const codice = item.dataset.codice;
+                const descrizione = item.dataset.descrizione;
+                const attivo = item.dataset.attivo;
+                
+                let visible = true;
+                
+                // Filtro ricerca
+                if (searchTerm && !codice.includes(searchTerm) && !descrizione.includes(searchTerm)) {
+                    visible = false;
+                }
+                
+                // Filtro stato
+                if (statoFilter && attivo !== statoFilter) {
+                    visible = false;
+                }
+                
+                item.style.display = visible ? '' : 'none';
+                if (visible) {
+                    accordionVisibleCount++;
+                    visibleCount++;
+                }
+            });
+            
+            // Aggiorna contatore nel badge dell'accordion
+            if (countBadge) {
+                countBadge.textContent = accordionVisibleCount + ' codici';
+            }
+            
+            // Nascondi accordion se non ha codici visibili
+            if (accordionVisibleCount === 0) {
+                accordion.style.display = 'none';
+            }
+        });
+        
     }
     
-    // Inizializza la ricerca
-    if (typeof SUGECO !== 'undefined' && typeof SUGECO.Search !== 'undefined') {
-        SUGECO.Search.init();
-    }
+    // Event listeners per i filtri
+    searchInput.addEventListener('input', applyFilters);
+    filtroStato.addEventListener('change', applyFilters);
+    filtroImpiego.addEventListener('change', applyFilters);
     
-    // Tooltip
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // Gestione eliminazione codici con sistema conferma unificato
+    // Gestione eliminazione codici
     document.querySelectorAll('.delete-codice-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const codiceNome = this.dataset.codiceNome;

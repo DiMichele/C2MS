@@ -529,17 +529,6 @@
     
     {{-- Barra Info --}}
     <div class="profilo-info-bar">
-        {{-- Foto --}}
-        <div class="profilo-foto-container">
-            <div class="profilo-foto" data-bs-toggle="modal" data-bs-target="#photoModal">
-                @if($militare->foto_path && Storage::disk('public')->exists($militare->foto_path))
-                    <img src="{{ route('militare.foto', $militare->id) }}" alt="Foto">
-                @else
-                    <span class="profilo-foto-placeholder">?</span>
-                @endif
-            </div>
-        </div>
-        
         {{-- Stato --}}
         <div class="profilo-stato-container">
             <div class="profilo-stato-label">Stato Odierno</div>
@@ -585,7 +574,6 @@
         @include('militare.partials._sezione_teatro_operativo')
         @include('militare.partials._sezione_scadenze')
         @include('militare.partials._sezione_calendario')
-        @include('militare.partials._sezione_attivita')
     </div>
 </div>
 
@@ -606,25 +594,6 @@ async function confirmDeleteMilitare() {
 }
 </script>
 @endpush
-
-{{-- Modal Foto --}}
-<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Foto Profilo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center">
-                @if($militare->foto_path && Storage::disk('public')->exists($militare->foto_path))
-                    <img src="{{ route('militare.foto', $militare->id) }}" alt="Foto" class="img-fluid rounded" style="max-height: 500px;">
-                @else
-                    <p class="text-muted py-5">Nessuna foto disponibile</p>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
 
 @endsection
 

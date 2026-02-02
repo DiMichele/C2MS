@@ -124,17 +124,19 @@ class MigrateToHierarchy extends Command
         $this->info('Creazione tipi di unità...');
 
         $types = [
-            ['code' => 'reggimento', 'name' => 'Reggimento', 'icon' => 'fa-landmark', 'color' => '#0A1E38', 'depth' => 0],
-            ['code' => 'battaglione', 'name' => 'Battaglione', 'icon' => 'fa-shield-alt', 'color' => '#1A3A5F', 'depth' => 1],
-            ['code' => 'compagnia', 'name' => 'Compagnia', 'icon' => 'fa-users-cog', 'color' => '#2E5A8F', 'depth' => 2],
-            ['code' => 'plotone', 'name' => 'Plotone', 'icon' => 'fa-users', 'color' => '#4A7AB0', 'depth' => 3],
-            ['code' => 'ufficio', 'name' => 'Ufficio', 'icon' => 'fa-building', 'color' => '#6B8CBF', 'depth' => 2],
-            ['code' => 'sezione', 'name' => 'Sezione', 'icon' => 'fa-sitemap', 'color' => '#8BA4CC', 'depth' => 3],
-            ['code' => 'infermeria', 'name' => 'Infermeria', 'icon' => 'fa-medkit', 'color' => '#C62828', 'depth' => 1],
-            ['code' => 'ccsl', 'name' => 'CCSL', 'icon' => 'fa-warehouse', 'color' => '#FF8F00', 'depth' => 1],
+            ['code' => 'reggimento', 'name' => 'Reggimento', 'icon' => 'fa-landmark', 'color' => '#0A1E38', 'depth' => 0, 'can_contain_types' => ['battaglione', 'ufficio', 'sezione', 'infermeria', 'ccsl']],
+            ['code' => 'battaglione', 'name' => 'Battaglione', 'icon' => 'fa-shield-alt', 'color' => '#1A3A5F', 'depth' => 1, 'can_contain_types' => ['compagnia', 'ufficio', 'sezione']],
+            ['code' => 'compagnia', 'name' => 'Compagnia', 'icon' => 'fa-users-cog', 'color' => '#2E5A8F', 'depth' => 2, 'can_contain_types' => ['plotone', 'ufficio']],
+            ['code' => 'plotone', 'name' => 'Plotone', 'icon' => 'fa-users', 'color' => '#4A7AB0', 'depth' => 3, 'can_contain_types' => ['ufficio', 'squadra']],
+            ['code' => 'ufficio', 'name' => 'Ufficio', 'icon' => 'fa-building', 'color' => '#6B8CBF', 'depth' => 2, 'can_contain_types' => ['sezione']],
+            ['code' => 'sezione', 'name' => 'Sezione', 'icon' => 'fa-sitemap', 'color' => '#8BA4CC', 'depth' => 3, 'can_contain_types' => ['ufficio', 'sezione']],
+            ['code' => 'infermeria', 'name' => 'Infermeria', 'icon' => 'fa-medkit', 'color' => '#C62828', 'depth' => 1, 'can_contain_types' => ['sezione']],
+            ['code' => 'ccsl', 'name' => 'CCSL', 'icon' => 'fa-warehouse', 'color' => '#FF8F00', 'depth' => 1, 'can_contain_types' => ['plotone', 'ufficio', 'sezione']],
         ];
 
         foreach ($types as $typeData) {
+            $canContain = $typeData['can_contain_types'] ?? null;
+            unset($typeData['can_contain_types']);
             if (!$this->dryRun) {
                 OrganizationalUnitType::updateOrCreate(
                     ['code' => $typeData['code']],
@@ -143,6 +145,7 @@ class MigrateToHierarchy extends Command
                         'icon' => $typeData['icon'],
                         'color' => $typeData['color'],
                         'default_depth_level' => $typeData['depth'],
+                        'can_contain_types' => $canContain,
                         'is_active' => true,
                     ]
                 );

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use App\Models\OrganizationalUnit;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per le pianificazioni giornaliere
@@ -28,7 +29,7 @@ use App\Models\OrganizationalUnit;
  */
 class PianificazioneGiornaliera extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -45,7 +46,8 @@ class PianificazioneGiornaliera extends Model
         'tipo_servizio_id',
         'organizational_unit_id', // Nuova gerarchia organizzativa
         'note',
-        'prenotazione_approntamento_id'
+        'prenotazione_approntamento_id',
+        'prenotazione_pefo_id'
     ];
 
     /**
@@ -102,11 +104,27 @@ class PianificazioneGiornaliera extends Model
     }
 
     /**
+     * Prenotazione PEFO collegata
+     */
+    public function prenotazionePefo()
+    {
+        return $this->belongsTo(PrenotazionePefo::class);
+    }
+
+    /**
      * Verifica se è collegata a una prenotazione approntamento
      */
     public function isCollegataAPrenotazione(): bool
     {
         return $this->prenotazione_approntamento_id !== null;
+    }
+
+    /**
+     * Verifica se è collegata a una prenotazione PEFO
+     */
+    public function isCollegataAPrenotazionePefo(): bool
+    {
+        return $this->prenotazione_pefo_id !== null;
     }
 
     // ==========================================

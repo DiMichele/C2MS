@@ -9,28 +9,34 @@ use App\Models\Compagnia;
 use App\Models\ConfigurazioneCampoAnagrafica;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class GestioneAnagraficaConfigController extends Controller
 {
     /**
      * Mostra la pagina di gestione configurazione anagrafica
+     * 
+     * I dati sono automaticamente filtrati per unità organizzativa grazie al
+     * trait BelongsToOrganizationalUnit sui modelli Plotone, Polo e Mansione.
      */
     public function index(Request $request)
     {
-        // Recupera tutti i plotoni con le loro compagnie
+        // Lo scope OrganizationalUnitScope filtra automaticamente per unità attiva
         $plotoni = Plotone::with('compagnia')->orderBy('nome')->get();
         
-        // Recupera tutti gli uffici (Poli)
+        // Filtrati automaticamente per unità attiva
         $uffici = Polo::orderBy('nome')->get();
         
-        // Recupera tutti gli incarichi (Mansioni)
+        // Filtrati automaticamente per unità attiva
         $incarichi = Mansione::orderBy('nome')->get();
         
         // Recupera le compagnie per il form di creazione plotoni
         $compagnie = Compagnia::orderBy('nome')->get();
         
-        // Carica tutti i campi (sistema + custom) ordinati per il tab Campi
-        $campi = ConfigurazioneCampoAnagrafica::ordinati()->get();
+        // Carica i campi dell'unità organizzativa attiva (configurazione per unità)
+        $unitId = activeUnitId();
+        ConfigurazioneCampoAnagrafica::ensureSystemFieldsForUnit($unitId);
+        $campi = ConfigurazioneCampoAnagrafica::forUnit($unitId)->ordinati()->get();
         
         // RIMOSSO: Normalizzazione ordine automatica ad ogni accesso
         // La normalizzazione era problematica perché modificava il database ad ogni page load.
@@ -42,12 +48,20 @@ class GestioneAnagraficaConfigController extends Controller
     
     public function storePlotone(Request $request)
     {
+        $unitId = activeUnitId();
+        
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:plotoni,nome',
+            'nome' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('plotoni', 'nome')->where('organizational_unit_id', $unitId),
+            ],
             'compagnia_id' => 'required|exists:compagnie,id'
         ]);
 
         try {
+            // organizational_unit_id viene assegnato automaticamente dal trait
             $plotone = Plotone::create($validated);
 
             return response()->json([
@@ -70,8 +84,17 @@ class GestioneAnagraficaConfigController extends Controller
 
     public function updatePlotone(Request $request, $id)
     {
+        $unitId = activeUnitId();
+        
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:plotoni,nome,' . $id,
+            'nome' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('plotoni', 'nome')
+                    ->where('organizational_unit_id', $unitId)
+                    ->ignore($id),
+            ],
             'compagnia_id' => 'required|exists:compagnie,id'
         ]);
 
@@ -135,11 +158,19 @@ class GestioneAnagraficaConfigController extends Controller
     
     public function storeUfficio(Request $request)
     {
+        $unitId = activeUnitId();
+        
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:poli,nome'
+            'nome' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('poli', 'nome')->where('organizational_unit_id', $unitId),
+            ],
         ]);
 
         try {
+            // organizational_unit_id viene assegnato automaticamente dal trait
             $ufficio = Polo::create($validated);
 
             return response()->json([
@@ -162,8 +193,17 @@ class GestioneAnagraficaConfigController extends Controller
 
     public function updateUfficio(Request $request, $id)
     {
+        $unitId = activeUnitId();
+        
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:poli,nome,' . $id
+            'nome' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('poli', 'nome')
+                    ->where('organizational_unit_id', $unitId)
+                    ->ignore($id),
+            ],
         ]);
 
         try {
@@ -226,11 +266,19 @@ class GestioneAnagraficaConfigController extends Controller
     
     public function storeIncarico(Request $request)
     {
+        $unitId = activeUnitId();
+        
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:mansioni,nome'
+            'nome' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('mansioni', 'nome')->where('organizational_unit_id', $unitId),
+            ],
         ]);
 
         try {
+            // organizational_unit_id viene assegnato automaticamente dal trait
             $incarico = Mansione::create($validated);
 
             return response()->json([
@@ -253,8 +301,17 @@ class GestioneAnagraficaConfigController extends Controller
 
     public function updateIncarico(Request $request, $id)
     {
+        $unitId = activeUnitId();
+        
         $validated = $request->validate([
-            'nome' => 'required|string|max:255|unique:mansioni,nome,' . $id
+            'nome' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('mansioni', 'nome')
+                    ->where('organizational_unit_id', $unitId)
+                    ->ignore($id),
+            ],
         ]);
 
         try {
@@ -309,6 +366,35 @@ class GestioneAnagraficaConfigController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Si è verificato un errore durante l\'eliminazione. Riprova.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Aggiorna l'ordine degli incarichi dopo drag & drop
+     */
+    public function updateOrderIncarichi(Request $request)
+    {
+        $validated = $request->validate([
+            'ordini' => 'required|array',
+            'ordini.*' => 'required|integer|exists:mansioni,id'
+        ]);
+
+        try {
+            foreach ($validated['ordini'] as $ordine => $id) {
+                Mansione::where('id', $id)->update(['ordine' => $ordine]);
+            }
+
+            return response()->json(['success' => true, 'message' => 'Ordine aggiornato con successo']);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento ordine incarichi', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Si è verificato un errore durante l\'aggiornamento dell\'ordine.'
             ], 500);
         }
     }

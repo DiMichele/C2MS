@@ -164,6 +164,21 @@ composer install --optimize-autoloader --no-dev
 ### 8. Accesso all'Applicazione
 Apri il browser e vai su: `http://localhost/SUGECO/public`
 
+### 9. Gerarchia organizzativa (11° Reggimento Trasmissioni)
+Per allineare la struttura organizzativa alla gerarchia del **11° Reggimento Trasmissioni** (Comando di Reggimento, Battaglione Leonessa, Battaglione Tonale, CCSL, Comando alla Sede), eseguire la migrazione gerarchia da zero:
+
+```bash
+php artisan hierarchy:migrate --fresh
+```
+
+Per ricreare anche le assegnazioni militari alle unità:
+
+```bash
+php artisan hierarchy:migrate --fresh --with-assignments
+```
+
+**Nota:** `--fresh` cancella la gerarchia esistente (unit_closure, unit_assignments, organizational_units) e ricrea la struttura 11°. I dati di militari, utenti e altre tabelle non vengono modificati.
+
 ## 🗂️ Struttura del Progetto
 
 ```

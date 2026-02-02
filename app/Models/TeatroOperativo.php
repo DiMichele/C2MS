@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
-use App\Traits\BelongsToCompagnia;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per i Teatri Operativi
@@ -31,7 +31,7 @@ use App\Traits\BelongsToCompagnia;
  */
 class TeatroOperativo extends Model
 {
-    use HasFactory, BelongsToCompagnia;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -42,6 +42,7 @@ class TeatroOperativo extends Model
      * Attributi assegnabili in massa
      */
     protected $fillable = [
+        'organizational_unit_id',
         'nome',
         'codice',
         'descrizione',

@@ -24,6 +24,24 @@ class HierarchicalPermissionService
     protected const CACHE_TTL = 300;
 
     /**
+     * Verifica se un utente ha un permesso in una specifica unità.
+     * Alias per hasPermissionOnUnit, accetta anche unit ID.
+     *
+     * @param User $user
+     * @param string $permission Nome del permesso
+     * @param int $unitId ID dell'unità
+     * @return bool
+     */
+    public function userHasPermissionInUnit(User $user, string $permission, int $unitId): bool
+    {
+        $unit = OrganizationalUnit::find($unitId);
+        if (!$unit) {
+            return false;
+        }
+        return $this->hasPermissionOnUnit($user, $permission, $unit);
+    }
+
+    /**
      * Verifica se un utente ha un permesso su un'unità specifica.
      *
      * @param User $user

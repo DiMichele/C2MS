@@ -33,7 +33,17 @@
             <tbody>
                 @forelse($campi as $campo)
                 <tr data-campo-id="{{ $campo->id }}">
-                    <td><strong>{{ $campo->etichetta }}</strong></td>
+                    <td>
+                        <strong>{{ $campo->etichetta }}</strong>
+                        @if($campo->is_system)
+                            <span class="badge bg-secondary ms-2" 
+                                  title="Campo di sistema non eliminabile" 
+                                  data-bs-toggle="tooltip" 
+                                  data-bs-placement="top">
+                                <i class="fas fa-lock me-1"></i>Sistema
+                            </span>
+                        @endif
+                    </td>
                     <td>
                         @switch($campo->tipo_campo)
                             @case('text') Testo @break
@@ -70,12 +80,22 @@
                                 title="Modifica">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger delete-campo-btn" 
-                                data-campo-id="{{ $campo->id }}"
-                                data-nome="{{ $campo->etichetta }}"
-                                title="Elimina">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        @if(!$campo->is_system)
+                            <button class="btn btn-sm btn-danger delete-campo-btn" 
+                                    data-campo-id="{{ $campo->id }}"
+                                    data-nome="{{ $campo->etichetta }}"
+                                    title="Elimina">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        @else
+                            <button class="btn btn-sm btn-secondary" 
+                                    disabled
+                                    title="I campi di sistema non possono essere eliminati"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top">
+                                <i class="fas fa-lock"></i>
+                            </button>
+                        @endif
                     </td>
                 </tr>
                 @empty
@@ -91,7 +111,7 @@
     </div>
 
     <!-- FAB Nuovo Campo -->
-    <button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createCampoModal" title="Nuovo Campo">
+    <button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createCampoModal" data-tooltip="Nuovo Campo" aria-label="Nuovo Campo">
         <i class="fas fa-plus"></i>
     </button>
 </div>

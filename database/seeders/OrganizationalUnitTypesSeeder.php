@@ -100,11 +100,11 @@ class OrganizationalUnitTypesSeeder extends Seeder
             [
                 'code' => 'sezione',
                 'name' => 'Sezione',
-                'description' => 'Sottounità specializzata o di supporto.',
+                'description' => 'Sottounità specializzata o di supporto (es. Comando di Reggimento può contenere uffici).',
                 'icon' => 'fa-sitemap',
                 'color' => '#8BA4CC',
                 'default_depth_level' => 3,
-                'can_contain_types' => [],
+                'can_contain_types' => ['ufficio', 'sezione'],
                 'settings' => [
                     'is_support_unit' => true,
                 ],

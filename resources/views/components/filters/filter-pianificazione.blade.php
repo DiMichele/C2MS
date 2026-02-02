@@ -146,8 +146,7 @@
                     <label for="impegno" class="form-label small mb-1">Impegno</label>
                     <div class="select-wrapper">
                         <select name="impegno" id="impegno" class="form-select form-select-sm filter-select" data-nosubmit="true">
-                            <option value="">Tutti</option>
-                            <option value="libero">Libero</option>
+                            <option value="">Seleziona impegno</option>
                             @if(isset($impegniPerCategoria))
                                 @foreach($impegniPerCategoria as $categoria => $impegniCategoria)
                                     <optgroup label="{{ $categoria }}">

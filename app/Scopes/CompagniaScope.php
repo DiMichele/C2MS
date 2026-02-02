@@ -11,6 +11,18 @@ use Illuminate\Support\Facades\DB;
 /**
  * SUGECO: Global Scope per Segregazione Dati per Compagnia
  * 
+ * @deprecated Questo scope è deprecato. Usare OrganizationalUnitScope invece.
+ * 
+ * MIGRAZIONE MULTI-TENANCY:
+ * Questo scope è mantenuto per retrocompatibilità durante la transizione
+ * al nuovo sistema basato su OrganizationalUnit. I nuovi modelli dovrebbero
+ * usare BelongsToOrganizationalUnit e OrganizationalUnitScope.
+ * 
+ * Piano di dismissione:
+ * 1. Migrare tutti i modelli a OrganizationalUnitScope
+ * 2. Migrare tutti i dati da compagnia_id a organizational_unit_id
+ * 3. Rimuovere questo scope dopo verifica completa
+ * 
  * Questo scope viene applicato AUTOMATICAMENTE a tutte le query
  * sui modelli che lo utilizzano. Garantisce che:
  * - Gli utenti vedano SOLO i dati delle compagnie configurate per i loro ruoli
@@ -34,6 +46,7 @@ use Illuminate\Support\Facades\DB;
  * @package App\Scopes
  * @version 3.0
  * @author Michele Di Gennaro
+ * @deprecated Usare OrganizationalUnitScope invece
  */
 class CompagniaScope implements Scope
 {

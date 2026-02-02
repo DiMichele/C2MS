@@ -968,7 +968,8 @@ class MilitareController extends Controller
                 'compagnia' => 'compagnia_id',
                 'grado' => 'grado_id',
                 'plotone' => 'plotone_id',
-                'ufficio' => 'polo_id',
+                'ufficio' => 'ufficio_unit_id', // Nuovo: usa ufficio_unit_id invece di polo_id
+                'polo' => 'polo_id', // Legacy: per retrocompatibilità
                 'incarico' => 'mansione_id',
             ];
             
@@ -978,9 +979,9 @@ class MilitareController extends Controller
             // Lista dei campi consentiti per l'aggiornamento (nomi database)
             $allowedFields = [
                 'compagnia_id', 'grado_id', 'cognome', 'nome', 'plotone_id', 
-                'polo_id', 'mansione_id', 'ruolo_id', 'nos_status', 
+                'polo_id', 'ufficio_unit_id', 'mansione_id', 'ruolo_id', 'nos_status', 
                 'data_nascita', 'codice_fiscale', 'email', 'telefono', 'note',
-                'email_istituzionale', 'anzianita'
+                'email_istituzionale', 'anzianita', 'organizational_unit_id'
             ];
             
             if (!in_array($dbField, $allowedFields)) {
@@ -991,7 +992,7 @@ class MilitareController extends Controller
             }
             
             // Converti il valore in null se è stringa vuota o "0" per i campi nullable
-            $nullableFields = ['compagnia_id', 'grado_id', 'plotone_id', 'polo_id', 'mansione_id', 'ruolo_id'];
+            $nullableFields = ['compagnia_id', 'grado_id', 'plotone_id', 'polo_id', 'ufficio_unit_id', 'mansione_id', 'ruolo_id', 'organizational_unit_id'];
             if (in_array($dbField, $nullableFields)) {
                 if ($value === '' || $value === null || $value === '0' || $value === 0) {
                     $value = null;
@@ -999,7 +1000,7 @@ class MilitareController extends Controller
             }
             
             // Converti in intero per i campi ID (solo se non è null)
-            $idFields = ['compagnia_id', 'grado_id', 'plotone_id', 'polo_id', 'mansione_id', 'ruolo_id'];
+            $idFields = ['compagnia_id', 'grado_id', 'plotone_id', 'polo_id', 'ufficio_unit_id', 'mansione_id', 'ruolo_id', 'organizational_unit_id'];
             if (in_array($dbField, $idFields) && $value !== null) {
                 // Converti in intero, gestendo anche stringhe numeriche
                 $intValue = is_numeric($value) ? (int) $value : null;
@@ -1044,11 +1045,33 @@ class MilitareController extends Controller
                                 'message' => 'Polo non valido'
                             ], 400);
                         }
+                    } elseif ($dbField === 'ufficio_unit_id') {
+                        // Verifica che l'OrganizationalUnit esista e sia di tipo Ufficio (5)
+                        $unit = \App\Models\OrganizationalUnit::where('id', $value)
+                            ->where('type_id', 5)
+                            ->first();
+                        if (!$unit) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Ufficio non valido'
+                            ], 400);
+                        }
                     } elseif ($dbField === 'mansione_id') {
                         if (!\App\Models\Mansione::find($value)) {
                             return response()->json([
                                 'success' => false,
                                 'message' => 'Mansione non valida'
+                            ], 400);
+                        }
+                    } elseif ($dbField === 'organizational_unit_id') {
+                        // Verifica che l'OrganizationalUnit esista e sia attiva
+                        $unit = \App\Models\OrganizationalUnit::where('id', $value)
+                            ->where('is_active', true)
+                            ->first();
+                        if (!$unit) {
+                            return response()->json([
+                                'success' => false,
+                                'message' => 'Unità organizzativa non valida'
                             ], 400);
                         }
                     }
@@ -1329,6 +1352,94 @@ class MilitareController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Errore durante la rimozione: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Aggiorna l'unità organizzativa di un militare (trasferimento).
+     * 
+     * PUT /militari/{militare}/update-unit
+     * 
+     * @param Request $request
+     * @param Militare $militare
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateOrganizationalUnit(Request $request, Militare $militare)
+    {
+        try {
+            // Verifica permessi
+            $this->authorize('update', $militare);
+            
+            $validated = $request->validate([
+                'organizational_unit_id' => 'required|exists:organizational_units,id',
+            ]);
+            
+            $oldUnit = $militare->organizationalUnit;
+            $newUnitId = (int) $validated['organizational_unit_id'];
+            
+            // Verifica che la nuova unità sia attiva
+            $newUnit = \App\Models\OrganizationalUnit::where('id', $newUnitId)
+                ->where('is_active', true)
+                ->first();
+                
+            if (!$newUnit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unità organizzativa non valida o inattiva.'
+                ], 400);
+            }
+            
+            // Non fare nulla se l'unità è la stessa
+            if ($militare->organizational_unit_id === $newUnitId) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Il militare appartiene già a questa unità.',
+                    'data' => [
+                        'militare_id' => $militare->id,
+                        'old_unit' => $oldUnit?->name ?? 'Nessuna',
+                        'new_unit' => $newUnit->name,
+                    ]
+                ]);
+            }
+            
+            // Esegui il trasferimento (l'Observer gestisce il logging)
+            $militare->organizational_unit_id = $newUnitId;
+            $militare->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Militare trasferito con successo',
+                'data' => [
+                    'militare_id' => $militare->id,
+                    'militare_nome' => "{$militare->cognome} {$militare->nome}",
+                    'old_unit' => $oldUnit?->name ?? 'Nessuna',
+                    'new_unit' => $newUnit->name,
+                ]
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore di validazione',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non autorizzato a modificare questo militare.'
+            ], 403);
+        } catch (\Throwable $e) {
+            Log::error('Errore nel trasferimento militare', [
+                'militare_id' => $militare->id,
+                'new_unit_id' => $request->input('organizational_unit_id'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante il trasferimento: ' . $e->getMessage()
             ], 500);
         }
     }

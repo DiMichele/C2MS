@@ -6,14 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
+use App\Traits\BelongsToOrganizationalUnit;
 
 class ScadenzaApprontamento extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     protected $table = 'scadenze_approntamenti';
 
     protected $fillable = [
+        'organizational_unit_id',
         'militare_id',
         'teatro_operativo_id',
         'teatro_operativo',

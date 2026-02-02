@@ -29,6 +29,16 @@ Route::redirect('/militare', '/anagrafica', 301);
 */
 Route::middleware(['auth'])->group(function () {
     
+    // =========================================================================
+    // UNIT SWITCHER (Multi-tenancy)
+    // =========================================================================
+    Route::post('/unit/switch', [\App\Http\Controllers\UnitSwitchController::class, 'switch'])
+        ->name('unit.switch');
+    Route::get('/unit/accessible', [\App\Http\Controllers\UnitSwitchController::class, 'getAccessibleUnits'])
+        ->name('unit.accessible');
+    Route::get('/unit/active', [\App\Http\Controllers\UnitSwitchController::class, 'getActiveUnit'])
+        ->name('unit.active');
+    
     // Rotta della dashboard (principale)
     Route::get('/', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
@@ -55,8 +65,8 @@ Route::middleware(['auth'])->group(function () {
         // Dashboard admin (redirect)
         Route::get('/', [\App\Http\Controllers\AdminController::class, 'index'])->name('index');
         
-        // Gestione Utenti
-        Route::get('/utenti', [\App\Http\Controllers\AdminController::class, 'usersIndex'])->name('users.index');
+        // Gestione Utenti (pagina standalone rimossa - integrata in Gestione Permessi)
+        // Route::get('/utenti', [\App\Http\Controllers\AdminController::class, 'usersIndex'])->name('users.index');
         Route::get('/utenti/nuovo', [\App\Http\Controllers\AdminController::class, 'create'])->name('create');
         Route::post('/utenti', [\App\Http\Controllers\AdminController::class, 'store'])->name('store');
         Route::get('/utenti/{user}/modifica', [\App\Http\Controllers\AdminController::class, 'edit'])->name('edit');
@@ -68,10 +78,22 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/permessi', [\App\Http\Controllers\AdminController::class, 'permissionsIndex'])->name('permissions.index');
         Route::post('/permessi/ruoli/{role}', [\App\Http\Controllers\AdminController::class, 'updatePermissions'])->name('roles.permissions.update');
         
+        // Gestione Unità Visibili per Ruolo
+        Route::post('/ruoli/{role}/unita-visibili', [\App\Http\Controllers\AdminController::class, 'updateRoleVisibleUnits'])->name('roles.visible-units.update');
+        Route::get('/ruoli/{role}/permessi-unita', [\App\Http\Controllers\AdminController::class, 'getRoleUnitPermissions'])->name('roles.unit-permissions.get');
+        Route::post('/ruoli/{role}/permessi-unita', [\App\Http\Controllers\AdminController::class, 'updateRoleUnitPermissions'])->name('roles.unit-permissions.update');
+        
         // Gestione Ruoli
         Route::get('/ruoli/nuovo', [\App\Http\Controllers\AdminController::class, 'createRole'])->name('roles.create');
         Route::post('/ruoli', [\App\Http\Controllers\AdminController::class, 'storeRole'])->name('roles.store');
+        Route::post('/ruoli/{role}/rename', [\App\Http\Controllers\AdminController::class, 'renameRole'])->name('roles.rename');
         Route::delete('/ruoli/{role}', [\App\Http\Controllers\AdminController::class, 'destroyRole'])->name('roles.destroy');
+        
+        // API: Ruoli per unità organizzativa (per form dinamico utenti)
+        Route::get('/ruoli/per-unita/{unitId}', [\App\Http\Controllers\AdminController::class, 'getRolesForUnit'])->name('roles.for-unit');
+        
+        // API: Unità figlie di una macro-entità (per tab visibilità)
+        Route::get('/ruoli/unita-figlie/{macroUnitId}', [\App\Http\Controllers\AdminController::class, 'getChildUnits'])->name('roles.child-units');
         
         // Gestione Visibilità Compagnie per Ruolo
         Route::post('/ruoli/{role}/compagnie', [\App\Http\Controllers\AdminController::class, 'updateCompanyVisibility'])->name('roles.compagnie.update');
@@ -105,6 +127,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/militari/{militare}', [MilitareController::class, 'getApiData'])
         ->middleware('permission:anagrafica.view')
         ->name('api.militari.show');
+    
+    // API per cambio unità organizzativa militare (trasferimento)
+    Route::put('/militari/{militare}/update-unit', [MilitareController::class, 'updateOrganizationalUnit'])
+        ->middleware('permission:anagrafica.edit')
+        ->name('militari.update-unit');
     
     // Export Excel Anagrafica (DEVE essere prima della rotta parametrica)
     Route::get('/anagrafica/export-excel', [MilitareController::class, 'exportExcel'])
@@ -178,6 +205,10 @@ Route::get('/organigramma', [OrganigrammaController::class, 'index'])
     ->middleware('permission:organigramma.view')
     ->name('organigramma');
 
+Route::get('/organigramma/gerarchia', [OrganigrammaController::class, 'hierarchy'])
+    ->middleware('permission:organigramma.view')
+    ->name('organigramma.index');
+
 Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCache'])
     ->middleware('permission:organigramma.view')
     ->name('organigramma.refresh');
@@ -185,6 +216,7 @@ Route::get('/organigramma/refresh', [OrganigrammaController::class, 'refreshCach
 Route::get('/organigramma/export-excel', [OrganigrammaController::class, 'exportExcel'])
     ->middleware('permission:organigramma.view')
     ->name('organigramma.export-excel');
+
 
 /*
 |-------------------------------------------------
@@ -519,6 +551,50 @@ Route::prefix('approntamenti')->name('approntamenti.')->middleware('permission:s
         ->name('export-prenotazioni-excel');
 });
 
+/*
+|-------------------------------------------------
+|| Rotte per PEFO - Prove Efficienza Fisica Operativa
+|-------------------------------------------------
+*/
+Route::prefix('pefo')->name('pefo.')->middleware('permission:pefo.view')->group(function () {
+    // Vista principale
+    Route::get('/', [\App\Http\Controllers\PefoController::class, 'index'])->name('index');
+    
+    // API Militari
+    Route::get('/militari', [\App\Http\Controllers\PefoController::class, 'getMilitari'])->name('militari');
+    Route::post('/militari/{id}/update-data', [\App\Http\Controllers\PefoController::class, 'updateDataPefo'])
+        ->middleware('permission:pefo.edit')
+        ->name('militari.update-data');
+    Route::get('/militari/export-excel', [\App\Http\Controllers\PefoController::class, 'exportMilitariExcel'])->name('militari.export-excel');
+    
+    // API Prenotazioni
+    Route::get('/prenotazioni', [\App\Http\Controllers\PefoController::class, 'getPrenotazioni'])->name('prenotazioni.index');
+    Route::get('/prenotazioni/export-excel', [\App\Http\Controllers\PefoController::class, 'exportPrenotazioniExcel'])->name('prenotazioni.export-excel');
+    Route::get('/prenotazioni/{prenotazione}/export-excel', [\App\Http\Controllers\PefoController::class, 'exportSingolaPrenotazioneExcel'])->name('prenotazioni.singola.export-excel');
+    
+    Route::post('/prenotazioni', [\App\Http\Controllers\PefoController::class, 'storePrenotazione'])
+        ->middleware('permission:pefo.gestione_prenotazioni')
+        ->name('prenotazioni.store');
+    Route::delete('/prenotazioni/{prenotazione}', [\App\Http\Controllers\PefoController::class, 'eliminaPrenotazione'])
+        ->middleware('permission:pefo.gestione_prenotazioni')
+        ->name('prenotazioni.elimina');
+    
+    // Militari nelle prenotazioni
+    Route::get('/prenotazioni/{prenotazione}/militari-disponibili', [\App\Http\Controllers\PefoController::class, 'getMilitariDisponibili'])
+        ->name('prenotazioni.militari-disponibili');
+    Route::post('/prenotazioni/{prenotazione}/militari', [\App\Http\Controllers\PefoController::class, 'aggiungiMilitari'])
+        ->name('prenotazioni.militari.aggiungi');
+    Route::delete('/prenotazioni/{prenotazione}/militari/{militareId}', [\App\Http\Controllers\PefoController::class, 'rimuoviMilitare'])
+        ->name('prenotazioni.militari.rimuovi');
+    
+    // Conferma militari (singola o tutti)
+    Route::post('/prenotazioni/{prenotazione}/militari/{militareId}/conferma', [\App\Http\Controllers\PefoController::class, 'confermaMilitare'])
+        ->name('prenotazioni.militari.conferma');
+    Route::post('/prenotazioni/{prenotazione}/conferma-tutti', [\App\Http\Controllers\PefoController::class, 'confermaAllMilitari'])
+        ->middleware('permission:pefo.gestione_prenotazioni')
+        ->name('prenotazioni.conferma-tutti');
+});
+
 // Gestione Approntamenti (Admin) - Configurazione colonne
 Route::prefix('gestione-approntamenti')->name('gestione-approntamenti.')->middleware('permission:admin.access')->group(function () {
     Route::get('/', [\App\Http\Controllers\ApprontamentiController::class, 'gestione'])->name('index');
@@ -545,14 +621,15 @@ Route::prefix('ruolini')->name('ruolini.')->middleware('permission:ruolini.view'
 | Rotte per la Gestione Ruolini (Configurazione)
 |-------------------------------------------------
 */
-Route::prefix('gestione-ruolini')->name('gestione-ruolini.')->middleware('auth')->group(function () {
-    Route::get('/', [\App\Http\Controllers\GestioneRuoliniController::class, 'index'])->name('index');
-    Route::post('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'update'])->name('update');
-    Route::post('/batch/update', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateBatch'])->name('update-batch');
-    Route::post('/default-stato', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateDefaultStato'])->name('update-default-stato');
-    Route::get('/rules', [\App\Http\Controllers\GestioneRuoliniController::class, 'getRules'])->name('rules');
-    Route::delete('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'destroy'])->name('destroy');
-});
+// DEPRECATO: Gestione Ruolini integrata in Gestione CPT
+// Route::prefix('gestione-ruolini')->name('gestione-ruolini.')->middleware('auth')->group(function () {
+//     Route::get('/', [\App\Http\Controllers\GestioneRuoliniController::class, 'index'])->name('index');
+//     Route::post('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'update'])->name('update');
+//     Route::post('/batch/update', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateBatch'])->name('update-batch');
+//     Route::post('/default-stato', [\App\Http\Controllers\GestioneRuoliniController::class, 'updateDefaultStato'])->name('update-default-stato');
+//     Route::get('/rules', [\App\Http\Controllers\GestioneRuoliniController::class, 'getRules'])->name('rules');
+//     Route::delete('/{tipoServizioId}', [\App\Http\Controllers\GestioneRuoliniController::class, 'destroy'])->name('destroy');
+// });
 
 /*
 |-------------------------------------------------
@@ -562,6 +639,7 @@ Route::prefix('gestione-ruolini')->name('gestione-ruolini.')->middleware('auth')
 Route::prefix('gestione-spp')->name('gestione-spp.')->middleware('permission:admin.access')->group(function () {
     Route::get('/', [\App\Http\Controllers\GestioneSppController::class, 'index'])->name('index');
     Route::post('/', [\App\Http\Controllers\GestioneSppController::class, 'store'])->name('store');
+    Route::post('/update-order', [\App\Http\Controllers\GestioneSppController::class, 'updateOrder'])->name('update-order');
     Route::post('/{id}', [\App\Http\Controllers\GestioneSppController::class, 'update'])->name('update');
     Route::put('/{id}/edit', [\App\Http\Controllers\GestioneSppController::class, 'edit'])->name('edit');
     Route::delete('/{id}', [\App\Http\Controllers\GestioneSppController::class, 'destroy'])->name('destroy');
@@ -575,6 +653,7 @@ Route::prefix('gestione-spp')->name('gestione-spp.')->middleware('permission:adm
 Route::prefix('gestione-poligoni')->name('gestione-poligoni.')->middleware('permission:admin.access')->group(function () {
     Route::get('/', [\App\Http\Controllers\GestionePoligoniController::class, 'index'])->name('index');
     Route::post('/', [\App\Http\Controllers\GestionePoligoniController::class, 'store'])->name('store');
+    Route::post('/update-order', [\App\Http\Controllers\GestionePoligoniController::class, 'updateOrder'])->name('update-order');
     Route::post('/{id}', [\App\Http\Controllers\GestionePoligoniController::class, 'update'])->name('update');
     Route::put('/{id}/edit', [\App\Http\Controllers\GestionePoligoniController::class, 'edit'])->name('edit');
     Route::delete('/{id}', [\App\Http\Controllers\GestionePoligoniController::class, 'destroy'])->name('destroy');
@@ -588,6 +667,7 @@ Route::prefix('gestione-poligoni')->name('gestione-poligoni.')->middleware('perm
 Route::prefix('gestione-idoneita')->name('gestione-idoneita.')->middleware('permission:admin.access')->group(function () {
     Route::get('/', [\App\Http\Controllers\GestioneIdoneitaController::class, 'index'])->name('index');
     Route::post('/', [\App\Http\Controllers\GestioneIdoneitaController::class, 'store'])->name('store');
+    Route::post('/update-order', [\App\Http\Controllers\GestioneIdoneitaController::class, 'updateOrder'])->name('update-order');
     Route::post('/{id}', [\App\Http\Controllers\GestioneIdoneitaController::class, 'update'])->name('update');
     Route::put('/{id}/edit', [\App\Http\Controllers\GestioneIdoneitaController::class, 'edit'])->name('edit');
     Route::delete('/{id}', [\App\Http\Controllers\GestioneIdoneitaController::class, 'destroy'])->name('destroy');
@@ -614,6 +694,7 @@ Route::prefix('gestione-anagrafica-config')->name('gestione-anagrafica-config.')
     
     // Incarichi
     Route::post('/incarichi', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'storeIncarico'])->name('incarichi.store');
+    Route::post('/incarichi/update-order', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'updateOrderIncarichi'])->name('update-order-incarichi');
     Route::put('/incarichi/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'updateIncarico'])->name('incarichi.update');
     Route::delete('/incarichi/{id}', [\App\Http\Controllers\GestioneAnagraficaConfigController::class, 'destroyIncarico'])->name('incarichi.destroy');
 });
@@ -749,6 +830,26 @@ if (config('app.debug')) {
         // API - Assegnazioni
         Route::get('/api/units/{uuid}/assignments', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getAssignments'])
             ->name('api.units.assignments');
+
+        // API - Sincronizzazione campi legacy (per form anagrafica)
+        Route::get('/api/units/{id}/legacy-fields', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'getLegacyFields'])
+            ->name('api.units.legacy-fields');
+        
+        // Export Excel
+        Route::get('/export/excel', [\App\Http\Controllers\OrganizationalHierarchyController::class, 'exportExcel'])
+            ->middleware('permission:gerarchia.view')
+            ->name('export-excel');
+        
+        // Gestione Tipi Unità (API)
+        Route::prefix('types')->name('types.')->middleware('permission:gerarchia.edit')->group(function () {
+            Route::get('/', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'store'])->name('store');
+            Route::get('/{type}', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'show'])->name('show');
+            Route::put('/{type}', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'update'])->name('update');
+            Route::delete('/{type}', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'destroy'])->name('destroy');
+            Route::post('/reorder', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'reorder'])->name('reorder');
+            Route::get('/{type}/containable', [\App\Http\Controllers\OrganizationalUnitTypeController::class, 'containableTypes'])->name('containable');
+        });
     });
 
     // Rotta parametrica anagrafica (DEVE essere DOPO tutte le altre rotte specifiche)

@@ -288,5 +288,37 @@ class GestioneIdoneitaController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Aggiorna l'ordine dei tipi di idoneità tramite drag & drop
+     */
+    public function updateOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'ordini' => 'required|array',
+            'ordini.*' => 'required|integer|exists:tipi_idoneita,id'
+        ]);
+
+        try {
+            foreach ($validated['ordini'] as $ordine => $id) {
+                TipoIdoneita::where('id', $id)->update(['ordine' => $ordine]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ordine aggiornato con successo'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento ordine tipi idoneità', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante l\'aggiornamento dell\'ordine'
+            ], 500);
+        }
+    }
 }
 

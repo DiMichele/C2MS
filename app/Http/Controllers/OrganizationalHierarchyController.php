@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OrganizationalUnit;
 use App\Models\OrganizationalUnitType;
 use App\Models\UnitAssignment;
+use App\Services\AuditService;
 use App\Services\OrganizationalHierarchyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,12 +53,21 @@ class OrganizationalHierarchyController extends Controller
      * Ottiene l'albero completo in formato JSON.
      * 
      * GET /api/organizational-hierarchy/tree
+     * 
+     * @param bool active_only Solo unità attive (default: true)
+     * @param bool include_militari Includere militari come nodi foglia (default: false)
      */
     public function getTree(Request $request): JsonResponse
     {
         try {
             $activeOnly = $request->boolean('active_only', true);
-            $tree = $this->hierarchyService->getTreeForUser(auth()->user(), $activeOnly);
+            $includeMilitari = $request->boolean('include_militari', false);
+            
+            $tree = $this->hierarchyService->getTreeForUser(
+                auth()->user(), 
+                $activeOnly,
+                $includeMilitari
+            );
 
             return response()->json([
                 'success' => true,
@@ -168,8 +178,9 @@ class OrganizationalHierarchyController extends Controller
     public function show(string $uuid): JsonResponse
     {
         try {
-            $unit = OrganizationalUnit::with(['type', 'parent.type'])
-                ->findByUuid($uuid);
+            $unit = OrganizationalUnit::where('uuid', $uuid)
+                ->with(['type', 'parent.type'])
+                ->first();
 
             if (!$unit) {
                 return response()->json([
@@ -179,6 +190,7 @@ class OrganizationalHierarchyController extends Controller
             }
 
             $stats = $this->hierarchyService->getUnitStats($unit);
+            $breadcrumb = $unit->getBreadcrumb();
 
             return response()->json([
                 'success' => true,
@@ -208,14 +220,17 @@ class OrganizationalHierarchyController extends Controller
                         'created_at' => $unit->created_at,
                         'updated_at' => $unit->updated_at,
                     ],
-                    'breadcrumb' => $unit->getBreadcrumb(),
+                    'breadcrumb' => $breadcrumb,
                     'stats' => $stats,
                 ],
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Errore nel recupero dettagli unità', [
                 'uuid' => $uuid,
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -243,6 +258,8 @@ class OrganizationalHierarchyController extends Controller
             'sort_order' => 'nullable|integer|min:0',
             'settings' => 'nullable|array',
             'is_active' => 'nullable|boolean',
+            'template_unit_id' => 'nullable|exists:organizational_units,id',
+            'skip_seed' => 'nullable|boolean',
         ]);
 
         try {
@@ -261,9 +278,52 @@ class OrganizationalHierarchyController extends Controller
                 'is_active' => $validated['is_active'] ?? true,
             ], $parent);
 
+            $seedMessage = null;
+
+            // AUTO-SEED: Se è un'unità di tipo battaglione (depth=1), copia configurazioni da template
+            $skipSeed = $validated['skip_seed'] ?? false;
+            if (!$skipSeed && $unit->depth === 1) {
+                $templateUnitId = $validated['template_unit_id'] ?? $this->hierarchyService->getDefaultTemplateUnitId();
+                
+                if ($templateUnitId && $templateUnitId !== $unit->id) {
+                    try {
+                        $seedResults = $this->hierarchyService->seedConfigurationsFromTemplate(
+                            $unit->id,
+                            $templateUnitId,
+                            false // Non copiare codici CPT di default
+                        );
+
+                        $templateUnit = OrganizationalUnit::find($templateUnitId);
+                        $seedMessage = "Configurazioni copiate da {$templateUnit->name}: " .
+                            "{$seedResults['campi_anagrafica']} campi anagrafica, " .
+                            "{$seedResults['ruolini']} ruolini.";
+
+                        Log::info('Auto-seed configurazioni per nuova unità battaglione', [
+                            'unit_id' => $unit->id,
+                            'unit_name' => $unit->name,
+                            'template_unit_id' => $templateUnitId,
+                            'results' => $seedResults,
+                        ]);
+                    } catch (\Throwable $e) {
+                        // Non bloccare la creazione se il seed fallisce
+                        Log::warning('Auto-seed fallito per nuova unità', [
+                            'unit_id' => $unit->id,
+                            'template_unit_id' => $templateUnitId,
+                            'error' => $e->getMessage(),
+                        ]);
+                        $seedMessage = "Attenzione: seed configurazioni fallito. Eseguire manualmente: php artisan unit:seed {$unit->id}";
+                    }
+                }
+            }
+
+            $message = 'Unità creata con successo.';
+            if ($seedMessage) {
+                $message .= ' ' . $seedMessage;
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Unità creata con successo.',
+                'message' => $message,
                 'data' => $unit->toTreeArray(),
             ], 201);
 
@@ -462,19 +522,37 @@ class OrganizationalHierarchyController extends Controller
 
         $this->authorize('delete', $unit);
 
+        // VALIDAZIONE: Blocca eliminazione se ha sotto-unità
+        $childrenCount = $unit->children()->count();
+        if ($childrenCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Impossibile eliminare: l'unità contiene {$childrenCount} sotto-unità. Elimina o sposta prima le sotto-unità.",
+            ], 400);
+        }
+
         $validated = $request->validate([
-            'child_strategy' => 'nullable|in:orphan,cascade,promote',
+            'child_strategy' => 'nullable|in:orphan',
         ]);
 
         try {
-            $this->hierarchyService->deleteUnit(
-                $unit,
-                $validated['child_strategy'] ?? 'orphan'
-            );
+            // Conta militari che diventeranno orphan
+            $militariCount = $unit->militari()->count();
+            
+            // Rendi orphan i militari (organizational_unit_id = null)
+            if ($militariCount > 0) {
+                $unit->militari()->update(['organizational_unit_id' => null]);
+            }
+            
+            // Registra nell'audit log
+            AuditService::log('delete', "Eliminata unità: {$unit->name} ({$militariCount} militari resi orphan)", $unit);
+            
+            // Elimina l'unità
+            $unit->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Unità eliminata con successo.',
+                'message' => "Unità eliminata. {$militariCount} militari devono essere riassegnati.",
             ]);
 
         } catch (InvalidArgumentException $e) {
@@ -536,7 +614,7 @@ class OrganizationalHierarchyController extends Controller
     {
         $parent = null;
         if ($parentUuid) {
-            $parent = OrganizationalUnit::with('type')->findByUuid($parentUuid);
+            $parent = OrganizationalUnit::with('type')->where('uuid', $parentUuid)->first();
             if (!$parent) {
                 return response()->json([
                     'success' => false,
@@ -630,5 +708,210 @@ class OrganizationalHierarchyController extends Controller
         }
 
         return "#{$assignable->id}";
+    }
+
+    // =========================================================================
+    // EXPORT
+    // =========================================================================
+
+    /**
+     * Esporta l'organigramma in formato Excel.
+     * 
+     * GET /gerarchia-organizzativa/export/excel
+     * 
+     * PAGINA GLOBALE: Esporta tutte le unità accessibili all'utente.
+     * - Admin globali: esportano tutte le unità attive
+     * - Altri utenti: esportano solo le unità accessibili
+     */
+    public function exportExcel(): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $user = auth()->user();
+        
+        // Query base con relazioni
+        $unitsQuery = OrganizationalUnit::with(['type', 'parent', 'militari'])
+            ->active()
+            ->orderBy('path');
+        
+        // Filtro per unità accessibili (se non admin globale)
+        if (!$user->hasRole('admin')) {
+            $accessibleUnitIds = $user->getVisibleUnitIds();
+            if (!empty($accessibleUnitIds)) {
+                $unitsQuery->whereIn('id', $accessibleUnitIds);
+            } else {
+                // Nessuna unità accessibile - esporta vuoto
+                $unitsQuery->whereRaw('1 = 0');
+            }
+        }
+        
+        $units = $unitsQuery->get();
+        
+        // Crea il foglio Excel
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Organigramma');
+        
+        // Colori
+        $navyColor = '0A2342';
+        $goldColor = 'BF9D5E';
+        $grayLight = 'F5F7F9';
+        
+        // Headers
+        $headers = ['Nome Unità', 'Tipo', 'Parent', 'Livello', 'Numero Militari', 'Codice', 'Stato'];
+        $col = 'A';
+        foreach ($headers as $header) {
+            $sheet->setCellValue($col . '1', $header);
+            $col++;
+        }
+        
+        // Stile header
+        $sheet->getStyle('A1:G1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => $navyColor],
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+            ],
+        ]);
+        $sheet->getRowDimension(1)->setRowHeight(30);
+        
+        // Dati
+        $row = 2;
+        foreach ($units as $unit) {
+            $indent = str_repeat('  ', $unit->depth);
+            
+            $sheet->setCellValue('A' . $row, $indent . $unit->name);
+            $sheet->setCellValue('B' . $row, $unit->type?->name ?? 'N/D');
+            $sheet->setCellValue('C' . $row, $unit->parent?->name ?? '—');
+            $sheet->setCellValue('D' . $row, $unit->depth);
+            $sheet->setCellValue('E' . $row, $unit->militari->count());
+            $sheet->setCellValue('F' . $row, $unit->code ?? '');
+            $sheet->setCellValue('G' . $row, $unit->is_active ? 'Attiva' : 'Inattiva');
+            
+            // Alternanza colori righe
+            if ($row % 2 === 0) {
+                $sheet->getStyle('A' . $row . ':G' . $row)->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB($grayLight);
+            }
+            
+            $sheet->getRowDimension($row)->setRowHeight(22);
+            $row++;
+        }
+        
+        // Bordi
+        $sheet->getStyle('A1:G' . ($row - 1))->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'DEE2E6'],
+                ],
+            ],
+        ]);
+        
+        // Auto-size colonne
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Freeze pane
+        $sheet->freezePane('A2');
+        
+        // Footer con data generazione
+        $sheet->setCellValue('A' . $row, 'Generato il: ' . now()->format('d/m/Y H:i'));
+        $sheet->mergeCells('A' . $row . ':G' . $row);
+        $sheet->getStyle('A' . $row)->getFont()->setItalic(true)->setSize(9);
+        
+        // Genera file
+        $filename = 'organigramma_' . date('Y-m-d_His') . '.xlsx';
+        $tempFile = tempnam(sys_get_temp_dir(), 'organigramma_');
+        
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tempFile);
+        
+        return response()->download($tempFile, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    // =========================================================================
+    // API - SINCRONIZZAZIONE CAMPI LEGACY
+    // =========================================================================
+
+    /**
+     * Ottiene i campi legacy (compagnia_id, plotone_id) per un'unità organizzativa.
+     * 
+     * GET /api/organizational-hierarchy/units/{id}/legacy-fields
+     * 
+     * Usato per sincronizzare automaticamente i dropdown nell'anagrafica
+     * quando l'utente seleziona un'unità organizzativa.
+     */
+    public function getLegacyFields(int $id): JsonResponse
+    {
+        $unit = OrganizationalUnit::with(['type', 'parent.type', 'parent.parent.type'])->find($id);
+
+        if (!$unit) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unità non trovata.',
+            ], 404);
+        }
+
+        $compagniaId = $this->findLegacyCompagniaId($unit);
+        $plotoneId = $this->findLegacyPlotoneId($unit);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'organizational_unit_id' => $unit->id,
+                'organizational_unit_name' => $unit->name,
+                'compagnia_id' => $compagniaId,
+                'plotone_id' => $plotoneId,
+                'unit_type' => $unit->type?->code,
+            ],
+        ]);
+    }
+
+    /**
+     * Risale la gerarchia per trovare il legacy_compagnia_id.
+     */
+    private function findLegacyCompagniaId(?OrganizationalUnit $unit): ?int
+    {
+        if (!$unit) {
+            return null;
+        }
+
+        // Se questa unità ha un legacy_compagnia_id, restituiscilo
+        if ($unit->legacy_compagnia_id) {
+            return $unit->legacy_compagnia_id;
+        }
+
+        // Altrimenti, risali al parent
+        if ($unit->parent_id) {
+            $parent = $unit->relationLoaded('parent') 
+                ? $unit->parent 
+                : OrganizationalUnit::find($unit->parent_id);
+            return $this->findLegacyCompagniaId($parent);
+        }
+
+        return null;
+    }
+
+    /**
+     * Restituisce il legacy_plotone_id se l'unità è un plotone.
+     */
+    private function findLegacyPlotoneId(?OrganizationalUnit $unit): ?int
+    {
+        if (!$unit) {
+            return null;
+        }
+
+        // Solo se l'unità è di tipo plotone
+        if ($unit->type?->code === 'plotone') {
+            return $unit->legacy_plotone_id;
+        }
+
+        return null;
     }
 }

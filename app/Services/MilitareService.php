@@ -10,6 +10,7 @@ use App\Models\Polo;
 use App\Models\Ruolo;
 use App\Models\Mansione;
 use App\Models\Compagnia;
+use App\Models\OrganizationalUnit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Cache;
@@ -114,7 +115,8 @@ class MilitareService
      */
     public function search($query, $limit = 10)
     {
-        return Militare::with(['grado', 'plotone', 'polo'])
+        // Includi organizationalUnit per badge unità nei risultati
+        return Militare::with(['grado', 'plotone', 'polo', 'organizationalUnit', 'compagnia'])
             ->where(function($q) use ($query) {
                 // Cerca nelle iniziali di nome e cognome
                 $q->where('militari.nome', 'LIKE', "{$query}%")
@@ -126,7 +128,17 @@ class MilitareService
             })
             ->orderByGradoENome()
             ->limit($limit)
-            ->get();
+            ->get()
+            ->map(function ($militare) {
+                // Aggiungi informazioni sull'unità per il frontend
+                $militare->unit_info = [
+                    'id' => $militare->organizational_unit_id,
+                    'name' => $militare->organizationalUnit?->name ?? $militare->compagnia?->nome ?? 'N/D',
+                    'type_color' => $militare->organizationalUnit?->type?->color ?? '#6c757d',
+                    'is_current_unit' => $militare->organizational_unit_id === activeUnitId(),
+                ];
+                return $militare;
+            });
     }
 
     /**
@@ -483,11 +495,18 @@ class MilitareService
      */
     public function getFormOptions()
     {
+        // Carica uffici dalla gerarchia (OrganizationalUnit tipo 5 = Ufficio)
+        $uffici = OrganizationalUnit::where('type_id', 5)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        
         return [
             // Gradi ordinati dal più alto (ordine maggiore) al più basso
             'gradi' => Grado::orderByDesc('ordine')->get(),
             'plotoni' => Plotone::with('compagnia')->orderBy('nome')->get(),
-            'poli' => Polo::orderBy('nome')->get(),
+            'poli' => Polo::orderBy('nome')->get(), // Legacy: per retrocompatibilità
+            'uffici' => $uffici, // Nuovo: uffici dalla gerarchia
             'ruoli' => Ruolo::orderBy('nome')->get(),
             'mansioni' => Mansione::orderBy('nome')->get()
         ];
@@ -524,6 +543,7 @@ class MilitareService
             'polo_id' => 'nullable|exists:poli,id',
             'ruolo_id' => 'nullable|exists:ruoli,id',
             'mansione_id' => 'nullable|exists:mansioni,id',
+            'organizational_unit_id' => 'nullable|exists:organizational_units,id', // Multi-tenancy
             'anzianita' => 'nullable|string|max:255',
             'email_istituzionale' => 'nullable|email|max:255',
             'telefono' => 'nullable|string|max:20',
@@ -631,13 +651,13 @@ class MilitareService
      */
     public function getFilteredMilitari(Request $request, $perPage = 20)
     {
-        // ARCHITETTURA: Il Global Scope (CompagniaScope) filtra già automaticamente
-        // i militari visibili (owner + acquired). NON aggiungere where compagnia_id qui!
+        // ARCHITETTURA: I Global Scope (OrganizationalUnitScope e CompagniaScope) filtrano
+        // automaticamente i militari visibili. OrganizationalUnitScope rispetta activeUnitId().
         // 
         // Lo scope withVisibilityFlags() aggiunge is_owner e is_acquired calcolati
         // direttamente in SQL per evitare N+1 nelle liste.
         $query = Militare::withVisibilityFlags()
-            ->with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti', 'compagnia']);
+            ->with(['grado', 'plotone', 'polo', 'mansione', 'ruolo', 'patenti', 'compagnia', 'organizationalUnit']);
         
         // Filtro per IDs specifici (usato per export Excel filtrato)
         if ($request->filled('ids')) {
@@ -789,9 +809,11 @@ class MilitareService
         
         $hasActiveFilters = count($activeFilters) > 0;
         
-        // Carica tutti i campi attivi per l'anagrafica (inclusi quelli di sistema)
-        // Tutti i campi devono essere gestiti allo stesso modo: possono essere disattivati/eliminati/modificati
-        $campiCustom = \App\Models\ConfigurazioneCampoAnagrafica::attivi()
+        // Carica i campi attivi per l'unità organizzativa attiva (configurazione per unità)
+        $unitId = activeUnitId();
+        \App\Models\ConfigurazioneCampoAnagrafica::ensureSystemFieldsForUnit($unitId);
+        $campiCustom = \App\Models\ConfigurazioneCampoAnagrafica::forUnit($unitId)
+            ->attivi()
             ->ordinati()
             ->get();
         
@@ -878,7 +900,8 @@ class MilitareService
             'militare' => $militare,
             'gradi' => $formOptions['gradi'],
             'plotoni' => $formOptions['plotoni'],
-            'poli' => $formOptions['poli'],
+            'poli' => $formOptions['poli'], // Legacy: per retrocompatibilità
+            'uffici' => $formOptions['uffici'], // Nuovo: uffici dalla gerarchia
             'ruoli' => $formOptions['ruoli'],
             'mansioni' => $formOptions['mansioni']
         ];
@@ -899,6 +922,11 @@ class MilitareService
         
         if ($validator->fails()) {
             throw new \Illuminate\Validation\ValidationException($validator);
+        }
+        
+        // Assegna automaticamente l'unità organizzativa attiva se non specificata
+        if (empty($data['organizational_unit_id']) && activeUnitId()) {
+            $data['organizational_unit_id'] = activeUnitId();
         }
         
         // Crea il militare

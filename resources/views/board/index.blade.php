@@ -6,15 +6,22 @@
 <div class="container-fluid">
     <!-- Header -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="page-title mb-0">Hub Attività - Vista Battaglione</h1>
+    <h1 class="page-title mb-0">
+        Hub Attività
+        @if(activeUnit())
+            <small class="text-muted fs-6">- {{ activeUnit()->name }}</small>
+        @endif
+    </h1>
     
     <div class="d-flex align-items-center gap-3">
         <a href="{{ route('board.calendar') }}" class="btn btn-outline-primary">
             <i class="fas fa-calendar"></i> Vista Calendario
         </a>
+        @if(activeUnitId())
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createActivityModal">
             <i class="fas fa-plus"></i> Nuova Attività
         </button>
+        @endif
     </div>
 </div>
 
@@ -84,18 +91,31 @@
                     <div class="card-body p-2">
                         <div class="activities-container">
                             @foreach($column->activities as $activity)
-                            <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}" style="position: relative;">
+                            @php
+                                $isReadOnly = !canEditInActiveUnit($activity);
+                            @endphp
+                            <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }} {{ $isReadOnly ? 'activity-readonly' : '' }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}" style="position: relative;">
                                 <!-- Pulsanti azione -->
                                 <div class="activity-actions">
                                     <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-light" title="Visualizza dettagli" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
                                         <i class="fas fa-eye" style="font-size: 0.75rem;"></i>
                                     </a>
+                                    @canEditInUnit($activity)
                                     <button type="button" class="btn btn-sm btn-danger" onclick="openDeleteModal({{ $activity->id }}, event)" title="Elimina" style="padding: 0.15rem 0.35rem;">
                                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                                     </button>
+                                    @endcanEditInUnit
                                 </div>
                                 
                                 <div class="card-body d-flex flex-column p-3">
+                                    {{-- Badge unità per attività di altre unità --}}
+                                    @if($isReadOnly && $activity->organizationalUnit)
+                                    <div class="mb-1">
+                                        <span class="badge bg-info text-white" style="font-size: 0.65rem;">
+                                            <i class="fas fa-sitemap me-1"></i>{{ $activity->organizationalUnit->name }}
+                                        </span>
+                                    </div>
+                                    @endif
                                     @if($activity->compagniaMounting)
                                     <div class="mb-2">
                                         <span class="badge" style="background-color: {{ $activity->compagniaMounting->colore ?? '#6c757d' }}; font-size: 0.75rem;">
@@ -194,18 +214,31 @@
                     <div class="card-body p-2">
                         <div class="activities-container">
                             @foreach($column->activities as $activity)
-                            <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}" style="position: relative;">
+                            @php
+                                $isReadOnly = !canEditInActiveUnit($activity);
+                            @endphp
+                            <div class="card mb-3 activity-card shadow-sm card-{{ $column->slug }} {{ $isReadOnly ? 'activity-readonly' : '' }}" id="activity-{{ $activity->id }}" data-activity-id="{{ $activity->id }}" style="position: relative;">
                                 <!-- Pulsanti azione -->
                                 <div class="activity-actions">
                                     <a href="{{ route('board.activities.show', $activity) }}" class="btn btn-sm btn-light" title="Visualizza dettagli" style="padding: 0.15rem 0.35rem; margin-right: 3px;">
                                         <i class="fas fa-eye" style="font-size: 0.75rem;"></i>
                                     </a>
+                                    @canEditInUnit($activity)
                                     <button type="button" class="btn btn-sm btn-danger" onclick="openDeleteModal({{ $activity->id }}, event)" title="Elimina" style="padding: 0.15rem 0.35rem;">
                                         <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
                                     </button>
+                                    @endcanEditInUnit
                                 </div>
                                 
                                 <div class="card-body d-flex flex-column p-3">
+                                    {{-- Badge unità per attività di altre unità --}}
+                                    @if($isReadOnly && $activity->organizationalUnit)
+                                    <div class="mb-1">
+                                        <span class="badge bg-info text-white" style="font-size: 0.65rem;">
+                                            <i class="fas fa-sitemap me-1"></i>{{ $activity->organizationalUnit->name }}
+                                        </span>
+                                    </div>
+                                    @endif
                                     @if($activity->compagniaMounting)
                                     <div class="mb-2">
                                         <span class="badge" style="background-color: {{ $activity->compagniaMounting->colore ?? '#6c757d' }}; font-size: 0.75rem;">

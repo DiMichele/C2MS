@@ -389,7 +389,7 @@ class OrganizationalUnit extends Model
             'id' => $unit->id,
             'uuid' => $unit->uuid,
             'name' => $unit->name,
-            'type' => $unit->type->name ?? null,
+            'type' => $unit->type?->name ?? null,
         ]);
     }
 
@@ -425,6 +425,40 @@ class OrganizationalUnit extends Model
     public function getDescendantCount(): int
     {
         return $this->descendants()->count();
+    }
+
+    /**
+     * Ottiene gli ID di tutti i discendenti.
+     * 
+     * @param bool $includeSelf Se true, include anche l'ID di questa unità
+     * @return array
+     */
+    public function getDescendantIds(bool $includeSelf = false): array
+    {
+        $ids = $this->descendants()->pluck('organizational_units.id')->toArray();
+        
+        if ($includeSelf) {
+            array_unshift($ids, $this->id);
+        }
+        
+        return $ids;
+    }
+
+    /**
+     * Ottiene gli ID di tutti gli antenati.
+     * 
+     * @param bool $includeSelf Se true, include anche l'ID di questa unità
+     * @return array
+     */
+    public function getAncestorIds(bool $includeSelf = false): array
+    {
+        $ids = $this->ancestors()->pluck('organizational_units.id')->toArray();
+        
+        if ($includeSelf) {
+            $ids[] = $this->id;
+        }
+        
+        return $ids;
     }
 
     // =========================================================================
@@ -472,9 +506,9 @@ class OrganizationalUnit extends Model
             return false;
         }
 
-        // Verifica vincoli di tipo
+        // Verifica vincoli di tipo (null-safe: tipo può essere assente)
         if ($this->type && $newParent->type) {
-            if (!$newParent->type->canContain($this->type)) {
+            if (!$newParent->type?->canContain($this->type)) {
                 return false;
             }
         }
@@ -521,10 +555,10 @@ class OrganizationalUnit extends Model
             'name' => $this->name,
             'code' => $this->code,
             'type' => $this->type ? [
-                'code' => $this->type->code,
-                'name' => $this->type->name,
-                'icon' => $this->type->icon,
-                'color' => $this->type->color,
+                'code' => $this->type?->code,
+                'name' => $this->type?->name,
+                'icon' => $this->type?->icon,
+                'color' => $this->type?->color,
             ] : null,
             'depth' => $this->depth,
             'is_active' => $this->is_active,

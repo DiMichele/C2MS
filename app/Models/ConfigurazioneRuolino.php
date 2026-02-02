@@ -4,31 +4,36 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\BelongsToCompagnia;
+use App\Traits\BelongsToOrganizationalUnit;
 use App\Models\OrganizationalUnit;
 
 /**
- * Model per la configurazione dei ruolini PER COMPAGNIA
+ * Model per la configurazione dei ruolini PER UNITÀ ORGANIZZATIVA
  * 
  * Gestisce la configurazione di quali impegni CPT rendono un militare
  * presente o assente nei ruolini giornalieri.
  * 
- * OGNI COMPAGNIA può avere le proprie regole.
+ * OGNI UNITÀ ORGANIZZATIVA può avere le proprie regole.
+ * 
+ * MIGRAZIONE MULTI-TENANCY: Questo modello ora usa organizational_unit_id invece di compagnia_id.
+ * I metodi legacy basati su compagnia_id sono mantenuti per retrocompatibilità ma deprecati.
  * 
  * @property int $id
- * @property int $compagnia_id
+ * @property int|null $compagnia_id @deprecated Usare organizational_unit_id
+ * @property int|null $organizational_unit_id
  * @property int $tipo_servizio_id
  * @property string $stato_presenza presente|assente|default
  * @property string|null $note
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * 
- * @property-read Compagnia $compagnia
+ * @property-read Compagnia $compagnia @deprecated
+ * @property-read OrganizationalUnit $organizationalUnit
  * @property-read TipoServizio $tipoServizio
  */
 class ConfigurazioneRuolino extends Model
 {
-    use HasFactory, BelongsToCompagnia;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     protected $table = 'configurazione_ruolini';
 
@@ -53,7 +58,7 @@ class ConfigurazioneRuolino extends Model
 
     /**
      * Compagnia proprietaria della configurazione
-     * (sovrascrive il trait per chiarezza)
+     * @deprecated Usare organizationalUnit() invece
      */
     public function compagnia()
     {
@@ -61,7 +66,7 @@ class ConfigurazioneRuolino extends Model
     }
 
     /**
-     * Unità organizzativa (nuova gerarchia)
+     * Unità organizzativa proprietaria della configurazione
      */
     public function organizationalUnit()
     {
@@ -82,10 +87,19 @@ class ConfigurazioneRuolino extends Model
 
     /**
      * Scope per compagnia specifica
+     * @deprecated Usare scopeForUnit() invece
      */
     public function scopeForCompagnia($query, int $compagniaId)
     {
         return $query->where('compagnia_id', $compagniaId);
+    }
+    
+    /**
+     * Scope per unità organizzativa specifica
+     */
+    public function scopeForUnit($query, int $unitId)
+    {
+        return $query->where('organizational_unit_id', $unitId);
     }
 
     /**
@@ -125,11 +139,91 @@ class ConfigurazioneRuolino extends Model
     }
 
     // ==========================================
-    // METODI STATICI CON COMPAGNIA
+    // METODI STATICI CON ORGANIZATIONAL UNIT (NUOVI)
+    // ==========================================
+
+    /**
+     * Ottiene la configurazione per un tipo di servizio e unità organizzativa specifici
+     * 
+     * @param int $tipoServizioId ID del tipo servizio
+     * @param int|null $unitId ID dell'unità organizzativa (null = unità attiva)
+     * @return ConfigurazioneRuolino|null
+     */
+    public static function getByTipoServizioIdAndUnit(int $tipoServizioId, ?int $unitId = null)
+    {
+        if ($unitId === null) {
+            $unitId = activeUnitId();
+        }
+
+        if (!$unitId) {
+            return null;
+        }
+
+        return static::withoutGlobalScopes()
+            ->forUnit($unitId)
+            ->forTipoServizio($tipoServizioId)
+            ->first();
+    }
+
+    /**
+     * Ottiene lo stato di presenza per un tipo di servizio e unità
+     * Ritorna: 'presente', 'assente', o 'default'
+     * 
+     * @param int $tipoServizioId
+     * @param int|null $unitId
+     * @return string
+     */
+    public static function getStatoPresenzaForTipoServizioAndUnit(int $tipoServizioId, ?int $unitId = null): string
+    {
+        $config = static::getByTipoServizioIdAndUnit($tipoServizioId, $unitId);
+        return $config ? $config->stato_presenza : 'default';
+    }
+
+    /**
+     * Ottiene tutte le configurazioni per un'unità organizzativa
+     * 
+     * @param int|null $unitId
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public static function getAllForUnit(?int $unitId = null)
+    {
+        if ($unitId === null) {
+            $unitId = activeUnitId();
+        }
+
+        if (!$unitId) {
+            return collect();
+        }
+
+        return static::withoutGlobalScopes()
+            ->forUnit($unitId)
+            ->with('tipoServizio')
+            ->get();
+    }
+
+    /**
+     * Ottiene le configurazioni raggruppate per stato
+     * 
+     * @param int|null $unitId
+     * @return array ['presente' => [...], 'assente' => [...]]
+     */
+    public static function getGroupedByStatoForUnit(?int $unitId = null): array
+    {
+        $configs = static::getAllForUnit($unitId);
+
+        return [
+            'presente' => $configs->where('stato_presenza', 'presente')->pluck('tipo_servizio_id')->toArray(),
+            'assente' => $configs->where('stato_presenza', 'assente')->pluck('tipo_servizio_id')->toArray(),
+        ];
+    }
+
+    // ==========================================
+    // METODI STATICI LEGACY (DEPRECATED)
     // ==========================================
 
     /**
      * Ottiene la configurazione per un tipo di servizio e compagnia specifici
+     * @deprecated Usare getByTipoServizioIdAndUnit() invece
      * 
      * @param int $tipoServizioId ID del tipo servizio
      * @param int|null $compagniaId ID della compagnia (null = utente corrente)
@@ -153,21 +247,20 @@ class ConfigurazioneRuolino extends Model
     }
 
     /**
-     * @deprecated Usa getByTipoServizioIdAndCompagnia() invece
-     * Mantenuto per retrocompatibilità - usa la compagnia dell'utente corrente
+     * @deprecated Usa getByTipoServizioIdAndUnit() invece
      */
     public static function getByTipoServizioId($tipoServizioId)
     {
+        // Prima prova con organizational_unit_id, poi fallback su compagnia_id
+        $config = static::getByTipoServizioIdAndUnit($tipoServizioId);
+        if ($config) {
+            return $config;
+        }
         return static::getByTipoServizioIdAndCompagnia($tipoServizioId);
     }
 
     /**
-     * Ottiene lo stato di presenza per un tipo di servizio e compagnia
-     * Ritorna: 'presente', 'assente', o 'default'
-     * 
-     * @param int $tipoServizioId
-     * @param int|null $compagniaId
-     * @return string
+     * @deprecated Usare getStatoPresenzaForTipoServizioAndUnit() invece
      */
     public static function getStatoPresenzaForTipoServizioAndCompagnia(int $tipoServizioId, ?int $compagniaId = null): string
     {
@@ -176,18 +269,17 @@ class ConfigurazioneRuolino extends Model
     }
 
     /**
-     * @deprecated Usa getStatoPresenzaForTipoServizioAndCompagnia() invece
+     * @deprecated Usa getStatoPresenzaForTipoServizioAndUnit() invece
      */
     public static function getStatoPresenzaForTipoServizio($tipoServizioId)
     {
-        return static::getStatoPresenzaForTipoServizioAndCompagnia($tipoServizioId);
+        // Prima prova con organizational_unit_id, poi fallback su compagnia_id
+        return static::getStatoPresenzaForTipoServizioAndUnit($tipoServizioId)
+            ?? static::getStatoPresenzaForTipoServizioAndCompagnia($tipoServizioId);
     }
 
     /**
-     * Ottiene tutte le configurazioni per una compagnia
-     * 
-     * @param int|null $compagniaId
-     * @return \Illuminate\Database\Eloquent\Collection
+     * @deprecated Usare getAllForUnit() invece
      */
     public static function getAllForCompagnia(?int $compagniaId = null)
     {
@@ -207,10 +299,7 @@ class ConfigurazioneRuolino extends Model
     }
 
     /**
-     * Ottiene le configurazioni raggruppate per stato
-     * 
-     * @param int|null $compagniaId
-     * @return array ['presente' => [...], 'assente' => [...]]
+     * @deprecated Usare getGroupedByStatoForUnit() invece
      */
     public static function getGroupedByStatoForCompagnia(?int $compagniaId = null): array
     {

@@ -241,9 +241,9 @@ class OrganizationalHierarchySeeder extends Seeder
         $compagniaType = OrganizationalUnitType::where('code', 'compagnia')->first();
         $compagnie = Compagnia::all();
 
-        // Mappa di default: assegna le compagnie al primo battaglione
-        // In produzione, questa mappatura dovrebbe essere configurata
-        $defaultBattaglione = $battaglioni['LEON'] ?? array_values($battaglioni)[0] ?? null;
+        // Mappa di default: assegna le compagnie al Battaglione Leonessa
+        // FIX: Usare la chiave corretta 'BTG-LEON' invece di 'LEON'
+        $defaultBattaglione = $battaglioni['BTG-LEON'] ?? array_values($battaglioni)[0] ?? null;
 
         foreach ($compagnie as $compagnia) {
             // Determina il battaglione di appartenenza

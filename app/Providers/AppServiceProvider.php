@@ -5,11 +5,14 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Blade;
 use App\Models\Militare;
+use App\Models\BoardActivity;
 use App\Models\CompagniaSetting;
 use App\Models\ConfigurazioneRuolino;
 use App\Models\OrganizationalUnit;
 use App\Policies\MilitarePolicy;
+use App\Policies\BoardActivityPolicy;
 use App\Policies\CompagniaSettingPolicy;
 use App\Policies\OrganizationalUnitPolicy;
 use App\Services\CompagniaSettingsService;
@@ -53,9 +56,13 @@ class AppServiceProvider extends ServiceProvider
         // Registra Observers
         \App\Models\TipoServizio::observe(\App\Observers\TipoServizioObserver::class);
         \App\Models\MilitareApprontamento::observe(\App\Observers\MilitareApprontamentoObserver::class);
+        \App\Models\Militare::observe(\App\Observers\MilitareObserver::class);
         
-        // Registra Policy per Militare (gestione owner/acquired)
+        // Registra Policy per Militare (gestione owner/acquired e read-only cross-unit)
         Gate::policy(Militare::class, MilitarePolicy::class);
+        
+        // Registra Policy per BoardActivity (read-only cross-unit)
+        Gate::policy(BoardActivity::class, BoardActivityPolicy::class);
         
         // Registra Policy per impostazioni compagnia (ruolini)
         Gate::policy(CompagniaSetting::class, CompagniaSettingPolicy::class);
@@ -74,6 +81,26 @@ class AppServiceProvider extends ServiceProvider
             
             // Altrimenti usa il sistema di permessi standard
             return $user->hasPermission($ability) ?: null;
+        });
+        
+        // Blade Directive: @canEditInUnit($model) ... @endcanEditInUnit
+        // Verifica se l'utente può modificare il modello (appartiene all'unità attiva)
+        Blade::directive('canEditInUnit', function ($expression) {
+            return "<?php if(auth()->check() && auth()->user()->can('update', {$expression})): ?>";
+        });
+        
+        Blade::directive('endcanEditInUnit', function () {
+            return "<?php endif; ?>";
+        });
+        
+        // Blade Directive: @isReadOnly($model) ... @endisReadOnly
+        // Verifica se il modello è read-only per l'utente (appartiene ad altra unità)
+        Blade::directive('isReadOnly', function ($expression) {
+            return "<?php if(!canEditInActiveUnit({$expression})): ?>";
+        });
+        
+        Blade::directive('endisReadOnly', function () {
+            return "<?php endif; ?>";
         });
         
         // Forza HTTPS quando si usa un tunnel (ngrok/cloudflare)

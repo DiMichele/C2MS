@@ -381,7 +381,7 @@ window.pageData = {
                             @foreach($impegniPerCategoria as $categoria => $impegniCategoria)
                                 <optgroup label="{{ $categoria }}">
                                     @foreach($impegniCategoria as $impegno)
-                                        <option value="{{ $impegno->codice }}" data-id="{{ $impegno->id }}">{{ $impegno->nome }}</option>
+                                        <option value="{{ $impegno->id }}" data-id="{{ $impegno->id }}" data-codice="{{ $impegno->codice ?? '' }}">{{ $impegno->nome }}</option>
                                     @endforeach
                                 </optgroup>
                             @endforeach

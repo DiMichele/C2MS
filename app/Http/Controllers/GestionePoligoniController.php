@@ -298,12 +298,29 @@ class GestionePoligoniController extends Controller
 
     /**
      * Elimina un tipo di poligono e tutte le scadenze associate
+     * NOTA: I tipi standard (teatro_operativo, mantenimento_arma_lunga, mantenimento_arma_corta)
+     *       non possono essere eliminati, solo rinominati.
      */
     public function destroy(Request $request, $id)
     {
         try {
             $poligono = TipoPoligono::findOrFail($id);
             $nome = $poligono->nome;
+            
+            // PROTEZIONE: I tipi standard non possono essere eliminati
+            if (in_array($poligono->codice, self::CODICI_STANDARD)) {
+                $message = 'Il tipo "' . $nome . '" è un tipo di sistema protetto e non può essere eliminato. È possibile solo rinominarlo.';
+                
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message
+                    ], 403);
+                }
+
+                return redirect()->back()
+                    ->withErrors(['error' => $message]);
+            }
             
             // FIX: Usa transazione per eliminazione atomica
             $countScadenze = 0;
@@ -350,6 +367,38 @@ class GestionePoligoniController extends Controller
 
             return redirect()->back()
                 ->withErrors(['error' => 'Si è verificato un errore durante l\'eliminazione. Riprova.']);
+        }
+    }
+
+    /**
+     * Aggiorna l'ordine dei tipi di poligono tramite drag & drop
+     */
+    public function updateOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'ordini' => 'required|array',
+            'ordini.*' => 'required|integer|exists:tipi_poligono,id'
+        ]);
+
+        try {
+            foreach ($validated['ordini'] as $ordine => $id) {
+                TipoPoligono::where('id', $id)->update(['ordine' => $ordine]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ordine aggiornato con successo'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Errore aggiornamento ordine tipi poligono', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore durante l\'aggiornamento dell\'ordine'
+            ], 500);
         }
     }
 }

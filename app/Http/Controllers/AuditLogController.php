@@ -19,13 +19,17 @@ class AuditLogController extends Controller
 {
     /**
      * Mostra la lista dei log di audit.
+     * 
+     * Per utenti non-admin: mostra solo i log delle unità accessibili.
+     * Per admin globali: mostra tutti i log.
      */
     public function index(Request $request)
     {
-        // Verifica permessi - solo admin possono vedere i log
-        if (!Auth::user()->hasRole('admin')) {
-            abort(403, 'Non hai i permessi per visualizzare i log di audit.');
-        }
+        $user = Auth::user();
+
+        // Filtro per mese/anno (come CPT)
+        $mese = $request->input('mese', now()->month);
+        $anno = $request->input('anno', now()->year);
 
         // Query base ottimizzata con select specifico
         $query = AuditLog::query()
@@ -33,16 +37,39 @@ class AuditLogController extends Controller
                 'id', 'user_id', 'user_name', 'action', 'description',
                 'entity_type', 'entity_id', 'entity_name', 
                 'old_values', 'new_values',
-                'compagnia_id', 'status', 'created_at'
+                'compagnia_id', 'active_unit_id', 'affected_unit_id',
+                'status', 'page_context', 'created_at'
             ])
             ->with([
                 'user:id,name,username',
                 'compagnia:id,nome'
             ])
+            // Filtra per mese/anno selezionato
+            ->whereMonth('created_at', $mese)
+            ->whereYear('created_at', $anno)
             ->orderBy('created_at', 'desc');
 
         // =====================================================================
-        // FILTRI (usando scope del model per efficienza)
+        // FILTRO PER UNITÀ ACCESSIBILI (pagina globale - mostra tutto l'accessibile)
+        // Admin globali vedono tutto, altri utenti vedono solo log delle loro unità
+        // =====================================================================
+        if (!$user->hasRole('admin')) {
+            $accessibleUnitIds = $user->getVisibleUnitIds();
+            
+            if (!empty($accessibleUnitIds)) {
+                $query->where(function ($q) use ($accessibleUnitIds) {
+                    $q->whereIn('active_unit_id', $accessibleUnitIds)
+                      ->orWhereIn('affected_unit_id', $accessibleUnitIds)
+                      ->orWhereNull('active_unit_id'); // Log senza contesto unità (login, ecc.)
+                });
+            } else {
+                // Nessuna unità accessibile - mostra solo log dell'utente stesso
+                $query->where('user_id', $user->id);
+            }
+        }
+
+        // =====================================================================
+        // FILTRI AGGIUNTIVI (usando scope del model per efficienza)
         // =====================================================================
 
         if ($request->filled('user_id')) {
@@ -65,14 +92,6 @@ class AuditLogController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
         // Ricerca testuale ottimizzata
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -85,9 +104,8 @@ class AuditLogController extends Controller
             }
         }
 
-        // Paginazione con configurazione
-        $perPage = config('audit.per_page', 50);
-        $logs = $query->paginate($perPage)->withQueryString();
+        // Carica tutti i log del mese (senza paginazione)
+        $logs = $query->get();
 
         // Dati per i filtri (cachati per 10 minuti)
         $users = Cache::remember('audit_users_list', 600, function () {
@@ -115,8 +133,19 @@ class AuditLogController extends Controller
      */
     public function show(AuditLog $auditLog)
     {
-        if (!Auth::user()->hasRole('admin')) {
-            abort(403, 'Non hai i permessi per visualizzare i log di audit.');
+        $user = Auth::user();
+        
+        // Verifica accesso: admin vede tutto, altri solo log delle loro unità
+        if (!$user->hasRole('admin')) {
+            $accessibleUnitIds = $user->getVisibleUnitIds();
+            $canAccess = in_array($auditLog->active_unit_id, $accessibleUnitIds) 
+                      || in_array($auditLog->affected_unit_id, $accessibleUnitIds)
+                      || $auditLog->active_unit_id === null
+                      || $auditLog->user_id === $user->id;
+            
+            if (!$canAccess) {
+                abort(403, 'Non hai i permessi per visualizzare questo log.');
+            }
         }
 
         $auditLog->load(['user:id,name,username', 'compagnia:id,nome']);
@@ -126,44 +155,77 @@ class AuditLogController extends Controller
 
     /**
      * Mostra i log di un utente specifico.
+     * 
+     * Per utenti non-admin: mostra solo i log delle unità accessibili.
      */
-    public function userLogs(User $user)
+    public function userLogs(User $targetUser)
     {
-        if (!Auth::user()->hasRole('admin')) {
-            abort(403, 'Non hai i permessi per visualizzare i log di audit.');
-        }
-
+        $currentUser = Auth::user();
         $perPage = config('audit.per_page', 50);
         
-        $logs = AuditLog::select([
+        $query = AuditLog::select([
                 'id', 'action', 'description', 'entity_type', 
-                'entity_name', 'status', 'created_at'
+                'entity_name', 'active_unit_id', 'affected_unit_id',
+                'status', 'created_at'
             ])
-            ->byUser($user->id)
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
+            ->byUser($targetUser->id)
+            ->orderBy('created_at', 'desc');
 
-        return view('admin.audit-logs.user', compact('logs', 'user'));
+        // Filtro per unità accessibili (se non admin)
+        if (!$currentUser->hasRole('admin')) {
+            $accessibleUnitIds = $currentUser->getVisibleUnitIds();
+            
+            if (!empty($accessibleUnitIds)) {
+                $query->where(function ($q) use ($accessibleUnitIds) {
+                    $q->whereIn('active_unit_id', $accessibleUnitIds)
+                      ->orWhereIn('affected_unit_id', $accessibleUnitIds)
+                      ->orWhereNull('active_unit_id');
+                });
+            } else {
+                // Nessuna unità accessibile - mostra solo i propri log
+                $query->where('user_id', $currentUser->id);
+            }
+        }
+
+        $logs = $query->paginate($perPage);
+
+        return view('admin.audit-logs.user', compact('logs', 'targetUser'))->with('user', $targetUser);
     }
 
     /**
      * Mostra solo i log di accesso (login/logout).
+     * 
+     * Per utenti non-admin: mostra solo i log di accesso delle unità accessibili.
      */
     public function accessLogs(Request $request)
     {
-        if (!Auth::user()->hasRole('admin')) {
-            abort(403, 'Non hai i permessi per visualizzare i log di audit.');
-        }
-
+        $user = Auth::user();
         $perPage = config('audit.per_page', 50);
 
         $query = AuditLog::select([
                 'id', 'user_id', 'user_name', 'action', 
-                'description', 'status', 'created_at'
+                'description', 'active_unit_id', 'status', 'created_at'
             ])
             ->accessLogs()
             ->with('user:id,name,username')
             ->orderBy('created_at', 'desc');
+
+        // Filtro per unità accessibili (se non admin)
+        // Per i log di accesso, filtriamo in base all'unità dell'utente loggato
+        if (!$user->hasRole('admin')) {
+            $accessibleUnitIds = $user->getVisibleUnitIds();
+            
+            if (!empty($accessibleUnitIds)) {
+                // Mostra login/logout di utenti delle unità accessibili
+                $query->where(function ($q) use ($accessibleUnitIds) {
+                    $q->whereIn('active_unit_id', $accessibleUnitIds)
+                      ->orWhereNull('active_unit_id'); // Login senza contesto unità
+                });
+            } else {
+                // Nessuna unità accessibile - mostra solo i propri log
+                $query->where('user_id', $user->id);
+            }
+        }
 
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -178,22 +240,48 @@ class AuditLogController extends Controller
     }
 
     /**
-     * Esporta i log in CSV con streaming per grandi dataset.
+     * Esporta i log in Excel con formattazione professionale.
+     * Filtra per mese/anno selezionato e per unità accessibili.
      */
     public function export(Request $request)
     {
-        if (!Auth::user()->hasRole('admin')) {
-            abort(403, 'Non hai i permessi per esportare i log.');
-        }
+        $user = Auth::user();
 
-        // Query con gli stessi filtri dell'index
+        // Filtro per mese/anno
+        $mese = $request->input('mese', now()->month);
+        $anno = $request->input('anno', now()->year);
+        
+        $mesiItaliani = [
+            1 => 'Gennaio', 2 => 'Febbraio', 3 => 'Marzo', 4 => 'Aprile',
+            5 => 'Maggio', 6 => 'Giugno', 7 => 'Luglio', 8 => 'Agosto',
+            9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre'
+        ];
+
+        // Query con filtro mese/anno
         $query = AuditLog::select([
                 'id', 'user_name', 'action', 'description',
-                'entity_type', 'entity_name', 'status',
-                'compagnia_id', 'created_at'
+                'entity_type', 'entity_name', 'status', 'page_context',
+                'active_unit_id', 'affected_unit_id', 'compagnia_id', 'created_at'
             ])
             ->with('compagnia:id,nome')
+            ->whereMonth('created_at', $mese)
+            ->whereYear('created_at', $anno)
             ->orderBy('created_at', 'desc');
+
+        // Filtro per unità accessibili (se non admin)
+        if (!$user->hasRole('admin')) {
+            $accessibleUnitIds = $user->getVisibleUnitIds();
+            
+            if (!empty($accessibleUnitIds)) {
+                $query->where(function ($q) use ($accessibleUnitIds) {
+                    $q->whereIn('active_unit_id', $accessibleUnitIds)
+                      ->orWhereIn('affected_unit_id', $accessibleUnitIds)
+                      ->orWhereNull('active_unit_id');
+                });
+            } else {
+                $query->where('user_id', $user->id);
+            }
+        }
 
         if ($request->filled('user_id')) {
             $query->byUser($request->user_id);
@@ -207,67 +295,78 @@ class AuditLogController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
 
-        // Limite configurabile per l'export
-        $exportLimit = config('audit.performance.export_batch_size', 1000) * 10;
-        $totalCount = $query->count();
+        $logs = $query->get();
+        $totalCount = $logs->count();
         
-        // Genera CSV con streaming per efficienza memoria
-        $filename = 'audit_logs_' . date('Y-m-d_His') . '.csv';
+        // Genera Excel con PhpSpreadsheet
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Registro Attività');
         
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        // Stili
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '0A2342']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
         ];
-
-        $callback = function () use ($query, $exportLimit) {
-            $file = fopen('php://output', 'w');
+        
+        $successStyle = ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D4EDDA']]];
+        $failedStyle = ['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8D7DA']]];
+        
+        // Intestazioni
+        $headers = ['Data/Ora', 'Utente', 'Azione', 'Pagina', 'Descrizione', 'Tipo Dato', 'Stato'];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+        $sheet->getRowDimension(1)->setRowHeight(25);
+        
+        // Dati
+        $row = 2;
+        foreach ($logs as $log) {
+            $sheet->setCellValue('A' . $row, $log->created_at->format('d/m/Y H:i:s'));
+            $sheet->setCellValue('B' . $row, $log->user_name ?? '-');
+            $sheet->setCellValue('C' . $row, $log->action_label);
+            $sheet->setCellValue('D' . $row, $log->page_context ?? '-');
+            $sheet->setCellValue('E' . $row, $log->description);
+            $sheet->setCellValue('F' . $row, $log->entity_label);
+            $sheet->setCellValue('G' . $row, $this->translateStatus($log->status));
             
-            // BOM per Excel
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            // Colora la riga in base allo stato
+            if ($log->status === 'success') {
+                $sheet->getStyle("A{$row}:G{$row}")->applyFromArray($successStyle);
+            } elseif ($log->status === 'failed') {
+                $sheet->getStyle("A{$row}:G{$row}")->applyFromArray($failedStyle);
+            }
             
-            // Intestazioni
-            fputcsv($file, [
-                'Data/Ora',
-                'Utente',
-                'Azione',
-                'Descrizione',
-                'Tipo Dato',
-                'Nome Dato',
-                'Stato',
-                'Compagnia'
-            ], ';');
-
-            // Streaming con chunk per gestire grandi dataset
-            $query->limit($exportLimit)->chunk(500, function ($logs) use ($file) {
-                foreach ($logs as $log) {
-                    fputcsv($file, [
-                        $log->created_at->format('d/m/Y H:i:s'),
-                        $log->user_name ?? '-',
-                        $log->action_label,
-                        $log->description,
-                        $log->entity_label,
-                        $log->entity_name ?? '-',
-                        $this->translateStatus($log->status),
-                        $log->compagnia?->nome ?? '-'
-                    ], ';');
-                }
-            });
-
-            fclose($file);
-        };
-
+            $row++;
+        }
+        
+        // Auto-size colonne
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+        
+        // Bordi per tutte le celle con dati
+        if ($row > 2) {
+            $sheet->getStyle('A1:G' . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        }
+        
+        // Nome file con mese/anno
+        $filename = 'registro_attivita_' . $mesiItaliani[$mese] . '_' . $anno . '.xlsx';
+        
         // Logga l'esportazione
-        \App\Services\AuditService::logExport('audit_logs', min($totalCount, $exportLimit));
+        \App\Services\AuditService::logExport('audit_logs', $totalCount);
 
-        return response()->stream($callback, 200, $headers);
+        // Output
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        ]);
     }
 
     /**

@@ -18,6 +18,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\OrganizationalUnit;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per le attività della bacheca (board)
@@ -47,7 +48,7 @@ use App\Models\OrganizationalUnit;
  */
 class BoardActivity extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Gli attributi che sono mass assignable

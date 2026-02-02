@@ -5,19 +5,22 @@ namespace App\Http\Controllers;
 use App\Models\TipoServizio;
 use App\Models\ConfigurazioneRuolino;
 use App\Models\CompagniaSetting;
+use App\Models\OrganizationalUnit;
 use App\Services\CompagniaSettingsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Controller per la gestione delle configurazioni dei ruolini PER COMPAGNIA
+ * Controller per la gestione delle configurazioni dei ruolini PER UNITÀ ORGANIZZATIVA
  * 
  * Permette di configurare quali impegni CPT rendono un militare
  * presente o assente nei ruolini giornalieri.
  * 
- * OGNI COMPAGNIA può avere le proprie regole.
- * Il frontend NON passa mai la compagnia - è determinata dal backend.
+ * OGNI UNITÀ ORGANIZZATIVA può avere le proprie regole.
+ * Il frontend NON passa mai l'unità - è determinata dal backend.
+ * 
+ * MIGRAZIONE MULTI-TENANCY: Ora usa organizational_unit_id invece di compagnia_id.
  */
 class GestioneRuoliniController extends Controller
 {
@@ -38,27 +41,42 @@ class GestioneRuoliniController extends Controller
         $this->authorize('viewAny', CompagniaSetting::class);
 
         $user = auth()->user();
-        $compagniaId = $user->compagnia_id;
+        
+        // MULTI-TENANCY: Usa organizational_unit_id invece di compagnia_id
+        $unitId = activeUnitId();
+        $compagniaId = $user->compagnia_id; // Fallback legacy
 
-        // Admin globali possono vedere/modificare qualsiasi compagnia
+        // Admin globali possono vedere/modificare qualsiasi unità
         $isGlobalAdmin = $user->hasRole('admin') || $user->hasRole('amministratore');
         
-        // Se admin e richiesta compagnia specifica
-        if ($isGlobalAdmin && $request->filled('compagnia_id')) {
-            $compagniaId = $request->compagnia_id;
+        // Se admin e richiesta unità specifica
+        if ($isGlobalAdmin && $request->filled('unit_id')) {
+            $unitId = $request->unit_id;
         }
         
-        // Se admin globale senza compagnia assegnata, seleziona la prima disponibile
-        if ($isGlobalAdmin && !$compagniaId) {
-            $primaCompagnia = \App\Models\Compagnia::orderBy('nome')->first();
-            if ($primaCompagnia) {
-                $compagniaId = $primaCompagnia->id;
+        // Se admin globale senza unità attiva, seleziona la prima disponibile
+        if ($isGlobalAdmin && !$unitId) {
+            $primaUnit = OrganizationalUnit::active()
+                ->where('depth', 1) // Macro unità
+                ->orderBy('name')
+                ->first();
+            if ($primaUnit) {
+                $unitId = $primaUnit->id;
             }
         }
 
-        if (!$compagniaId) {
+        // Fallback su compagnia_id se organizational_unit_id non disponibile
+        if (!$unitId && $compagniaId) {
+            // Trova l'OrganizationalUnit corrispondente alla compagnia
+            $unit = OrganizationalUnit::where('legacy_compagnia_id', $compagniaId)->first();
+            if ($unit) {
+                $unitId = $unit->id;
+            }
+        }
+
+        if (!$unitId) {
             return redirect()->route('dashboard')
-                ->with('error', 'Devi essere assegnato a una compagnia per gestire i ruolini.');
+                ->with('error', 'Devi essere assegnato a un\'unità organizzativa per gestire i ruolini.');
         }
 
         // Recupera SOLO i tipi di servizio ATTIVI che esistono ANCHE in codici_servizio_gerarchia
@@ -78,9 +96,15 @@ class GestioneRuoliniController extends Controller
         
         $tipiServizio = $tipiServizioQuery->get();
         
-        // Recupera le configurazioni PER LA COMPAGNIA CORRENTE
+        // Recupera le configurazioni PER L'UNITÀ CORRENTE
         $configurazioni = ConfigurazioneRuolino::withoutGlobalScopes()
-            ->where('compagnia_id', $compagniaId)
+            ->where(function($q) use ($unitId, $compagniaId) {
+                // Prima cerca per organizational_unit_id, poi fallback su compagnia_id
+                $q->where('organizational_unit_id', $unitId);
+                if ($compagniaId) {
+                    $q->orWhere('compagnia_id', $compagniaId);
+                }
+            })
             ->whereHas('tipoServizio', function($query) {
                 $query->where('attivo', true);
             })
@@ -100,10 +124,18 @@ class GestioneRuoliniController extends Controller
         $compagniaSetting = CompagniaSetting::where('compagnia_id', $compagniaId)->first();
         $defaultStato = $compagniaSetting?->getDefaultStato() ?? 'assente';
 
-        // Lista compagnie per admin
-        $compagnie = $isGlobalAdmin ? \App\Models\Compagnia::orderBy('nome')->get() : collect();
+        // Lista unità per admin
+        $units = $isGlobalAdmin ? OrganizationalUnit::active()
+            ->where('depth', 1)
+            ->with('type')
+            ->orderBy('name')
+            ->get() : collect();
 
-        // Compagnia corrente
+        // Unità corrente
+        $unitCorrente = OrganizationalUnit::find($unitId);
+
+        // Legacy: mantieni compagnia per retrocompatibilità view
+        $compagnie = $isGlobalAdmin ? \App\Models\Compagnia::orderBy('nome')->get() : collect();
         $compagniaCorrente = \App\Models\Compagnia::find($compagniaId);
 
         return view('gestione-ruolini.index', compact(
@@ -113,7 +145,10 @@ class GestioneRuoliniController extends Controller
             'isGlobalAdmin',
             'compagnie',
             'compagniaCorrente',
-            'compagniaId'
+            'compagniaId',
+            'units',
+            'unitCorrente',
+            'unitId'
         ));
     }
 

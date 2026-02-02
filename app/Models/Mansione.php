@@ -17,6 +17,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per le mansioni militari
@@ -38,7 +39,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  */
 class Mansione extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -61,6 +62,7 @@ class Mansione extends Model
      */
     protected $fillable = [
         'nome',
+        'organizational_unit_id',
     ];
 
     // ==========================================

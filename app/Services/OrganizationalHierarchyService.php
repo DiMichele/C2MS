@@ -7,6 +7,9 @@ use App\Models\OrganizationalUnitType;
 use App\Models\UnitClosure;
 use App\Models\UnitAssignment;
 use App\Models\User;
+use App\Models\ConfigurazioneCampoAnagrafica;
+use App\Models\ConfigurazioneRuolino;
+use App\Models\CodiciServizioGerarchia;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -372,9 +375,10 @@ class OrganizationalHierarchyService
      *
      * @param User|null $user Utente (null per albero completo senza filtri)
      * @param bool $activeOnly Solo unità attive
+     * @param bool $includeMilitari Includere militari come nodi foglia
      * @return Collection
      */
-    public function getTreeForUser(?User $user = null, bool $activeOnly = true): Collection
+    public function getTreeForUser(?User $user = null, bool $activeOnly = true, bool $includeMilitari = false): Collection
     {
         $query = OrganizationalUnit::roots()->with(['type', 'activeChildren.type']);
 
@@ -384,7 +388,7 @@ class OrganizationalHierarchyService
 
         $roots = $query->orderBy('sort_order')->orderBy('name')->get();
 
-        return $roots->map(fn($root) => $this->buildTreeNode($root, $user, $activeOnly));
+        return $roots->map(fn($root) => $this->buildTreeNode($root, $user, $activeOnly, null, 0, $includeMilitari));
     }
 
     /**
@@ -429,22 +433,38 @@ class OrganizationalHierarchyService
      */
     public function getUnitStats(OrganizationalUnit $unit): array
     {
-        $descendantIds = $unit->descendants()->pluck('id')->push($unit->id);
+        try {
+            $descendantIds = $unit->descendants()->pluck('organizational_units.id')->push($unit->id)->values();
 
-        return [
-            'total_descendants' => $unit->descendants()->count(),
-            'direct_children' => $unit->children()->count(),
-            'total_militari' => UnitAssignment::whereIn('unit_id', $descendantIds)
-                ->forMilitari()
-                ->active()
-                ->count(),
-            'total_users' => UnitAssignment::whereIn('unit_id', $descendantIds)
-                ->forUsers()
-                ->active()
-                ->count(),
-            'depth' => $unit->depth,
-            'is_leaf' => $unit->isLeaf(),
-        ];
+            return [
+                'total_descendants' => $unit->descendants()->count(),
+                'direct_children' => $unit->children()->count(),
+                'total_militari' => UnitAssignment::whereIn('unit_id', $descendantIds)
+                    ->forMilitari()
+                    ->active()
+                    ->count(),
+                'total_users' => UnitAssignment::whereIn('unit_id', $descendantIds)
+                    ->forUsers()
+                    ->active()
+                    ->count(),
+                'depth' => $unit->depth,
+                'is_leaf' => $unit->isLeaf(),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('getUnitStats fallback per unità ' . $unit->id, [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'total_descendants' => 0,
+                'direct_children' => 0,
+                'total_militari' => 0,
+                'total_users' => 0,
+                'depth' => $unit->depth ?? 0,
+                'is_leaf' => true,
+            ];
+        }
     }
 
     // =========================================================================
@@ -532,13 +552,21 @@ class OrganizationalHierarchyService
 
     /**
      * Costruisce un nodo dell'albero con i suoi figli.
+     * 
+     * @param OrganizationalUnit $unit Unità corrente
+     * @param User|null $user Utente
+     * @param bool $activeOnly Solo unità attive
+     * @param int|null $maxDepth Profondità massima
+     * @param int $currentDepth Profondità corrente
+     * @param bool $includeMilitari Includere militari come nodi foglia
      */
     private function buildTreeNode(
         OrganizationalUnit $unit, 
         ?User $user, 
         bool $activeOnly, 
         ?int $maxDepth = null,
-        int $currentDepth = 0
+        int $currentDepth = 0,
+        bool $includeMilitari = false
     ): array {
         $data = $unit->toTreeArray(false);
 
@@ -553,13 +581,200 @@ class OrganizationalHierarchyService
             $children = $childrenQuery->with('type')->get();
 
             $data['children'] = $children->map(
-                fn($child) => $this->buildTreeNode($child, $user, $activeOnly, $maxDepth, $currentDepth + 1)
+                fn($child) => $this->buildTreeNode($child, $user, $activeOnly, $maxDepth, $currentDepth + 1, $includeMilitari)
             )->values()->toArray();
+            
+            // Aggiungi militari come nodi foglia se richiesto
+            if ($includeMilitari) {
+                $militari = \App\Models\Militare::where('organizational_unit_id', $unit->id)
+                    ->with(['grado'])
+                    ->orderBy('cognome')
+                    ->orderBy('nome')
+                    ->get();
+                
+                foreach ($militari as $militare) {
+                    $gradoNome = $militare->grado?->sigla ?? $militare->grado?->nome ?? '';
+                    $data['children'][] = [
+                        'id' => $unit->id, // ID dell'unità parent per riferimento
+                        'uuid' => 'militare_' . $militare->id,
+                        'name' => trim("{$gradoNome} {$militare->cognome} {$militare->nome}"),
+                        'type' => 'militare',
+                        'depth' => $currentDepth + 1,
+                        'militare_id' => $militare->id,
+                        'grado' => $gradoNome,
+                        'cognome' => $militare->cognome,
+                        'nome' => $militare->nome,
+                        'unit_id' => $unit->id,
+                        'unit_name' => $unit->name,
+                        'children' => [],
+                        'has_children' => false,
+                    ];
+                }
+            }
         } else {
             $data['children'] = [];
             $data['has_more_children'] = $unit->children()->exists();
         }
 
         return $data;
+    }
+
+    // =========================================================================
+    // SEED CONFIGURAZIONI PER NUOVE UNITÀ
+    // =========================================================================
+
+    /**
+     * Copia le configurazioni da un'unità template a una nuova unità.
+     * 
+     * Copia:
+     * - configurazione_campi_anagrafica (campi personalizzati anagrafica)
+     * - configurazione_ruolini (stati presenza per impegni)
+     * - codici_servizio_gerarchia (opzionale, solo se includeCptCodes = true)
+     *
+     * @param int $newUnitId ID della nuova unità da configurare
+     * @param int $templateUnitId ID dell'unità template da copiare
+     * @param bool $includeCptCodes Se copiare anche i codici CPT
+     * @return array Riepilogo delle operazioni eseguite
+     * @throws InvalidArgumentException
+     */
+    public function seedConfigurationsFromTemplate(
+        int $newUnitId, 
+        int $templateUnitId, 
+        bool $includeCptCodes = false
+    ): array {
+        $newUnit = OrganizationalUnit::find($newUnitId);
+        $templateUnit = OrganizationalUnit::find($templateUnitId);
+
+        if (!$newUnit) {
+            throw new InvalidArgumentException("Unità nuova con ID {$newUnitId} non trovata.");
+        }
+
+        if (!$templateUnit) {
+            throw new InvalidArgumentException("Unità template con ID {$templateUnitId} non trovata.");
+        }
+
+        return DB::transaction(function () use ($newUnitId, $templateUnitId, $newUnit, $templateUnit, $includeCptCodes) {
+            $results = [
+                'campi_anagrafica' => 0,
+                'ruolini' => 0,
+                'codici_cpt' => 0,
+                'skipped' => [],
+            ];
+
+            // 1. Copia configurazione_campi_anagrafica
+            $campiTemplate = ConfigurazioneCampoAnagrafica::forUnit($templateUnitId)->get();
+            foreach ($campiTemplate as $campo) {
+                // Salta se esiste già
+                $exists = ConfigurazioneCampoAnagrafica::where('organizational_unit_id', $newUnitId)
+                    ->where('nome_campo', $campo->nome_campo)
+                    ->exists();
+
+                if ($exists) {
+                    $results['skipped'][] = "campo_anagrafica:{$campo->nome_campo}";
+                    continue;
+                }
+
+                ConfigurazioneCampoAnagrafica::create([
+                    'organizational_unit_id' => $newUnitId,
+                    'nome_campo' => $campo->nome_campo,
+                    'etichetta' => $campo->etichetta,
+                    'tipo_campo' => $campo->tipo_campo,
+                    'opzioni' => $campo->opzioni,
+                    'ordine' => $campo->ordine,
+                    'attivo' => $campo->attivo,
+                    'obbligatorio' => $campo->obbligatorio,
+                    'is_system' => $campo->is_system,
+                    'descrizione' => $campo->descrizione,
+                ]);
+                $results['campi_anagrafica']++;
+            }
+
+            // 2. Copia configurazione_ruolini
+            $ruoliniTemplate = ConfigurazioneRuolino::forUnit($templateUnitId)->get();
+            foreach ($ruoliniTemplate as $ruolino) {
+                // Salta se esiste già
+                $exists = ConfigurazioneRuolino::where('organizational_unit_id', $newUnitId)
+                    ->where('tipo_servizio_id', $ruolino->tipo_servizio_id)
+                    ->exists();
+
+                if ($exists) {
+                    $results['skipped'][] = "ruolino:{$ruolino->tipo_servizio_id}";
+                    continue;
+                }
+
+                ConfigurazioneRuolino::create([
+                    'organizational_unit_id' => $newUnitId,
+                    'tipo_servizio_id' => $ruolino->tipo_servizio_id,
+                    'stato_presenza' => $ruolino->stato_presenza,
+                    'note' => $ruolino->note,
+                ]);
+                $results['ruolini']++;
+            }
+
+            // 3. Copia codici CPT (opzionale)
+            if ($includeCptCodes) {
+                $codiciTemplate = CodiciServizioGerarchia::where('organizational_unit_id', $templateUnitId)->get();
+                foreach ($codiciTemplate as $codice) {
+                    // Salta se esiste già (stesso codice nell'unità)
+                    $exists = CodiciServizioGerarchia::where('organizational_unit_id', $newUnitId)
+                        ->where('codice', $codice->codice)
+                        ->exists();
+
+                    if ($exists) {
+                        $results['skipped'][] = "codice_cpt:{$codice->codice}";
+                        continue;
+                    }
+
+                    CodiciServizioGerarchia::create([
+                        'organizational_unit_id' => $newUnitId,
+                        'codice' => $codice->codice,
+                        'nome' => $codice->nome,
+                        'macro_attivita' => $codice->macro_attivita,
+                        'tipo_attivita' => $codice->tipo_attivita,
+                        'colore' => $codice->colore,
+                        'ordine' => $codice->ordine,
+                        'attivo' => $codice->attivo,
+                    ]);
+                    $results['codici_cpt']++;
+                }
+            }
+
+            Log::info('Configurazioni copiate da template', [
+                'new_unit_id' => $newUnitId,
+                'new_unit_name' => $newUnit->name,
+                'template_unit_id' => $templateUnitId,
+                'template_unit_name' => $templateUnit->name,
+                'results' => $results,
+            ]);
+
+            return $results;
+        });
+    }
+
+    /**
+     * Ottiene l'ID dell'unità template di default per le nuove unità.
+     * Per default cerca "Battaglione Leonessa" o la prima unità di tipo battaglione.
+     *
+     * @return int|null
+     */
+    public function getDefaultTemplateUnitId(): ?int
+    {
+        // Prima cerca Battaglione Leonessa
+        $leonessa = OrganizationalUnit::where('name', 'like', '%Leonessa%')
+            ->where('depth', 1)
+            ->active()
+            ->first();
+
+        if ($leonessa) {
+            return $leonessa->id;
+        }
+
+        // Fallback: primo battaglione attivo
+        $firstBattalion = OrganizationalUnit::where('depth', 1)
+            ->active()
+            ->orderBy('id')
+            ->first();
+
+        return $firstBattalion?->id;
     }
 }

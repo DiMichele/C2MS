@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Mansione;
 use App\Models\Ruolo;
 use App\Models\Militare;
+use App\Models\OrganizationalUnit;
 
 class MansioniRuoliSeeder extends Seeder
 {
@@ -14,6 +15,14 @@ class MansioniRuoliSeeder extends Seeder
      */
     public function run(): void
     {
+        // Ottieni tutte le unità organizzative attive di livello Battaglione (depth=1)
+        $units = OrganizationalUnit::where('depth', 1)->where('is_active', true)->get();
+        
+        // Se non ci sono unità, usa la prima disponibile
+        if ($units->isEmpty()) {
+            $units = OrganizationalUnit::where('is_active', true)->get();
+        }
+        
         // Crea mansioni se non esistono
         $mansioni = [
             'Comandante di Plotone',
@@ -33,11 +42,18 @@ class MansioniRuoliSeeder extends Seeder
             'Militare Semplice'
         ];
 
-        foreach ($mansioni as $nome) {
-            Mansione::firstOrCreate(
-                ['nome' => $nome],
-                ['descrizione' => "Mansione: $nome"]
-            );
+        $mansioniCreate = 0;
+        // Crea mansioni per ogni unità organizzativa
+        foreach ($units as $unit) {
+            foreach ($mansioni as $nome) {
+                Mansione::withoutGlobalScopes()->firstOrCreate(
+                    [
+                        'nome' => $nome,
+                        'organizational_unit_id' => $unit->id,
+                    ]
+                );
+                $mansioniCreate++;
+            }
         }
 
         // Crea ruoli se non esistono
@@ -58,7 +74,7 @@ class MansioniRuoliSeeder extends Seeder
             );
         }
 
-        $this->command->info('Creati ' . count($mansioni) . ' mansioni e ' . count($ruoli) . ' ruoli.');
+        $this->command->info('Creati mansioni per ' . $units->count() . ' unità organizzative e ' . count($ruoli) . ' ruoli.');
 
         // Assegna mansioni e ruoli casuali ai militari
         $mansioniIds = Mansione::pluck('id')->toArray();

@@ -7,7 +7,7 @@ use App\Models\TeatroOperativo;
 use App\Models\TeatroOperativoMilitare;
 use App\Models\ScadenzaApprontamento;
 use App\Models\Compagnia;
-use App\Models\Ufficio;
+use App\Models\Polo;
 use App\Models\Mansione;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -32,7 +32,7 @@ class ImpieghiPersonaleController extends Controller
     {
         // Dati per i filtri
         $compagnie = Compagnia::orderBy('nome')->get();
-        $uffici = Ufficio::orderBy('nome')->get();
+        $uffici = Polo::orderBy('nome')->get();
         $incarichi = Mansione::orderBy('nome')->get();
         
         // Verifica permessi

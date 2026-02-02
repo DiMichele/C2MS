@@ -7,226 +7,146 @@ use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 /**
- * SUGECO: Policy per la gestione dei permessi sui Militari
+ * Policy per la gestione dei permessi sui Militari.
  * 
- * Questa policy implementa la logica di autorizzazione per il modello Militare,
- * gestendo sia i militari "owner" che quelli "acquisiti" tramite attività.
- * 
- * REGOLE:
- * - Owner: L'utente della stessa compagnia può vedere E modificare
- * - Acquired: L'utente di altra compagnia può SOLO vedere (read-only)
- * - Admin: Può fare tutto
- * 
- * @package App\Policies
- * @version 1.0
- * @author Michele Di Gennaro
+ * Implementa la logica read-only cross-unit:
+ * - Un utente può vedere militari di tutte le unità a cui ha accesso
+ * - Un utente può modificare solo i militari dell'unità attiva
+ * - Admin possono fare tutto
  */
 class MilitarePolicy
 {
     use HandlesAuthorization;
 
     /**
-     * Determina se l'utente può visualizzare qualsiasi militare.
-     * (Lista militari)
+     * Determina se l'utente può visualizzare l'elenco dei militari.
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermission('anagrafica.view') || 
-               $user->hasPermission('view_own_company') ||
-               $user->isAdmin();
+        return $user->hasPermission('anagrafica.view');
     }
 
     /**
      * Determina se l'utente può visualizzare un militare specifico.
      * 
-     * L'utente può vedere:
-     * - Militari della propria compagnia (owner)
-     * - Militari acquisiti tramite attività (acquired)
+     * L'utente può vedere militari di tutte le unità accessibili.
      */
     public function view(User $user, Militare $militare): bool
     {
         // Admin vedono tutto
-        if ($user->isAdmin()) {
+        if ($user->isGlobalAdmin()) {
             return true;
         }
-        
-        // Verifica se è owner
-        if ($this->isOwner($user, $militare)) {
-            return true;
+
+        // Verifica permesso base
+        if (!$user->hasPermission('anagrafica.view')) {
+            return false;
         }
-        
-        // Verifica se è acquisito
-        if ($this->isAcquired($user, $militare)) {
-            return true;
-        }
-        
-        return false;
+
+        // Verifica se il militare appartiene a un'unità accessibile
+        return $this->canAccessMilitare($user, $militare);
     }
 
     /**
-     * Determina se l'utente può creare militari.
+     * Determina se l'utente può creare un nuovo militare.
+     * 
+     * Il militare sarà automaticamente assegnato all'unità attiva.
      */
     public function create(User $user): bool
     {
-        return $user->hasPermission('anagrafica.edit') || $user->isAdmin();
+        // Admin possono creare
+        if ($user->isGlobalAdmin()) {
+            return true;
+        }
+
+        // Deve avere permesso di modifica e un'unità attiva
+        return $user->hasPermission('anagrafica.edit') && activeUnitId() !== null;
     }
 
     /**
      * Determina se l'utente può modificare un militare.
      * 
-     * IMPORTANTE: Solo gli owner possono modificare!
-     * I militari acquisiti sono SEMPRE in sola lettura.
+     * L'utente può modificare solo militari dell'unità attiva.
      */
     public function update(User $user, Militare $militare): bool
     {
         // Admin possono modificare tutto
-        if ($user->isAdmin()) {
+        if ($user->isGlobalAdmin()) {
             return true;
         }
-        
-        // Verifica permesso di modifica
+
+        // Verifica permesso base
         if (!$user->hasPermission('anagrafica.edit')) {
             return false;
         }
-        
-        // SOLO gli owner possono modificare
-        // I militari acquisiti sono read-only
-        return $this->isOwner($user, $militare);
+
+        // Può modificare solo se il militare appartiene all'unità attiva
+        return $this->isInActiveUnit($militare);
     }
 
     /**
      * Determina se l'utente può eliminare un militare.
-     * 
-     * Solo gli owner con permessi adeguati possono eliminare.
      */
     public function delete(User $user, Militare $militare): bool
     {
         // Admin possono eliminare
-        if ($user->isAdmin()) {
+        if ($user->isGlobalAdmin()) {
             return true;
         }
-        
-        // Verifica permesso di modifica
-        if (!$user->hasPermission('anagrafica.edit')) {
+
+        // Verifica permesso base
+        if (!$user->hasPermission('anagrafica.delete')) {
             return false;
         }
-        
-        // SOLO gli owner possono eliminare
-        return $this->isOwner($user, $militare);
+
+        // Può eliminare solo se il militare appartiene all'unità attiva
+        return $this->isInActiveUnit($militare);
     }
 
     /**
-     * Determina se l'utente può modificare il CPT di un militare.
+     * Verifica se l'utente può accedere ai dati di un militare (view).
      */
-    public function updateCpt(User $user, Militare $militare): bool
+    protected function canAccessMilitare(User $user, Militare $militare): bool
     {
-        // Admin possono modificare
-        if ($user->isAdmin()) {
-            return true;
+        // Se il militare ha un'unità organizzativa, verifica l'accesso
+        if ($militare->organizational_unit_id) {
+            return $user->canAccessUnit($militare->organizational_unit_id);
         }
-        
-        // Verifica permesso CPT
-        if (!$user->hasPermission('cpt.edit')) {
-            return false;
+
+        // Fallback legacy: verifica accesso tramite compagnia
+        if ($militare->compagnia_id) {
+            return $user->canAccessCompagnia($militare->compagnia_id);
         }
-        
-        // SOLO gli owner possono modificare il CPT
-        return $this->isOwner($user, $militare);
+
+        // Militare senza unità/compagnia - accesso consentito per admin
+        return $user->isGlobalAdmin();
     }
 
     /**
-     * Verifica se l'utente è "owner" del militare.
-     * Owner = stesso compagnia_id
+     * Verifica se un militare appartiene all'unità attiva.
      */
-    public function isOwner(User $user, Militare $militare): bool
+    protected function isInActiveUnit(Militare $militare): bool
     {
-        if (!$user->compagnia_id) {
+        $activeUnitId = activeUnitId();
+
+        if (!$activeUnitId) {
             return false;
         }
-        
-        return $militare->compagnia_id === $user->compagnia_id;
+
+        return $militare->organizational_unit_id === $activeUnitId;
     }
 
     /**
-     * Verifica se il militare è "acquisito" dalla compagnia dell'utente.
-     * Acquisito = partecipa ad almeno un'attività della compagnia dell'utente
-     * 
-     * SICUREZZA: L'acquisizione è valida solo se l'attività esiste ancora
-     * (non è stata cancellata). Questo evita "acquisizioni fantasma".
+     * Helper: verifica se il modello è read-only per l'utente (di altra unità).
      */
-    public function isAcquired(User $user, Militare $militare): bool
+    public function isReadOnly(User $user, Militare $militare): bool
     {
-        if (!$user->compagnia_id) {
+        // Admin: mai read-only
+        if ($user->isGlobalAdmin()) {
             return false;
         }
-        
-        // Se è owner, non è "acquisito" (è proprio)
-        if ($this->isOwner($user, $militare)) {
-            return false;
-        }
-        
-        // Verifica se il militare partecipa ad attività ESISTENTI della compagnia dell'utente
-        // NOTA: La join implicita garantisce che l'attività esista ancora
-        return \DB::table('activity_militare')
-            ->join('board_activities', 'activity_militare.activity_id', '=', 'board_activities.id')
-            ->where('activity_militare.militare_id', $militare->id)
-            ->where('board_activities.compagnia_id', $user->compagnia_id)
-            ->exists();
-    }
 
-    /**
-     * Ottiene il tipo di relazione tra utente e militare.
-     * 
-     * @return string 'owner', 'acquired', o 'none'
-     */
-    public static function getRelationType(User $user, Militare $militare): string
-    {
-        $policy = new self();
-        
-        if ($policy->isOwner($user, $militare)) {
-            return 'owner';
-        }
-        
-        if ($policy->isAcquired($user, $militare)) {
-            return 'acquired';
-        }
-        
-        return 'none';
-    }
-
-    /**
-     * Verifica se il militare è modificabile dall'utente.
-     * Wrapper per essere usato nei controller/view.
-     */
-    public static function canEdit(User $user, Militare $militare): bool
-    {
-        $policy = new self();
-        return $policy->update($user, $militare);
-    }
-
-    /**
-     * Verifica se il militare è read-only per l'utente.
-     */
-    public static function isReadOnly(User $user, Militare $militare): bool
-    {
-        $policy = new self();
-        
-        // Admin non ha mai read-only
-        if ($user->isAdmin()) {
-            return false;
-        }
-        
-        // Se acquisito, è read-only
-        if ($policy->isAcquired($user, $militare)) {
-            return true;
-        }
-        
-        // Se owner ma senza permessi di modifica, è read-only
-        if ($policy->isOwner($user, $militare) && !$user->hasPermission('anagrafica.edit')) {
-            return true;
-        }
-        
-        return false;
+        // Read-only se appartiene a un'altra unità
+        return !$this->isInActiveUnit($militare);
     }
 }
-

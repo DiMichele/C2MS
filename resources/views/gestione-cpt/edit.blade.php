@@ -229,6 +229,56 @@
                         </div>
                     </div>
 
+                    <!-- Configurazione Ruolini -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Configurazione Ruolini</label>
+                        <div class="border rounded p-3 bg-light">
+                            <div class="row">
+                                <div class="col-md-6 mb-3 mb-md-0">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="conta_come_presente" 
+                                               id="conta_come_presente" 
+                                               value="1"
+                                               {{ old('conta_come_presente', $codice->conta_come_presente) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="conta_come_presente">
+                                            Conta come presente
+                                        </label>
+                                        <div class="form-text">Il militare viene considerato presente</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="esenzione_alzabandiera" 
+                                               id="esenzione_alzabandiera" 
+                                               value="1"
+                                               {{ old('esenzione_alzabandiera', $codice->esenzione_alzabandiera) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="esenzione_alzabandiera">
+                                            Esenzione alzabandiera
+                                        </label>
+                                        <div class="form-text">Il militare è esonerato dall'alzabandiera</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               name="disponibilita_limitata" 
+                                               id="disponibilita_limitata" 
+                                               value="1"
+                                               {{ old('disponibilita_limitata', $codice->disponibilita_limitata) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="disponibilita_limitata">
+                                            Disponibilità limitata
+                                        </label>
+                                        <div class="form-text">Il militare ha disponibilità limitata</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Anteprima -->
                     <div class="mb-4">
                         <label class="form-label fw-semibold">Anteprima</label>

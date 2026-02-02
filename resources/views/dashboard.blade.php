@@ -329,4 +329,46 @@
         </div>
     </div>
 </div>
+
+{{-- Statistiche per Unità Organizzativa (Multi-tenancy) --}}
+@if(isset($statisticheUnita) && $statisticheUnita->isNotEmpty())
+<div class="section-compact">
+    <div class="section-title">
+        <i class="fas fa-sitemap"></i>Situazione per Unità
+        <span class="badge bg-info text-white ms-2" style="font-size: 0.75rem;">{{ $statisticheUnita->count() }} unità</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        @foreach($statisticheUnita as $stats)
+        <div class="activity-card {{ $stats['is_active'] ? 'border-primary border-2' : '' }}" style="padding: 1rem; {{ $stats['is_active'] ? 'background: #f0f7ff;' : '' }}">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                @if($stats['unit']->type && $stats['unit']->type->icon)
+                <i class="fas {{ $stats['unit']->type->icon }}" style="color: {{ $stats['unit']->type->color ?? '#0A2342' }}; font-size: 1.25rem;"></i>
+                @else
+                <i class="fas fa-building" style="color: #0A2342; font-size: 1.25rem;"></i>
+                @endif
+                <div>
+                    <div style="font-weight: 600; font-size: 0.95rem;">{{ $stats['unit']->name }}</div>
+                    @if($stats['unit']->type)
+                    <div style="font-size: 0.75rem; color: #6c757d;">{{ $stats['unit']->type->name }}</div>
+                    @endif
+                </div>
+                @if($stats['is_active'])
+                <span class="badge bg-primary ms-auto" style="font-size: 0.65rem;">ATTIVA</span>
+                @endif
+            </div>
+            <div style="display: flex; justify-content: space-around; text-align: center;">
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #0A2342;">{{ $stats['militari_count'] }}</div>
+                    <div style="font-size: 0.7rem; color: #6c757d;">Militari</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #0d6efd;">{{ $stats['attivita_count'] }}</div>
+                    <div style="font-size: 0.7rem; color: #6c757d;">Attività</div>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
 @endsection

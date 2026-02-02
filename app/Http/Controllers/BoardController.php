@@ -49,18 +49,26 @@ class BoardController extends Controller
      */
     public function index(Request $request)
     {
-        // Vista unica per tutto il Battaglione - nessun filtro per compagnia
-        // Carica tutte le colonne con tutte le attività
+        $user = auth()->user();
+        
+        // Lo scope BelongsToOrganizationalUnit filtra automaticamente le attività
+        // L'utente vede le attività di tutte le unità a cui ha accesso
         $columns = BoardColumn::with(['activities' => function($query) {
-                $query->with(['militari', 'compagniaMounting']);
+                // BoardActivity ha il trait BelongsToOrganizationalUnit, il filtro è automatico
+                $query->with(['militari', 'compagniaMounting', 'organizationalUnit']);
             }])
             ->orderBy('order')
             ->get();
         
-        // Ottieni tutte le compagnie per la selezione nel form
+        // Ottieni tutte le compagnie per la selezione nel form (retrocompatibilità)
         $compagnie = \App\Models\Compagnia::orderBy('nome')->get();
+        
+        // Unità organizzative accessibili per la selezione
+        $unitaAccessibili = $user->isGlobalAdmin() 
+            ? \App\Models\OrganizationalUnit::with('type')->active()->orderBy('depth')->orderBy('name')->get()
+            : \App\Models\OrganizationalUnit::whereIn('id', $user->getVisibleUnitIds())->with('type')->active()->orderBy('depth')->orderBy('name')->get();
             
-        return view('board.index', compact('columns', 'compagnie'));
+        return view('board.index', compact('columns', 'compagnie', 'unitaAccessibili'));
     }
 
     /**
@@ -310,20 +318,26 @@ class BoardController extends Controller
             DB::beginTransaction();
 
             // Ottieni l'ID dell'utente autenticato o del primo utente disponibile
-            $userId = auth()->id() ?? \App\Models\User::first()->id;
+            $userId = auth()->id() ?? \App\Models\User::first()?->id;
             
-            // Determina l'unità organizzativa basandosi sulla compagnia mounting
-            $organizationalUnitId = null;
-            if ($validated['compagnia_mounting_id']) {
-                // Cerca l'unità organizzativa che corrisponde alla compagnia legacy
+            if (!$userId) {
+                throw new \Exception('Nessun utente disponibile per creare l\'attività');
+            }
+            
+            // Determina l'unità organizzativa: priorità all'unità attiva dell'utente
+            $organizationalUnitId = activeUnitId();
+            
+            // Fallback: se non c'è unità attiva, usa l'unità dell'utente
+            if (!$organizationalUnitId && auth()->user()->organizational_unit_id) {
+                $organizationalUnitId = auth()->user()->organizational_unit_id;
+            }
+            
+            // Fallback legacy: mappa dalla compagnia mounting
+            if (!$organizationalUnitId && $validated['compagnia_mounting_id']) {
                 $orgUnit = \App\Models\OrganizationalUnit::where('legacy_compagnia_id', $validated['compagnia_mounting_id'])->first();
                 if ($orgUnit) {
                     $organizationalUnitId = $orgUnit->id;
                 }
-            }
-            // Fallback: usa l'unità dell'utente se disponibile
-            if (!$organizationalUnitId && auth()->user()->organizational_unit_id) {
-                $organizationalUnitId = auth()->user()->organizational_unit_id;
             }
             
             $activity = BoardActivity::create([

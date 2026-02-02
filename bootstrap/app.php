@@ -44,11 +44,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // Middleware per controllo cambio password obbligatorio
         $middleware->append(\App\Http\Middleware\MustChangePassword::class);
         
+        // Middleware per gestione unità organizzativa attiva (multi-tenancy)
+        $middleware->appendToGroup('web', \App\Http\Middleware\SetActiveOrganizationalUnit::class);
+        
         // Middleware con alias per routes
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
             'permission' => \App\Http\Middleware\CheckPermission::class,
             'compagnia.access' => \App\Http\Middleware\EnforceCompagniaAccess::class,
+            'unit.access' => \App\Http\Middleware\SetActiveOrganizationalUnit::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

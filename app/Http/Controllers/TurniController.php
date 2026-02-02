@@ -102,20 +102,16 @@ class TurniController extends Controller
         ]);
 
         try {
-            // Ottieni tutti i militari dell'unità organizzativa corrente
-            // Il modello Militare usa CompagniaScope che filtra automaticamente
-            // per le compagnie visibili all'utente (basato sui ruoli)
-            $user = auth()->user();
-            $query = Militare::with(['grado', 'plotone']);
+            // Ottieni tutti i militari dell'unità organizzativa attiva
+            // I modelli usano BelongsToOrganizationalUnit che filtra automaticamente
+            // per tutte le unità visibili all'utente. Qui filtriamo ulteriormente
+            // per l'unità attiva selezionata dall'utente.
+            $query = Militare::with(['grado', 'plotone', 'organizationalUnit']);
             
-            // Se l'utente ha un'unità organizzativa assegnata, filtra per quella
-            if ($user->organizational_unit_id ?? null) {
-                $query->where('organizational_unit_id', $user->organizational_unit_id);
-            } elseif ($user->compagnia_id) {
-                // Fallback legacy: filtra per compagnia
-                $query->where('compagnia_id', $user->compagnia_id);
+            // Filtra per l'unità attiva (selezionata nel dropdown)
+            if (activeUnitId()) {
+                $query->where('organizational_unit_id', activeUnitId());
             }
-            // Altrimenti lo scope CompagniaScope gestisce il filtro
             
             $militari = $query->orderBy('cognome')->get();
 

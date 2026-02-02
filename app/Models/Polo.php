@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Militare;
 use App\Models\Compagnia;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per i poli militari
@@ -45,7 +46,7 @@ use App\Models\Compagnia;
  */
 class Polo extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -59,7 +60,7 @@ class Polo extends Model
      * 
      * @var array<string>
      */
-    protected $fillable = ['nome', 'compagnia_id'];
+    protected $fillable = ['nome', 'compagnia_id', 'organizational_unit_id'];
 
     // ==========================================
     // RELAZIONI

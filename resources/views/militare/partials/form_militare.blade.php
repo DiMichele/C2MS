@@ -267,11 +267,42 @@
                         <h5 class="form-section-title">Assegnazione Organizzativa</h5>
                         
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <div class="form-group">
-                                    <label for="compagnia_id" class="form-label">Compagnia</label>
+                                    <label for="organizational_unit_id" class="form-label">
+                                        <i class="fas fa-sitemap me-1 text-primary"></i>
+                                        Unità Organizzativa *
+                                    </label>
+                                    <select class="form-select @error('organizational_unit_id') is-invalid @enderror" 
+                                            id="organizational_unit_id" 
+                                            name="organizational_unit_id" 
+                                            required>
+                                        <option value="">Seleziona Unità</option>
+                                        @php
+                                            $organizationalUnits = \App\Models\OrganizationalUnit::active()
+                                                ->orderBy('depth')
+                                                ->orderBy('name')
+                                                ->get();
+                                        @endphp
+                                        @foreach($organizationalUnits as $unit)
+                                            <option value="{{ $unit->id }}" 
+                                                    data-depth="{{ $unit->depth }}"
+                                                    {{ old('organizational_unit_id', $militare->organizational_unit_id ?? activeUnitId()) == $unit->id ? 'selected' : '' }}>
+                                                {{ str_repeat('— ', $unit->depth) }}{{ $unit->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('organizational_unit_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label for="compagnia_id" class="form-label">Compagnia (Legacy)</label>
                                     <select class="form-select @error('compagnia_id') is-invalid @enderror" id="compagnia_id" name="compagnia_id">
-                                        <option value="">Seleziona Compagnia</option>
+                                        <option value="">Nessuna</option>
                                         @php
                                             $compagnie = \App\Models\Compagnia::orderBy('nome')->get();
                                         @endphp
@@ -308,15 +339,27 @@
                             
                             <div class="col-md-3">
                                 <div class="form-group">
-                                    <label for="polo_id" class="form-label">Ufficio</label>
-                                    <select class="form-select @error('polo_id') is-invalid @enderror" id="polo_id" name="polo_id">
+                                    <label for="ufficio_unit_id" class="form-label">Ufficio</label>
+                                    <select class="form-select @error('ufficio_unit_id') is-invalid @enderror" id="ufficio_unit_id" name="ufficio_unit_id">
                                         <option value="">Seleziona Ufficio</option>
-                                        @foreach($poli as $polo)
-                                            <option value="{{ $polo->id }}" {{ old('polo_id', $militare->polo_id ?? '') == $polo->id ? 'selected' : '' }}>
-                                                {{ $polo->nome }}
-                                            </option>
-                                        @endforeach
+                                        @if(isset($uffici) && $uffici->count() > 0)
+                                            @foreach($uffici as $ufficio)
+                                                <option value="{{ $ufficio->id }}" {{ old('ufficio_unit_id', $militare->ufficio_unit_id ?? '') == $ufficio->id ? 'selected' : '' }}>
+                                                    {{ $ufficio->name }}
+                                                </option>
+                                            @endforeach
+                                        @elseif(isset($poli) && $poli->count() > 0)
+                                            {{-- Fallback su tabella legacy poli se uffici non disponibili --}}
+                                            @foreach($poli as $polo)
+                                                <option value="{{ $polo->id }}" data-legacy="true" {{ old('polo_id', $militare->polo_id ?? '') == $polo->id ? 'selected' : '' }}>
+                                                    {{ $polo->nome }}
+                                                </option>
+                                            @endforeach
+                                        @endif
                                     </select>
+                                    @error('ufficio_unit_id')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                     @error('polo_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -452,13 +495,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // ============================
-    // GESTIONE COMPAGNIA -> PLOTONE
+    // SINCRONIZZAZIONE BIDIREZIONALE
+    // Unità Organizzativa <-> Compagnia/Plotone
     // ============================
     
+    const orgUnitSelect = document.getElementById('organizational_unit_id');
     const compagniaSelect = document.getElementById('compagnia_id');
     const plotoneSelect = document.getElementById('plotone_id');
     
+    // Flag per evitare loop infiniti durante la sincronizzazione
+    let isSyncing = false;
+    
+    // Funzione per aggiornare le opzioni dei plotoni
     function updatePlotoniOptions(compagniaId) {
+        if (!plotoneSelect) return;
+        
         const options = plotoneSelect.querySelectorAll('option');
         let hasVisibleOptions = false;
         
@@ -495,6 +546,48 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+
+    // Quando cambia UNITA ORGANIZZATIVA -> sincronizza compagnia/plotone
+    if (orgUnitSelect) {
+        orgUnitSelect.addEventListener('change', function() {
+            if (isSyncing) return;
+            
+            const unitId = this.value;
+            if (!unitId) return;
+            
+            isSyncing = true;
+            
+            // Chiama API per ottenere i campi legacy corrispondenti
+            fetch(`{{ url('gerarchia-organizzativa/api/units') }}/${unitId}/legacy-fields`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    // Aggiorna compagnia se presente
+                    if (compagniaSelect && data.data.compagnia_id) {
+                        compagniaSelect.value = data.data.compagnia_id;
+                        updatePlotoniOptions(data.data.compagnia_id);
+                    }
+                    
+                    // Aggiorna plotone se presente
+                    if (plotoneSelect && data.data.plotone_id) {
+                        plotoneSelect.value = data.data.plotone_id;
+                    }
+                }
+            })
+            .catch(error => console.error('Errore sync unità:', error))
+            .finally(() => {
+                isSyncing = false;
+            });
+        });
+    }
+
+    // Quando cambia COMPAGNIA/PLOTONE -> i campi legacy vengono sincronizzati lato server dall'Observer
+    // Non serve fare nulla qui perché la sincronizzazione avviene al save del form
     
     if (compagniaSelect && plotoneSelect) {
         compagniaSelect.addEventListener('change', function() {

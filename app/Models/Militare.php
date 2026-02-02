@@ -5,7 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
-use App\Traits\BelongsToCompagnia;
+use App\Traits\BelongsToCompagnia; // TODO: Rimuovere dopo migrazione completa a organizational_unit_id
+use App\Traits\BelongsToOrganizationalUnit;
 use App\Models\User;
 use App\Models\OrganizationalUnit;
 
@@ -53,7 +54,7 @@ use App\Models\OrganizationalUnit;
  */
 class Militare extends Model
 {
-    use HasFactory, BelongsToCompagnia;
+    use HasFactory, BelongsToCompagnia, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -77,6 +78,7 @@ class Militare extends Model
         'polo_id',
         'compagnia_id',
         'organizational_unit_id', // Nuova gerarchia organizzativa
+        'ufficio_unit_id', // Assegnazione a ufficio (aggiuntiva rispetto al plotone)
         'ruolo_id',
         'mansione_id',
         'data_nascita',
@@ -92,6 +94,8 @@ class Militare extends Model
         'istituti',
         'foto_path',
         'nos_status',
+        'data_agility',
+        'data_resistenza',
     ];
 
     /**
@@ -105,6 +109,8 @@ class Militare extends Model
         'data_nascita' => 'date',
         'anzianita' => 'date',
         'istituti' => 'array',
+        'data_agility' => 'date',
+        'data_resistenza' => 'date',
     ];
 
     /**
@@ -310,6 +316,19 @@ class Militare extends Model
     }
 
     /**
+     * Relazione con l'ufficio del militare (assegnazione aggiuntiva)
+     * 
+     * Un militare può essere assegnato a un ufficio oltre al suo plotone/compagnia.
+     * Gli uffici sono OrganizationalUnit di tipo "Ufficio".
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function ufficio()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'ufficio_unit_id');
+    }
+
+    /**
      * Relazione con il polo del militare
      * 
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -453,7 +472,9 @@ class Militare extends Model
      */
     public function getValoreCampoCustom($nome_campo)
     {
-        $configurazione = ConfigurazioneCampoAnagrafica::where('nome_campo', $nome_campo)
+        $unitId = $this->organizational_unit_id ?? activeUnitId();
+        $configurazione = ConfigurazioneCampoAnagrafica::forUnit($unitId)
+            ->where('nome_campo', $nome_campo)
             ->where('attivo', true)
             ->first();
         if (!$configurazione) {
@@ -499,7 +520,9 @@ class Militare extends Model
      */
     public function setValoreCampoCustom($nome_campo, $valore)
     {
-        $configurazione = ConfigurazioneCampoAnagrafica::where('nome_campo', $nome_campo)
+        $unitId = $this->organizational_unit_id ?? activeUnitId();
+        $configurazione = ConfigurazioneCampoAnagrafica::forUnit($unitId)
+            ->where('nome_campo', $nome_campo)
             ->where('attivo', true)
             ->first();
         if (!$configurazione) {
@@ -890,6 +913,19 @@ class Militare extends Model
     }
 
     /**
+     * Relazione con le prenotazioni PEFO
+     */
+    public function prenotazioniPefo()
+    {
+        return $this->belongsToMany(
+            PrenotazionePefo::class,
+            'militari_prenotazioni_pefo',
+            'militare_id',
+            'prenotazione_pefo_id'
+        )->withTimestamps();
+    }
+
+    /**
      * Relazione con i Teatri Operativi assegnati
      */
     public function teatriOperativi()
@@ -923,6 +959,203 @@ class Militare extends Model
             ->wherePivot('stato', 'confermato')
             ->where('teatri_operativi.stato', 'attivo')
             ->exists();
+    }
+
+    /**
+     * Ottiene le 6 scadenze essenziali per la visualizzazione nel dettaglio militare.
+     * 
+     * Le scadenze sono:
+     * 1. Idoneità SMI (da scadenze_idoneita)
+     * 2. PEFO (da militari.data_agility + data_resistenza)
+     * 3. Corso Lavoratore 4h (da scadenze_corsi_spp)
+     * 4. Corso Lavoratore 8h (da scadenze_corsi_spp)
+     * 5. Poligono Mantenimento Arma Lunga (da scadenze_poligoni)
+     * 6. Poligono Mantenimento Arma Corta (da scadenze_poligoni)
+     * 
+     * @return array Array di scadenze con struttura uniforme
+     */
+    public function getScadenzeEssenziali(): array
+    {
+        $scadenze = [];
+        
+        // 1. Idoneità SMI (da scadenze_idoneita)
+        $scadenzaSmi = $this->scadenzeIdoneita()
+            ->whereHas('tipoIdoneita', fn($q) => $q->where('codice', 'idoneita_smi'))
+            ->with('tipoIdoneita')
+            ->first();
+        
+        $scadenze[] = $this->formatScadenzaIdoneita($scadenzaSmi, 'Idoneità SMI');
+        
+        // 2. PEFO (logica speciale: agility + resistenza)
+        $scadenze[] = $this->calcolaPefoEssenziale();
+        
+        // 3. Corso Lavoratore 4h (da scadenze_corsi_spp)
+        $scadenza4h = $this->scadenzeCorsiSpp()
+            ->whereHas('corso', fn($q) => $q->where('codice_corso', 'LIKE', '%lavoratore_4h%')
+                ->orWhere('nome_corso', 'LIKE', '%4h%')
+                ->orWhere('nome_corso', 'LIKE', '%4 h%'))
+            ->with('corso')
+            ->first();
+        
+        $scadenze[] = $this->formatScadenzaCorso($scadenza4h, 'Corso Lavoratore 4h');
+        
+        // 4. Corso Lavoratore 8h (da scadenze_corsi_spp)
+        $scadenza8h = $this->scadenzeCorsiSpp()
+            ->whereHas('corso', fn($q) => $q->where('codice_corso', 'LIKE', '%lavoratore_8h%')
+                ->orWhere('nome_corso', 'LIKE', '%8h%')
+                ->orWhere('nome_corso', 'LIKE', '%8 h%'))
+            ->with('corso')
+            ->first();
+        
+        $scadenze[] = $this->formatScadenzaCorso($scadenza8h, 'Corso Lavoratore 8h');
+        
+        // 5. Poligono Mantenimento Arma Lunga (da scadenze_poligoni)
+        $scadenzaArmaLunga = $this->scadenzePoligoni()
+            ->whereHas('tipoPoligono', fn($q) => $q->where('codice', 'mantenimento_arma_lunga'))
+            ->with('tipoPoligono')
+            ->first();
+        
+        $scadenze[] = $this->formatScadenzaPoligono($scadenzaArmaLunga, 'Mantenimento Arma Lunga');
+        
+        // 6. Poligono Mantenimento Arma Corta (da scadenze_poligoni)
+        $scadenzaArmaCorta = $this->scadenzePoligoni()
+            ->whereHas('tipoPoligono', fn($q) => $q->where('codice', 'mantenimento_arma_corta'))
+            ->with('tipoPoligono')
+            ->first();
+        
+        $scadenze[] = $this->formatScadenzaPoligono($scadenzaArmaCorta, 'Mantenimento Arma Corta');
+        
+        return $scadenze;
+    }
+    
+    /**
+     * Calcola lo stato PEFO basato su data_agility e data_resistenza.
+     * PEFO è valida SOLO se entrambe le prove sono state svolte.
+     * La data di conseguimento è la data più recente tra le due prove.
+     */
+    private function calcolaPefoEssenziale(): array
+    {
+        $dataAgility = $this->data_agility;
+        $dataResistenza = $this->data_resistenza;
+        
+        // Se manca una delle due prove, PEFO non è presente
+        if (!$dataAgility || !$dataResistenza) {
+            return [
+                'nome' => 'PEFO',
+                'data_conseguimento' => null,
+                'data_scadenza' => null,
+                'stato' => 'mancante',
+            ];
+        }
+        
+        // Data conseguimento = MAX delle due date
+        $dataConseguimento = $dataAgility > $dataResistenza ? $dataAgility : $dataResistenza;
+        
+        // Durata PEFO: 12 mesi
+        $dataScadenza = \Carbon\Carbon::parse($dataConseguimento)->addMonths(12);
+        
+        // Calcola stato
+        $oggi = \Carbon\Carbon::today();
+        if ($dataScadenza->isPast()) {
+            $stato = 'scaduto';
+        } elseif ($dataScadenza->diffInDays($oggi) <= 30) {
+            $stato = 'in_scadenza';
+        } else {
+            $stato = 'valido';
+        }
+        
+        return [
+            'nome' => 'PEFO',
+            'data_conseguimento' => $dataConseguimento,
+            'data_scadenza' => $dataScadenza,
+            'stato' => $stato,
+        ];
+    }
+    
+    /**
+     * Formatta una scadenza idoneità per la visualizzazione.
+     */
+    private function formatScadenzaIdoneita($scadenza, string $nome): array
+    {
+        if (!$scadenza || !$scadenza->data_conseguimento) {
+            return [
+                'nome' => $nome,
+                'data_conseguimento' => null,
+                'data_scadenza' => null,
+                'stato' => 'mancante',
+            ];
+        }
+        
+        return [
+            'nome' => $nome,
+            'data_conseguimento' => $scadenza->data_conseguimento,
+            'data_scadenza' => $scadenza->data_scadenza,
+            'stato' => $scadenza->stato,
+        ];
+    }
+    
+    /**
+     * Formatta una scadenza corso SPP per la visualizzazione.
+     */
+    private function formatScadenzaCorso($scadenza, string $nome): array
+    {
+        if (!$scadenza || !$scadenza->data_conseguimento) {
+            return [
+                'nome' => $nome,
+                'data_conseguimento' => null,
+                'data_scadenza' => null,
+                'stato' => 'mancante',
+            ];
+        }
+        
+        $datiScadenza = $scadenza->calcolaScadenza();
+        
+        return [
+            'nome' => $nome,
+            'data_conseguimento' => $datiScadenza['data_conseguimento'],
+            'data_scadenza' => $datiScadenza['data_scadenza'],
+            'stato' => $datiScadenza['stato'],
+        ];
+    }
+    
+    /**
+     * Formatta una scadenza poligono per la visualizzazione.
+     */
+    private function formatScadenzaPoligono($scadenza, string $nome): array
+    {
+        if (!$scadenza || !$scadenza->data_conseguimento) {
+            return [
+                'nome' => $nome,
+                'data_conseguimento' => null,
+                'data_scadenza' => null,
+                'stato' => 'mancante',
+            ];
+        }
+        
+        // Calcola la data di scadenza usando la durata del tipo poligono
+        $dataScadenza = null;
+        $stato = 'mancante';
+        
+        if ($scadenza->tipoPoligono && $scadenza->tipoPoligono->durata_mesi > 0) {
+            $dataScadenza = \Carbon\Carbon::parse($scadenza->data_conseguimento)
+                ->addMonths($scadenza->tipoPoligono->durata_mesi);
+            
+            $oggi = \Carbon\Carbon::today();
+            if ($dataScadenza->isPast()) {
+                $stato = 'scaduto';
+            } elseif ($dataScadenza->diffInDays($oggi) <= 30) {
+                $stato = 'in_scadenza';
+            } else {
+                $stato = 'valido';
+            }
+        }
+        
+        return [
+            'nome' => $nome,
+            'data_conseguimento' => $scadenza->data_conseguimento,
+            'data_scadenza' => $dataScadenza,
+            'stato' => $stato,
+        ];
     }
 
     /**

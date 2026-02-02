@@ -204,18 +204,18 @@ window.giorniMese = @json(count($giorniMese));
     color: white;
 }
 
-/* Filtri inline */
+/* Filtri inline - sempre su riga singola */
 .disponibilita-filters-inline {
     display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
+    flex-wrap: nowrap;
+    gap: 1rem;
     justify-content: center;
     align-items: flex-end;
     padding: 16px 24px;
     background: #fff;
     border-radius: 10px;
     border: 1px solid #e2e8f0;
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
 }
 
@@ -223,6 +223,8 @@ window.giorniMese = @json(count($giorniMese));
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+    min-width: 0;
 }
 
 .disponibilita-filter-item label {
@@ -234,11 +236,11 @@ window.giorniMese = @json(count($giorniMese));
 }
 
 .disponibilita-filter-item .form-select {
-    min-width: 200px;
+    width: 100%;
     border-radius: 6px !important;
     white-space: nowrap;
-    overflow: visible;
-    text-overflow: clip;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .disponibilita-filter-item .form-select:disabled {
@@ -256,11 +258,11 @@ window.giorniMese = @json(count($giorniMese));
 
     .disponibilita-filter-item {
         width: 100%;
+        flex: none;
     }
 
     .disponibilita-filter-item .form-select {
         width: 100%;
-        min-width: auto;
     }
 }
 

@@ -46,14 +46,74 @@ class DashboardController extends Controller
         // === COMPLEANNI DI OGGI ===
         $compleanniOggi = $this->getCompleanniOggi();
         
+        // === STATISTICHE PER UNITÀ (Multi-tenancy) ===
+        $statisticheUnita = $this->getStatistichePerUnita();
+        
         return view('dashboard', compact(
             'kpis',
             'scadenzeRspp',
             'scadenzeIdoneita',
             'scadenzePoligoni',
             'attivitaOggi',
-            'compleanniOggi'
+            'compleanniOggi',
+            'statisticheUnita'
         ));
+    }
+    
+    /**
+     * Ottiene statistiche aggregate per ogni unità organizzativa accessibile.
+     * 
+     * @return \Illuminate\Support\Collection
+     */
+    private function getStatistichePerUnita()
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return collect();
+        }
+        
+        // Ottieni le unità accessibili
+        $unitIds = $user->isGlobalAdmin() 
+            ? \App\Models\OrganizationalUnit::active()->pluck('id')->toArray()
+            : $user->getVisibleUnitIds();
+        
+        if (empty($unitIds)) {
+            return collect();
+        }
+        
+        // Carica le unità con le statistiche
+        $units = \App\Models\OrganizationalUnit::with('type')
+            ->whereIn('id', $unitIds)
+            ->active()
+            ->orderBy('depth')
+            ->orderBy('name')
+            ->get();
+        
+        $oggi = Carbon::today();
+        
+        return $units->map(function ($unit) use ($oggi) {
+            // Conta militari per questa unità (senza scope globale per contare correttamente)
+            $militariCount = Militare::withoutGlobalScopes()
+                ->where('organizational_unit_id', $unit->id)
+                ->count();
+            
+            // Conta attività board per questa unità
+            $attivitaCount = BoardActivity::withoutGlobalScopes()
+                ->where('organizational_unit_id', $unit->id)
+                ->whereDate('end_date', '>=', $oggi)
+                ->count();
+            
+            return [
+                'unit' => $unit,
+                'militari_count' => $militariCount,
+                'attivita_count' => $attivitaCount,
+                'is_active' => $unit->id === activeUnitId(),
+            ];
+        })->filter(function ($stats) {
+            // Mostra solo unità con almeno qualche dato
+            return $stats['militari_count'] > 0 || $stats['attivita_count'] > 0;
+        });
     }
     
     /**

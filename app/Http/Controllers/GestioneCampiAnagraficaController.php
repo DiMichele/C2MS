@@ -14,118 +14,17 @@ class GestioneCampiAnagraficaController extends Controller
      */
     public function index(Request $request)
     {
-        // Definisci i campi "di sistema" pre-esistenti dell'anagrafica
-        $campiSistema = [
-            [
-                'nome_campo' => 'compagnia',
-                'etichetta' => 'Compagnia',
-                'tipo_campo' => 'select',
-                'ordine' => 1,
-            ],
-            [
-                'nome_campo' => 'grado',
-                'etichetta' => 'Grado',
-                'tipo_campo' => 'select',
-                'ordine' => 2,
-            ],
-            [
-                'nome_campo' => 'cognome',
-                'etichetta' => 'Cognome',
-                'tipo_campo' => 'text',
-                'ordine' => 3,
-            ],
-            [
-                'nome_campo' => 'nome',
-                'etichetta' => 'Nome',
-                'tipo_campo' => 'text',
-                'ordine' => 4,
-            ],
-            [
-                'nome_campo' => 'plotone',
-                'etichetta' => 'Plotone',
-                'tipo_campo' => 'select',
-                'ordine' => 5,
-            ],
-            [
-                'nome_campo' => 'ufficio',
-                'etichetta' => 'Ufficio',
-                'tipo_campo' => 'select',
-                'ordine' => 6,
-            ],
-            [
-                'nome_campo' => 'incarico',
-                'etichetta' => 'Incarico',
-                'tipo_campo' => 'select',
-                'ordine' => 7,
-            ],
-            [
-                'nome_campo' => 'patenti',
-                'etichetta' => 'Patenti',
-                'tipo_campo' => 'text',
-                'ordine' => 8,
-            ],
-            [
-                'nome_campo' => 'nos',
-                'etichetta' => 'NOS',
-                'tipo_campo' => 'select',
-                'ordine' => 9,
-            ],
-            [
-                'nome_campo' => 'anzianita',
-                'etichetta' => 'Anzianità',
-                'tipo_campo' => 'number',
-                'ordine' => 10,
-            ],
-            [
-                'nome_campo' => 'data_nascita',
-                'etichetta' => 'Data di Nascita',
-                'tipo_campo' => 'date',
-                'ordine' => 11,
-            ],
-            [
-                'nome_campo' => 'email_istituzionale',
-                'etichetta' => 'Email Istituzionale',
-                'tipo_campo' => 'email',
-                'ordine' => 12,
-            ],
-            [
-                'nome_campo' => 'telefono',
-                'etichetta' => 'Cellulare',
-                'tipo_campo' => 'tel',
-                'ordine' => 13,
-            ],
-            [
-                'nome_campo' => 'codice_fiscale',
-                'etichetta' => 'Codice Fiscale',
-                'tipo_campo' => 'text',
-                'ordine' => 14,
-            ],
-            [
-                'nome_campo' => 'istituti',
-                'etichetta' => 'Istituti',
-                'tipo_campo' => 'text',
-                'ordine' => 15,
-            ],
-        ];
-
-        // Assicurati che i campi di sistema esistano in configurazione_campi_anagrafica
-        foreach ($campiSistema as $config) {
-            ConfigurazioneCampoAnagrafica::firstOrCreate(
-                ['nome_campo' => $config['nome_campo']],
-                [
-                    'etichetta' => $config['etichetta'],
-                    'tipo_campo' => $config['tipo_campo'],
-                    'opzioni' => null,
-                    'ordine' => $config['ordine'],
-                    'attivo' => true,
-                    'obbligatorio' => false,
-                    'descrizione' => null,
-                ]
-            );
+        $unitId = activeUnitId();
+        if (!$unitId) {
+            $campi = collect();
+            return view('gestione-campi-anagrafica.index', compact('campi'));
         }
 
-        // Carica tutti i campi (sistema + custom) ordinati
-        $campi = ConfigurazioneCampoAnagrafica::ordinati()->get();
+        // Assicurati che i campi di sistema esistano per l'unità organizzativa attiva
+        ConfigurazioneCampoAnagrafica::ensureSystemFieldsForUnit($unitId);
+
+        // Carica i campi dell'unità attiva (sistema + custom) ordinati
+        $campi = ConfigurazioneCampoAnagrafica::forUnit($unitId)->ordinati()->get();
 
         // RIMOSSO: Normalizzazione ordine automatica ad ogni accesso
         // La normalizzazione era problematica perché modificava il database ad ogni page load.
@@ -159,21 +58,30 @@ class GestioneCampiAnagraficaController extends Controller
                 $validated['opzioni'] = null;
             }
             
+            $unitId = activeUnitId();
+            if (!$unitId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seleziona un\'unità organizzativa per creare campi.'
+                ], 403);
+            }
+
             // Genera slug univoco dal nome etichetta
             $nomeCampo = Str::slug($validated['etichetta'], '_');
             
-            // Assicura unicità
+            // Assicura unicità nell'ambito dell'unità
             $counter = 1;
             $originalNomeCampo = $nomeCampo;
-            while (ConfigurazioneCampoAnagrafica::where('nome_campo', $nomeCampo)->exists()) {
+            while (ConfigurazioneCampoAnagrafica::where('organizational_unit_id', $unitId)->where('nome_campo', $nomeCampo)->exists()) {
                 $nomeCampo = $originalNomeCampo . '_' . $counter;
                 $counter++;
             }
             
-            // Calcola ordine automatico (posizione successiva)
-            $maxOrdine = ConfigurazioneCampoAnagrafica::max('ordine') ?? 0;
+            // Calcola ordine automatico (posizione successiva) per l'unità
+            $maxOrdine = ConfigurazioneCampoAnagrafica::forUnit($unitId)->max('ordine') ?? 0;
             
             $campo = ConfigurazioneCampoAnagrafica::create([
+                'organizational_unit_id' => $unitId,
                 'nome_campo' => $nomeCampo,
                 'etichetta' => $validated['etichetta'],
                 'tipo_campo' => $validated['tipo_campo'],
@@ -235,7 +143,14 @@ class GestioneCampiAnagraficaController extends Controller
                 $validated['opzioni'] = null;
             }
             
-            $campo = ConfigurazioneCampoAnagrafica::findOrFail($id);
+            $unitId = activeUnitId();
+            if (!$unitId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seleziona un\'unità organizzativa per modificare campi.'
+                ], 403);
+            }
+            $campo = ConfigurazioneCampoAnagrafica::forUnit($unitId)->findOrFail($id);
             
             // Definisci i campi di sistema (il nome_campo non deve mai cambiare)
             $campiSistemaNomi = [
@@ -256,7 +171,7 @@ class GestioneCampiAnagraficaController extends Controller
                     // Assicura unicità
                     $counter = 1;
                     $originalNomeCampo = $nomeCampo;
-                    while (ConfigurazioneCampoAnagrafica::where('nome_campo', $nomeCampo)->where('id', '!=', $id)->exists()) {
+                    while (ConfigurazioneCampoAnagrafica::forUnit($unitId)->where('nome_campo', $nomeCampo)->where('id', '!=', $id)->exists()) {
                         $nomeCampo = $originalNomeCampo . '_' . $counter;
                         $counter++;
                     }
@@ -308,7 +223,11 @@ class GestioneCampiAnagraficaController extends Controller
         ]);
 
         try {
-            $campo = ConfigurazioneCampoAnagrafica::findOrFail($id);
+            $unitId = activeUnitId();
+            if (!$unitId) {
+                return response()->json(['success' => false, 'message' => 'Unità non selezionata.'], 403);
+            }
+            $campo = ConfigurazioneCampoAnagrafica::forUnit($unitId)->findOrFail($id);
             $campo->update(['ordine' => $validated['ordine']]);
 
             return response()->json([
@@ -334,7 +253,11 @@ class GestioneCampiAnagraficaController extends Controller
     public function toggleActive(Request $request, $id)
     {
         try {
-            $campo = ConfigurazioneCampoAnagrafica::findOrFail($id);
+            $unitId = activeUnitId();
+            if (!$unitId) {
+                return response()->json(['success' => false, 'message' => 'Unità non selezionata.'], 403);
+            }
+            $campo = ConfigurazioneCampoAnagrafica::forUnit($unitId)->findOrFail($id);
             $campo->update(['attivo' => !$campo->attivo]);
 
             return response()->json([
@@ -361,7 +284,22 @@ class GestioneCampiAnagraficaController extends Controller
     public function destroy($id)
     {
         try {
-            $campo = ConfigurazioneCampoAnagrafica::findOrFail($id);
+            $unitId = activeUnitId();
+            if (!$unitId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Seleziona un\'unità organizzativa per eliminare campi.'
+                ], 403);
+            }
+            $campo = ConfigurazioneCampoAnagrafica::forUnit($unitId)->findOrFail($id);
+            
+            // Blocca eliminazione dei campi di sistema
+            if ($campo->is_system) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Impossibile eliminare un campo di sistema.'
+                ], 403);
+            }
             
             // Elimina anche tutti i valori associati (cascade)
             $campo->delete();

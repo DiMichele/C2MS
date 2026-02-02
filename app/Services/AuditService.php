@@ -74,6 +74,9 @@ class AuditService
             $user = Auth::user();
             $request = Request::instance();
 
+            // Contesto unità organizzativa
+            $activeUnit = activeUnit();
+            
             $data = [
                 'user_id' => $user?->id,
                 'user_name' => $user?->name ?? $user?->username ?? 'Sistema',
@@ -85,6 +88,9 @@ class AuditService
                 'url' => self::truncateUrl($request->fullUrl()),
                 'method' => $request->method(),
                 'compagnia_id' => $user?->compagnia_id,
+                // Multi-tenancy: traccia unità attiva
+                'active_unit_id' => $activeUnit?->id,
+                'active_unit_name' => $activeUnit?->name,
                 'metadata' => !empty($metadata) ? self::sanitizeMetadata($metadata) : null,
             ];
 
@@ -93,6 +99,14 @@ class AuditService
                 $data['entity_type'] = self::getEntityType($entity);
                 $data['entity_id'] = $entity->getKey();
                 $data['entity_name'] = self::getEntityName($entity);
+                
+                // Traccia l'unità del record modificato (affected)
+                $affectedUnitId = self::getEntityUnitId($entity);
+                $affectedUnitName = self::getEntityUnitName($entity);
+                if ($affectedUnitId) {
+                    $data['affected_unit_id'] = $affectedUnitId;
+                    $data['affected_unit_name'] = $affectedUnitName;
+                }
             }
 
             return AuditLog::create($data);
@@ -379,6 +393,45 @@ class AuditService
     {
         $type = self::getEntityType($entity);
         return AuditLog::ENTITY_LABELS[$type] ?? ucfirst($type);
+    }
+
+    /**
+     * Ottiene l'ID dell'unità organizzativa dell'entità (se disponibile).
+     */
+    protected static function getEntityUnitId(Model $entity): ?int
+    {
+        // Prima verifica organizational_unit_id diretto
+        if (isset($entity->organizational_unit_id)) {
+            return $entity->organizational_unit_id;
+        }
+
+        // Poi verifica relazione organizationalUnit
+        if (method_exists($entity, 'organizationalUnit')) {
+            $unit = $entity->organizationalUnit;
+            return $unit?->id;
+        }
+
+        return null;
+    }
+
+    /**
+     * Ottiene il nome dell'unità organizzativa dell'entità (se disponibile).
+     */
+    protected static function getEntityUnitName(Model $entity): ?string
+    {
+        // Prima verifica se ha relazione caricata
+        if (method_exists($entity, 'organizationalUnit')) {
+            $unit = $entity->organizationalUnit;
+            return $unit?->name;
+        }
+
+        // Altrimenti carica dall'ID
+        if (isset($entity->organizational_unit_id) && $entity->organizational_unit_id) {
+            $unit = \App\Models\OrganizationalUnit::find($entity->organizational_unit_id);
+            return $unit?->name;
+        }
+
+        return null;
     }
 
     /**

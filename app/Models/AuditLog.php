@@ -32,6 +32,11 @@ class AuditLog extends Model
         'url',
         'method',
         'compagnia_id',
+        // Multi-tenancy: contesto unità organizzativa
+        'active_unit_id',
+        'active_unit_name',
+        'affected_unit_id',
+        'affected_unit_name',
         'status',
     ];
 

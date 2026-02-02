@@ -16,6 +16,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Compagnia;
+use App\Models\OrganizationalUnit;
 use App\Models\Polo;
 use App\Services\ExcelStyleService;
 use Illuminate\Http\Request;
@@ -41,87 +42,140 @@ class OrganigrammaController extends Controller
     private const CACHE_DURATION = 3600; // 1 ora
     
     /**
-     * Mostra la pagina principale dell'organigramma
+     * Mostra l'organigramma gerarchico basato sulle unità organizzative
      * 
-     * Carica la struttura completa dell'organigramma con:
-     * - Compagnia principale (filtrabile)
-     * - Plotoni con militari associati
-     * - Poli con militari associati
-     * - Informazioni sulle presenze
-     * - Statistiche aggregate
-     * 
-     * Utilizza eager loading per ottimizzare le query e cache per le performance.
-     * L'utente admin può selezionare una compagnia, gli altri vedono solo la propria.
+     * Questa pagina mostra l'organigramma filtrato in base all'unità attiva
+     * selezionata nel dropdown header.
      * 
      * @param Request $request
-     * @return \Illuminate\View\View|\Illuminate\View\View Vista dell'organigramma o pagina di errore
+     * @return \Illuminate\View\View
+     */
+    public function hierarchy(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Ottieni l'unità attiva dalla sessione (selezionata nel dropdown header)
+        $activeUnitId = activeUnitId();
+        
+        // Query base per le unità organizzative
+        $query = OrganizationalUnit::with(['type', 'parent', 'militari', 'militari.grado'])
+            ->active()
+            ->orderBy('path')
+            ->orderBy('sort_order');
+        
+        // Filtra per unità attiva selezionata (se presente)
+        if ($activeUnitId) {
+            // Mostra l'unità selezionata e tutti i suoi discendenti
+            $activeUnit = OrganizationalUnit::find($activeUnitId);
+            
+            if ($activeUnit) {
+                // Ottieni tutti gli ID dei discendenti
+                $descendantIds = $activeUnit->descendants()->pluck('id')->toArray();
+                $allIds = array_merge([$activeUnitId], $descendantIds);
+                $query->whereIn('id', $allIds);
+            }
+        }
+        
+        $units = $query->get();
+        
+        // Costruisci l'albero gerarchico
+        $tree = $this->buildHierarchyTree($units);
+        
+        // Ottieni tutte le unità per il filtro dropdown (solo root per semplicità)
+        $accessibleUnits = OrganizationalUnit::active()
+            ->with('type')
+            ->orderBy('depth')
+            ->orderBy('name')
+            ->get();
+        
+        // Verifica se l'utente può modificare l'organigramma
+        $canEdit = $user->hasPermission('gerarchia.edit');
+        
+        return view('organigramma.hierarchy', [
+            'tree' => $tree,
+            'units' => $units,
+            'accessibleUnits' => $accessibleUnits,
+            'canEdit' => $canEdit,
+            'activeUnitId' => $activeUnitId,
+        ]);
+    }
+    
+    /**
+     * Costruisce l'albero gerarchico dalle unità
+     * 
+     * @param \Illuminate\Support\Collection $units
+     * @return array
+     */
+    private function buildHierarchyTree($units)
+    {
+        $tree = [];
+        $lookup = [];
+        
+        // Crea lookup per accesso rapido
+        foreach ($units as $unit) {
+            $lookup[$unit->id] = [
+                'id' => $unit->id,
+                'name' => $unit->name,
+                'code' => $unit->code,
+                'type' => $unit->type,
+                'type_id' => $unit->type_id,
+                'parent_id' => $unit->parent_id,
+                'depth' => $unit->depth,
+                'is_active' => $unit->is_active,
+                'militari_count' => $unit->militari->count(),
+                'children' => [],
+            ];
+        }
+        
+        // Costruisci l'albero
+        foreach ($lookup as $id => &$node) {
+            if ($node['parent_id'] && isset($lookup[$node['parent_id']])) {
+                $lookup[$node['parent_id']]['children'][] = &$node;
+            } else {
+                $tree[] = &$node;
+            }
+        }
+        
+        return $tree;
+    }
+    
+    /**
+     * Ottieni tutti gli ID dei discendenti di un'unità organizzativa
+     * usando parent_id ricorsivamente
+     * 
+     * @param int $unitId
+     * @return array
+     */
+    private function getDescendantIds(int $unitId): array
+    {
+        $descendants = [];
+        $children = OrganizationalUnit::where('parent_id', $unitId)->pluck('id')->toArray();
+        
+        foreach ($children as $childId) {
+            $descendants[] = $childId;
+            $descendants = array_merge($descendants, $this->getDescendantIds($childId));
+        }
+        
+        return $descendants;
+    }
+    
+    /**
+     * Mostra la pagina principale dell'organigramma (SOLA LETTURA)
+     * 
+     * Usa la stessa vista della Gerarchia Organizzativa ma in modalità read-only.
+     * Non sono presenti controlli di modifica.
+     * 
+     * @param Request $request
+     * @return \Illuminate\View\View
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
-        $compagniaSelezionataId = null;
-        
-        // Carica tutte le compagnie per il selettore (solo per admin)
-        $compagnie = collect();
-        if ($user->hasRole('admin') || $user->hasRole('amministratore')) {
-            $compagnie = Compagnia::orderBy('nome')->get();
-            $compagniaSelezionataId = $request->get('compagnia_id');
-        } else {
-            // Utente non admin: usa la sua compagnia
-            $compagniaSelezionataId = $user->compagnia_id;
-        }
-        
-        // Genera chiave cache unica per la compagnia selezionata
-        $cacheKey = 'organigramma.compagnia.' . ($compagniaSelezionataId ?? 'first');
-        
-        // Ottieni la compagnia con caching
-        $compagnia = Cache::remember($cacheKey, self::CACHE_DURATION, function () use ($compagniaSelezionataId) {
-            $query = Compagnia::with([
-                'plotoni' => function ($q) {
-                    $q->orderBy('nome');
-                },
-                'plotoni.militari' => function ($q) {
-                    $q->orderByGradoENome();
-                },
-                'plotoni.militari.grado'
-            ]);
-            
-            if ($compagniaSelezionataId) {
-                return $query->find($compagniaSelezionataId);
-            }
-            
-            return $query->first();
-        });
-        
-        // Carica i poli globali con i militari filtrati per compagnia selezionata
-        $poli = collect();
-        if ($compagnia) {
-            $poli = \App\Models\Polo::with(['militari' => function($q) use ($compagnia) {
-                $q->where('compagnia_id', $compagnia->id)
-                  ->orderByGradoENome();
-            }, 'militari.grado'])
-            ->whereHas('militari', function($q) use ($compagnia) {
-                $q->where('compagnia_id', $compagnia->id);
-            })
-            ->orderBy('nome')
-            ->get();
-        }
-        
-        if (!$compagnia) {
-            // Se non ci sono compagnie, mostra pagina di errore personalizzata
-            return view('errors.custom', [
-                'title' => 'Nessuna compagnia trovata',
-                'message' => 'Non è stata trovata nessuna compagnia nel sistema. Contattare l\'amministratore.'
-            ]);
-        }
-        
-        // Calcola statistiche aggregate (al volo per dati sempre aggiornati)
-        $statistiche = $this->calcolaStatistiche($compagnia, $poli);
-        
-        return view('organigramma.organigramma', array_merge(
-            compact('compagnia', 'compagnie', 'compagniaSelezionataId', 'poli'),
-            $statistiche
-        ));
+        // Modalità SOLA LETTURA - nessun permesso di modifica
+        return view('organizational-hierarchy.index', [
+            'canEdit' => false,
+            'readOnly' => true, // Flag esplicito per la vista read-only
+            'unitTypes' => \App\Models\OrganizationalUnitType::active()->ordered()->get(),
+        ]);
     }
     
     /**

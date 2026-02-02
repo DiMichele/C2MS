@@ -146,6 +146,14 @@
                 @endauth
                 
                 @auth
+                @if(Auth::check() && (Auth::user()->hasPermission('pefo.view') || Auth::user()->hasPermission('admin.access')))
+                <li class="nav-menu-item {{ request()->is('pefo*') ? 'active' : '' }}">
+                    <a href="{{ route('pefo.index') }}">PEFO</a>
+                </li>
+                @endif
+                @endauth
+                
+                @auth
                 @if(Auth::check() && Auth::user()->hasPermission('board.view'))
                 <li class="nav-menu-item {{ request()->is('board*') ? 'active' : '' }}">
                     <a href="{{ route('board.index') }}">
@@ -179,23 +187,18 @@
                 @endif
                 
                 @if(Auth::check() && Auth::user()->hasPermission('admin.access'))
-                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') || request()->is('gestione-ruolini*') || request()->is('gestione-spp*') || request()->is('gestione-poligoni*') || request()->is('gestione-idoneita*') || request()->is('gestione-approntamenti*') || request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
+                <li class="nav-menu-item {{ request()->is('admin*') || request()->is('codici-cpt*') || request()->is('gestione-spp*') || request()->is('gestione-poligoni*') || request()->is('gestione-idoneita*') || request()->is('gestione-approntamenti*') || request()->is('gestione-anagrafica-config*') || request()->is('gestione-campi-anagrafica*') ? 'active' : '' }}">
                     <a href="#">
                         Admin
                     </a>
                     <ul class="nav-dropdown">
-                        <li class="nav-dropdown-item {{ request()->is('admin/utenti*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.users.index') }}">Gestione Utenti</a>
-                        </li>
-                        <li class="nav-dropdown-item {{ request()->is('admin/permessi*') || request()->is('admin/ruoli*') ? 'active' : '' }}">
-                            <a href="{{ route('admin.permissions.index') }}">Gestione Ruoli</a>
+                        <li class="nav-dropdown-item {{ request()->is('admin/permessi') || request()->is('admin/ruoli*') || request()->is('admin/utenti*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.permissions.index') }}">Gestione Utenti e Ruoli</a>
                         </li>
                         <li class="nav-dropdown-item {{ request()->is('codici-cpt*') ? 'active' : '' }}">
-                            <a href="{{ route('codici-cpt.index') }}">Codici CPT</a>
+                            <a href="{{ route('codici-cpt.index') }}">Gestione CPT</a>
                         </li>
-                        <li class="nav-dropdown-item {{ request()->is('gestione-ruolini*') ? 'active' : '' }}">
-                            <a href="{{ route('gestione-ruolini.index') }}">Gestione Ruolini</a>
-                        </li>
+                        {{-- Gestione Ruolini rimossa - funzionalità integrata in Gestione CPT --}}
                         <li class="nav-dropdown-item {{ request()->is('gestione-spp*') ? 'active' : '' }}">
                             <a href="{{ route('gestione-spp.index') }}">Gestione SPP</a>
                         </li>
@@ -231,16 +234,6 @@
         <!-- Auth Menu a destra -->
         <div class="header-auth">
             @auth
-                {{-- Indicatore Unità Organizzativa Corrente --}}
-                @php
-                    $currentUnit = Auth::user()->organizationalUnit ?? null;
-                    $unitName = $currentUnit ? $currentUnit->name : (Auth::user()->compagnia->nome ?? 'Non assegnato');
-                @endphp
-                <span class="unit-badge" title="Unità organizzativa corrente">
-                    <i class="fas fa-sitemap"></i>
-                    {{ Str::limit($unitName, 20) }}
-                </span>
-                
                 <div class="user-menu">
                     <button onclick="window.location='{{ route('profile.index') }}'" class="btn-profile" title="Il Mio Profilo">
                         <i class="fas fa-user-circle me-1"></i>
@@ -261,6 +254,59 @@
             @endauth
         </div>
     </header>
+    
+    {{-- Floating Unit Switcher - Logica intelligente:
+         - 'hidden': una sola compagnia → selettore nascosto
+         - 'flat': più compagnie stessa macro-entità → mostra solo compagnie
+         - 'hierarchical': macro-entità diverse → battaglioni con compagnie indentate
+    --}}
+    @auth
+        @if(isset($showUnitSelector) && $showUnitSelector && isset($accessibleUnits) && $accessibleUnits->count() > 0)
+        <div class="unit-switcher-floating" id="unitSwitcherFloating">
+            {{-- Toggle Button --}}
+            <button class="unit-switcher-toggle" id="unitSwitcherToggle" type="button" title="Cambia unità organizzativa">
+                <span class="current-unit" id="currentUnitName">
+                    {{ isset($activeUnit) && $activeUnit ? $activeUnit->name : 'Seleziona unità' }}
+                </span>
+                <i class="fas fa-chevron-down chevron"></i>
+            </button>
+            
+            {{-- Dropdown delle unità --}}
+            <div class="unit-switcher-dropdown" id="unitSwitcherDropdown">
+                @foreach($accessibleUnits as $unit)
+                    @if(isset($unitSelectorMode) && $unitSelectorMode === 'hierarchical' && isset($unit->is_header) && $unit->is_header)
+                        {{-- Header battaglione - cliccabile se non ha subordinate accessibili --}}
+                        @if(isset($unit->is_clickable_header) && $unit->is_clickable_header)
+                            {{-- Header cliccabile (nessuna subordinata accessibile) --}}
+                            <div class="unit-option unit-option-header-clickable {{ isset($activeUnit) && $activeUnit && $unit->id == $activeUnit->id ? 'active' : '' }}"
+                                 data-unit-id="{{ $unit->id }}"
+                                 data-unit-name="{{ $unit->name }}"
+                                 data-type="{{ $unit->type?->code ?? '' }}"
+                                 data-color="{{ $unit->type?->color ?? '#0A2342' }}">
+                                {{ $unit->name }}
+                            </div>
+                        @else
+                            {{-- Header non selezionabile (ha subordinate) --}}
+                            <div class="unit-option-header">
+                                {{ $unit->name }}
+                            </div>
+                        @endif
+                    @else
+                        {{-- Compagnia selezionabile --}}
+                        <div class="unit-option {{ isset($activeUnit) && $activeUnit && $unit->id == $activeUnit->id ? 'active' : '' }} {{ isset($unit->indent_level) && $unit->indent_level > 0 ? 'indented' : '' }}"
+                             data-unit-id="{{ $unit->id }}"
+                             data-unit-name="{{ $unit->name }}"
+                             data-type="{{ $unit->type?->code ?? '' }}"
+                             data-color="{{ $unit->type?->color ?? '#0A2342' }}">
+                            {{ $unit->name }}
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+        </div>
+        @endif
+        {{-- Se showUnitSelector è false, il selettore NON viene mostrato --}}
+    @endauth
     
     <!-- Main Content -->
     <main class="main-content">
@@ -294,9 +340,19 @@
     <script src="{{ asset('js/sugeco-filters.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/search-fixed.js') }}?v={{ time() }}&bust={{ rand(1000,9999) }}&debug=true"></script>
     <script src="{{ asset('js/autosave.js') }}?v={{ time() }}"></script>
+    {{-- API URLs globali per JavaScript --}}
+    <script>
+        window.SUGECO_API = {
+            unitSwitch: '{{ route('unit.switch') }}',
+            unitAccessible: '{{ route('unit.accessible') }}',
+            unitActive: '{{ route('unit.active') }}'
+        };
+    </script>
+    
     <script src="{{ asset('js/certificate-tooltips.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/militare.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/table-navigation.js') }}?v={{ time() }}"></script>
+    <script src="{{ asset('js/unit-switcher.js') }}?v={{ time() }}"></script>
     <script src="{{ asset('js/main.js') }}?v={{ time() }}"></script>
     
     <!-- Script per gestione filtri -->

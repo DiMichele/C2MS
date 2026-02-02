@@ -3,6 +3,34 @@
 @section('title', 'Gestione SPP - SUGECO')
 
 @section('content')
+<style>
+/* Pulsante clear search */
+.btn-clear-search {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 4px 8px;
+    z-index: 5;
+}
+.btn-clear-search:hover {
+    color: #dc3545;
+}
+
+/* Filter label style */
+.filter-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+</style>
 <div class="container-fluid">
     <!-- Header Centrato -->
     <div class="text-center mb-4">
@@ -21,54 +49,35 @@
                 aria-label="Cerca corso" 
                 autocomplete="off"
                 style="padding-left: 40px; border-radius: 6px !important;">
+            <button type="button" id="clearSearch" class="btn-clear-search" style="display: none;" title="Pulisci ricerca">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     </div>
 
-    <!-- Filtri -->
-    <div class="d-flex justify-content-start align-items-center mb-3">
-        <button id="toggleFilters" class="btn btn-primary {{ request()->filled('tipo') ? 'active' : '' }}" style="border-radius: 6px !important;">
-            <i id="toggleFiltersIcon" class="fas fa-filter me-2"></i> 
-            <span id="toggleFiltersText">
-                {{ request()->filled('tipo') ? 'Nascondi filtri' : 'Mostra filtri' }}
-            </span>
-        </button>
-    </div>
-
-    <!-- Sezione Filtri -->
-    <div id="filtersContainer" class="filter-section {{ request()->filled('tipo') ? 'visible' : '' }}" style="max-width: 600px; margin: 0 auto 1.5rem auto;">
-        <div class="filter-card mb-3">
-            <div class="filter-card-header d-flex justify-content-between align-items-center" style="padding: 0.75rem 1rem;">
-                <div style="font-size: 0.95rem;">
-                    <i class="fas fa-filter me-2"></i> Filtri
-                </div>
+    <!-- Filtri inline (stile CPT) -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <!-- Filtro Tipo Corso -->
+            <div>
+                <label for="tipoFilter" class="filter-label d-block">Tipo Corso</label>
+                <select id="tipoFilter" class="form-select form-select-sm" style="min-width: 200px; border-radius: 6px !important;">
+                    <option value="">Tutti i tipi</option>
+                    <option value="formazione">Corsi di Formazione</option>
+                    <option value="accordo_stato_regione">Corsi Accordo Stato Regione</option>
+                </select>
             </div>
-            <div class="card-body p-2">
-                <form id="filtroForm" action="{{ route('gestione-spp.index') }}" method="GET">
-                    <div class="row justify-content-center">
-                        <!-- Filtro Tipo -->
-                        <div class="col-12">
-                            <label for="tipo" class="form-label" style="font-size: 0.9rem; margin-bottom: 0.25rem;">
-                                <i class="fas fa-tag me-1"></i> Tipo Corso
-                            </label>
-                            <div class="select-wrapper">
-                                <select name="tipo" id="tipoFilter" class="form-select form-select-sm filter-select {{ request('tipo') ? 'applied' : '' }}">
-                                    <option value="">Tutti i tipi</option>
-                                    <option value="formazione" {{ request('tipo') == 'formazione' ? 'selected' : '' }}>Corsi di Formazione</option>
-                                    <option value="accordo_stato_regione" {{ request('tipo') == 'accordo_stato_regione' ? 'selected' : '' }}>Corsi Accordo Stato Regione</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    @if(request()->filled('tipo'))
-                    <div class="d-flex justify-content-center mt-2">
-                        <a href="{{ route('gestione-spp.index') }}" class="btn btn-danger btn-sm">
-                            <i class="fas fa-times-circle me-1"></i> Rimuovi filtro
-                        </a>
-                    </div>
-                    @endif
-                </form>
+            
+            <!-- Pulsante Rimuovi filtri (appare quando filtri attivi) -->
+            <div id="resetFiltersContainer" style="display: none; align-self: flex-end;">
+                <button type="button" id="resetAllFilters" class="btn btn-danger btn-sm" style="border-radius: 6px !important;">
+                    <i class="fas fa-times-circle me-1"></i>Rimuovi filtri
+                </button>
             </div>
+        </div>
+        
+        <div>
+            {{-- Spazio per eventuali pulsanti azione --}}
         </div>
     </div>
 
@@ -77,6 +86,7 @@
         <table class="sugeco-table" id="corsiTable">
             <thead>
                 <tr>
+                    <th style="width: 40px;"></th>
                     <th>Nome Corso</th>
                     <th>Tipo</th>
                     <th>Durata (anni)</th>
@@ -86,8 +96,12 @@
             <tbody id="corsiTableBody">
                 @forelse($corsi as $corso)
                 <tr data-corso-id="{{ $corso->id }}" 
+                    data-id="{{ $corso->id }}"
                     data-nome="{{ $corso->nome_corso }}"
                     data-tipo="{{ $corso->tipo }}">
+                    <td class="text-center drag-handle" style="cursor: move;">
+                        <i class="fas fa-grip-vertical text-muted"></i>
+                    </td>
                     <td><strong>{{ $corso->nome_corso }}</strong></td>
                     <td>
                         @if($corso->tipo === 'formazione')
@@ -127,7 +141,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-5">
+                    <td colspan="5" class="text-center text-muted py-5">
                         <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
                         <p class="mb-0">Nessun corso configurato</p>
                     </td>
@@ -139,7 +153,7 @@
 </div>
 
 <!-- Floating Action Button -->
-<button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createCorsoModal" title="Nuovo Corso">
+<button class="fab fab-success" data-bs-toggle="modal" data-bs-target="#createCorsoModal" data-tooltip="Nuovo Corso" aria-label="Nuovo Corso">
     <i class="fas fa-plus"></i>
 </button>
 
@@ -158,7 +172,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="nome_corso" class="form-label">
-                            <i class="fas fa-graduation-cap me-1"></i>Nome Corso <span class="text-danger">*</span>
+                            Nome Corso <span class="text-danger">*</span>
                         </label>
                         <input type="text" 
                                class="form-control" 
@@ -170,7 +184,7 @@
                     
                     <div class="mb-3">
                         <label for="tipo" class="form-label">
-                            <i class="fas fa-tag me-1"></i>Tipo Corso <span class="text-danger">*</span>
+                            Tipo Corso <span class="text-danger">*</span>
                         </label>
                         <select class="form-select" id="tipo" name="tipo" required>
                             <option value="">Seleziona tipo...</option>
@@ -181,7 +195,7 @@
                     
                     <div class="mb-3">
                         <label for="durata_anni" class="form-label">
-                            <i class="fas fa-clock me-1"></i>Durata Validità (anni) <span class="text-danger">*</span>
+                            Durata Validità (anni) <span class="text-danger">*</span>
                         </label>
                         <input type="number" 
                                class="form-control" 
@@ -222,7 +236,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="edit_nome_corso" class="form-label">
-                            <i class="fas fa-graduation-cap me-1"></i>Nome Corso <span class="text-danger">*</span>
+                            Nome Corso <span class="text-danger">*</span>
                         </label>
                         <input type="text" 
                                class="form-control" 
@@ -233,7 +247,7 @@
                     
                     <div class="mb-3">
                         <label for="edit_tipo" class="form-label">
-                            <i class="fas fa-tag me-1"></i>Tipo Corso <span class="text-danger">*</span>
+                            Tipo Corso <span class="text-danger">*</span>
                         </label>
                         <select class="form-select" id="edit_tipo" name="tipo" required>
                             <option value="formazione">Corsi di Formazione</option>
@@ -243,7 +257,7 @@
                     
                     <div class="mb-3">
                         <label for="edit_durata_anni" class="form-label">
-                            <i class="fas fa-clock me-1"></i>Durata Validità (anni) <span class="text-danger">*</span>
+                            Durata Validità (anni) <span class="text-danger">*</span>
                         </label>
                         <input type="number" 
                                class="form-control" 
@@ -497,14 +511,36 @@
         });
 
         // Ricerca e filtri
+        const clearSearchBtn = document.getElementById('clearSearch');
+        const resetFiltersContainer = document.getElementById('resetFiltersContainer');
+        const resetAllFiltersBtn = document.getElementById('resetAllFilters');
+        const tipoFilter = document.getElementById('tipoFilter');
+        
         if (searchInput) {
             searchInput.addEventListener('input', filterTable);
             searchInput.addEventListener('keyup', filterTable);
         }
         
-        const tipoFilter = document.getElementById('tipoFilter');
         if (tipoFilter) {
             tipoFilter.addEventListener('change', filterTable);
+        }
+        
+        // Clear search button
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                filterTable();
+                searchInput.focus();
+            });
+        }
+        
+        // Reset all filters
+        if (resetAllFiltersBtn) {
+            resetAllFiltersBtn.addEventListener('click', function() {
+                if (searchInput) searchInput.value = '';
+                if (tipoFilter) tipoFilter.value = '';
+                filterTable();
+            });
         }
 
         function filterTable() {
@@ -527,6 +563,58 @@
                     visibili++;
                 } else {
                     row.style.display = 'none';
+                }
+            });
+            
+            // Aggiorna visibilità pulsante clear search
+            if (clearSearchBtn) {
+                clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+            }
+            
+            // Aggiorna visibilità e contenuto pulsante reset filtri
+            const hasFilters = searchTerm || tipoValue;
+            if (resetFiltersContainer) {
+                resetFiltersContainer.style.display = hasFilters ? 'block' : 'none';
+            }
+            
+            // Evidenzia select quando ha un valore
+            if (tipoFilter) {
+                tipoFilter.style.borderColor = tipoValue ? '#198754' : '';
+                tipoFilter.style.boxShadow = tipoValue ? '0 0 0 2px rgba(25, 135, 84, 0.25)' : '';
+            }
+        }
+
+        // SortableJS per drag & drop riordino
+        if (tbody && typeof Sortable !== 'undefined') {
+            new Sortable(tbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function(evt) {
+                    const rows = tbody.querySelectorAll('tr[data-id]');
+                    const ordini = [];
+                    rows.forEach(function(row) {
+                        ordini.push(row.dataset.id);
+                    });
+                    
+                    // Salva il nuovo ordine
+                    fetch('{{ route("gestione-spp.update-order") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ ordini: ordini })
+                    })
+                    .then(function(response) { return response.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            showSuccess('Ordine aggiornato!');
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Errore salvataggio ordine:', error);
+                    });
                 }
             });
         }

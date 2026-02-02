@@ -8,6 +8,18 @@ use Illuminate\Support\Facades\Auth;
 /**
  * SUGECO: Trait per Segregazione Dati per Compagnia
  * 
+ * @deprecated Questo trait è deprecato. Usare BelongsToOrganizationalUnit invece.
+ * 
+ * MIGRAZIONE MULTI-TENANCY:
+ * Questo trait è mantenuto per retrocompatibilità durante la transizione
+ * al nuovo sistema basato su OrganizationalUnit. I nuovi modelli dovrebbero
+ * usare BelongsToOrganizationalUnit che applica OrganizationalUnitScope.
+ * 
+ * Per migrare un modello:
+ * 1. Sostituire `use BelongsToCompagnia` con `use BelongsToOrganizationalUnit`
+ * 2. Assicurarsi che il modello abbia organizational_unit_id nei $fillable
+ * 3. Creare una migration per popolare organizational_unit_id dai dati legacy
+ * 
  * Questo trait deve essere usato da TUTTI i modelli che contengono
  * dati sensibili da segregare per compagnia.
  * 
@@ -22,6 +34,7 @@ use Illuminate\Support\Facades\Auth;
  * @package App\Traits
  * @version 1.0
  * @author Michele Di Gennaro
+ * @deprecated Usare BelongsToOrganizationalUnit invece
  */
 trait BelongsToCompagnia
 {

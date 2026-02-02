@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per le Prenotazioni Approntamenti
@@ -29,7 +30,7 @@ use Carbon\Carbon;
  */
 class PrenotazioneApprontamento extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -40,6 +41,7 @@ class PrenotazioneApprontamento extends Model
      * Attributi assegnabili in massa
      */
     protected $fillable = [
+        'organizational_unit_id',
         'militare_id',
         'teatro_operativo_id',
         'cattedra',

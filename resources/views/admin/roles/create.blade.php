@@ -41,6 +41,35 @@
 
                         <!-- Campo nascosto per il nome tecnico -->
                         <input type="hidden" id="name" name="name" value="">
+                        
+                        <!-- Select Macro-entità di appartenenza -->
+                        <div class="mb-4">
+                            <label for="organizational_unit_id" class="form-label fw-bold">
+                                Macro-entità di appartenenza *
+                            </label>
+                            <select class="form-select @error('organizational_unit_id') is-invalid @enderror" 
+                                    id="organizational_unit_id" 
+                                    name="organizational_unit_id">
+                                <option value="" data-is-global="true" {{ old('organizational_unit_id') === null ? 'selected' : '' }}>
+                                    -- Globale (visibile in tutte le unità) --
+                                </option>
+                                @foreach($organizationalUnits->where('depth', 1) as $unit)
+                                    <option value="{{ $unit->id }}" 
+                                            {{ old('organizational_unit_id') == $unit->id ? 'selected' : '' }}>
+                                        {{ $unit->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="form-text">
+                                Seleziona la macro-entità a cui appartiene il ruolo o lascia "Globale" per un ruolo valido in tutte le unità
+                            </div>
+                            @error('organizational_unit_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        
+                        <!-- Campo nascosto per is_global -->
+                        <input type="hidden" id="is_global" name="is_global" value="{{ old('is_global', '1') }}">
 
                         <hr class="my-4">
 
@@ -158,6 +187,20 @@ document.getElementById('display_name').addEventListener('input', function() {
         .trim()
         .replace(/\s+/g, '_'); // Sostituisci spazi con underscore
     document.getElementById('name').value = technicalName;
+});
+
+// Gestione is_global basato sulla selezione della macro-entità
+document.getElementById('organizational_unit_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const isGlobal = selectedOption.dataset.isGlobal === 'true' || this.value === '';
+    document.getElementById('is_global').value = isGlobal ? '1' : '0';
+});
+
+// Inizializza al caricamento della pagina
+document.addEventListener('DOMContentLoaded', function() {
+    const unitSelect = document.getElementById('organizational_unit_id');
+    const isGlobal = unitSelect.value === '';
+    document.getElementById('is_global').value = isGlobal ? '1' : '0';
 });
 </script>
 @endsection

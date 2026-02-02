@@ -1,5 +1,76 @@
 <?php
 
+use App\Models\OrganizationalUnit;
+
+// =========================================================================
+// HELPER FUNZIONI UNITÀ ORGANIZZATIVA
+// =========================================================================
+
+if (! function_exists('activeUnit')) {
+    /**
+     * Ottiene l'unità organizzativa attualmente attiva per l'utente.
+     * 
+     * @return OrganizationalUnit|null
+     */
+    function activeUnit(): ?OrganizationalUnit
+    {
+        if (!app()->bound('active_unit')) {
+            return null;
+        }
+        return app('active_unit');
+    }
+}
+
+if (! function_exists('activeUnitId')) {
+    /**
+     * Ottiene l'ID dell'unità organizzativa attualmente attiva.
+     * 
+     * @return int|null
+     */
+    function activeUnitId(): ?int
+    {
+        if (!app()->bound('active_unit_id')) {
+            return null;
+        }
+        return app('active_unit_id');
+    }
+}
+
+if (! function_exists('isActiveUnit')) {
+    /**
+     * Verifica se un'unità è l'unità attiva corrente.
+     * 
+     * @param OrganizationalUnit|int $unit Unità o ID da verificare
+     * @return bool
+     */
+    function isActiveUnit($unit): bool
+    {
+        $unitId = $unit instanceof OrganizationalUnit ? $unit->id : $unit;
+        return activeUnitId() === $unitId;
+    }
+}
+
+if (! function_exists('canEditInActiveUnit')) {
+    /**
+     * Verifica se un modello può essere modificato (appartiene all'unità attiva).
+     * 
+     * @param mixed $model Modello con organizational_unit_id
+     * @return bool
+     */
+    function canEditInActiveUnit($model): bool
+    {
+        if (!$model || !isset($model->organizational_unit_id)) {
+            return false;
+        }
+        
+        return $model->organizational_unit_id === activeUnitId();
+    }
+}
+
+// =========================================================================
+// HELPER FUNZIONI CERTIFICATI
+// =========================================================================
+
 if (! function_exists('getCertificateInfo')) {
     function getCertificateInfo($cert, $isFemminile = false)
     {

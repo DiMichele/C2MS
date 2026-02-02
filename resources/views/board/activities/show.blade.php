@@ -540,53 +540,7 @@
     font-size: 0.9375rem;
 }
 
-/* ==========================================
-   FLOATING EXPORT BUTTON
-   ========================================== */
-
-.fab-export {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #217346 0%, #1e6b3e 100%);
-    color: white;
-    font-size: 1.25rem;
-    text-decoration: none;
-    box-shadow: 0 4px 15px rgba(33, 115, 70, 0.4);
-    transition: all 0.3s ease;
-    z-index: 1000;
-}
-
-.fab-export:hover {
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 8px 25px rgba(33, 115, 70, 0.5);
-    color: white;
-}
-
-.fab-export .fab-tooltip {
-    position: absolute;
-    right: 65px;
-    background: var(--navy);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.8125rem;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.2s ease;
-}
-
-.fab-export:hover .fab-tooltip {
-    opacity: 1;
-    visibility: visible;
-}
+/* Floating button usa gli stili globali da global.css */
 
 /* ==========================================
    DELETE BUTTON IN HEADER
@@ -864,16 +818,6 @@
         flex: 1 1 100%;
     }
     
-    .fab-export {
-        bottom: 20px;
-        right: 20px;
-        width: 50px;
-        height: 50px;
-    }
-    
-    .fab-export .fab-tooltip {
-        display: none;
-    }
 }
 
 /* Scrollbar */
@@ -1187,8 +1131,7 @@
 </div>
 
 {{-- Floating Export Button --}}
-<a href="{{ route('board.activities.export', $activity) }}" class="fab-export" title="Esporta Excel">
-    <span class="fab-tooltip">Esporta Excel</span>
+<a href="{{ route('board.activities.export', $activity) }}" class="fab fab-excel" data-tooltip="Esporta Excel" aria-label="Esporta Excel">
     <i class="fas fa-file-excel"></i>
 </a>
 

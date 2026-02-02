@@ -1456,18 +1456,19 @@ class ApprontamentiController extends Controller
                 // Crea una nuova attività
                 $teatro = TeatroOperativo::find($teatroId);
                 
-                // Determina la compagnia mounting (usa la prima compagnia dei militari)
+                // Determina la compagnia mounting (usa la prima compagnia dei militari) - mantenuto per legacy
                 $primoMilitare = Militare::find($militariIds[0]);
                 $compagniaMountingId = $primoMilitare?->compagnia_id ?? 1;
 
+                // organizational_unit_id viene assegnato automaticamente dal trait BelongsToOrganizationalUnit
                 $activity = BoardActivity::create([
                     'title' => $titolo,
                     'description' => "Cattedra approntamento per " . ($teatro->nome ?? 'Teatro Operativo'),
                     'start_date' => $data->format('Y-m-d'),
                     'end_date' => $data->format('Y-m-d'),
                     'column_id' => $columnaCattedre->id,
-                    'compagnia_id' => $compagniaMountingId,
-                    'compagnia_mounting_id' => $compagniaMountingId,
+                    'compagnia_id' => $compagniaMountingId, // Mantenuto per compatibilità legacy
+                    'compagnia_mounting_id' => $compagniaMountingId, // Mantenuto per compatibilità legacy
                     'sigla_cpt_suggerita' => 'Cattedra',
                     'created_by' => auth()->id() ?? 1,
                     'order' => BoardActivity::where('column_id', $columnaCattedre->id)->max('order') + 1

@@ -4,12 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Modello per i tipi di servizio
  * 
  * Rappresenta i diversi tipi di servizio che possono essere assegnati
  * ai militari nei calendari giornalieri (TO, lo, S-UI, p, etc.)
+ * 
+ * NOTA: Questo modello NON usa BelongsToOrganizationalUnit standard
+ * perché i tipi servizio sono configurazioni ereditate dalla gerarchia.
+ * Un'unità subordinata deve vedere i tipi della propria macro-entità.
  * 
  * @property int $id
  * @property string $codice
@@ -28,6 +33,53 @@ use Illuminate\Database\Eloquent\Model;
 class TipoServizio extends Model
 {
     use HasFactory;
+    
+    /**
+     * Boot del modello: applica scope personalizzato per ereditarietà configurazioni
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('inheritedConfig', function ($builder) {
+            $activeUnitId = activeUnitId();
+            
+            if (!$activeUnitId) {
+                return;
+            }
+            
+            // Per le configurazioni, mostra sia i tipi dell'unità attiva 
+            // che quelli degli ANCESTOR (macro-entità parent)
+            $unitIds = self::getUnitWithAncestors($activeUnitId);
+            
+            $builder->whereIn('organizational_unit_id', $unitIds);
+        });
+    }
+    
+    /**
+     * Ottiene l'unità attiva + tutti i suoi ancestor (per ereditarietà configurazioni)
+     */
+    protected static function getUnitWithAncestors(int $unitId): array
+    {
+        try {
+            // Usa la closure table per ottenere tutti gli ancestor
+            $ancestorIds = DB::table('unit_closure')
+                ->where('descendant_id', $unitId)
+                ->pluck('ancestor_id')
+                ->toArray();
+            
+            // Assicurati che l'unità stessa sia inclusa
+            return array_unique(array_merge([$unitId], $ancestorIds));
+        } catch (\Exception $e) {
+            return [$unitId];
+        }
+    }
+    
+    /**
+     * Relazione con l'unità organizzativa
+     */
+    public function organizationalUnit()
+    {
+        return $this->belongsTo(OrganizationalUnit::class, 'organizational_unit_id');
+    }
 
     /**
      * Nome della tabella associata al modello
@@ -38,6 +90,7 @@ class TipoServizio extends Model
      * Attributi assegnabili in massa
      */
     protected $fillable = [
+        'organizational_unit_id',
         'codice',
         'nome',
         'descrizione',

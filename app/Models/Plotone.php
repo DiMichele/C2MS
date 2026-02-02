@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Militare;
 use App\Models\Compagnia;
-use App\Traits\BelongsToCompagnia;
+use App\Traits\BelongsToOrganizationalUnit;
 
 /**
  * Modello per i plotoni militari
@@ -48,7 +48,7 @@ use App\Traits\BelongsToCompagnia;
  */
 class Plotone extends Model
 {
-    use HasFactory, BelongsToCompagnia;
+    use HasFactory, BelongsToOrganizationalUnit;
 
     /**
      * Nome della tabella associata al modello
@@ -62,7 +62,7 @@ class Plotone extends Model
      * 
      * @var array<string>
      */
-    protected $fillable = ['nome', 'compagnia_id'];
+    protected $fillable = ['nome', 'compagnia_id', 'organizational_unit_id'];
 
     // ==========================================
     // RELAZIONI

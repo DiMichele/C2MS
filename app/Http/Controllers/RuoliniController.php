@@ -48,6 +48,10 @@ class RuoliniController extends Controller
 
     /**
      * Mostra la pagina dei ruolini con il personale diviso per categorie
+     * 
+     * ARCHITETTURA MULTI-TENANCY:
+     * - OrganizationalUnitScope filtra automaticamente per activeUnitId()
+     * - Se admin cambia unità nel dropdown, vede solo militari di quell'unità
      */
     public function index(Request $request)
     {
@@ -58,68 +62,35 @@ class RuoliniController extends Controller
         $dataObj = Carbon::parse($dataSelezionata);
         
         // Recupera filtri dalla richiesta
-        $compagniaId = $request->get('compagnia_id');
         $plotoneId = $request->get('plotone_id');
         $ufficioId = $request->get('ufficio_id');
         
-        // SICUREZZA: Recupera solo le compagnie visibili all'utente
+        // MULTI-TENANCY: L'unità attiva è già gestita dal middleware SetActiveOrganizationalUnit
+        // e rispettata dall'OrganizationalUnitScope
+        $activeUnitId = activeUnitId();
+        
+        // Carica le compagnie legacy per compatibilità con i filtri esistenti
+        // (verranno rimossi in futuro)
         $compagnie = $user->getVisibleCompagnie();
+        $compagniaId = $request->get('compagnia_id');
         
-        // Se l'utente non è admin e non ha selezionato una compagnia, usa la sua
-        if (!$user->hasGlobalVisibility() && empty($compagniaId)) {
-            $compagniaId = $user->compagnia_id;
-        }
-        
-        // SICUREZZA: Verifica che l'utente possa accedere alla compagnia selezionata
-        if ($compagniaId && !$user->canAccessCompagnia((int)$compagniaId)) {
-            // Se non può accedere, redirect alla sua compagnia o senza filtro
-            if ($user->compagnia_id) {
-                return redirect()->route('ruolini.index', [
-                    'data' => $dataSelezionata,
-                    'compagnia_id' => $user->compagnia_id
-                ])->with('error', 'Non hai i permessi per visualizzare i ruolini di quella compagnia.');
-            }
-            $compagniaId = null;
-        }
-        
-        // Plotoni - carica tutti quelli delle compagnie visibili per filtraggio client-side
-        $compagnieIds = $compagnie->pluck('id')->toArray();
-        $plotoni = Plotone::whereIn('compagnia_id', $compagnieIds)
-            ->orderBy('compagnia_id')
-            ->orderBy('nome')
-            ->get();
+        // Plotoni - carica quelli dell'unità attiva o delle compagnie visibili
+        $plotoni = Plotone::orderBy('nome')->get();
 
-        // Uffici (Poli) - non filtrati per compagnia perché la tabella non ha quella colonna
+        // Uffici (Poli) - non filtrati
         $uffici = Polo::orderBy('nome')->get();
         
-        // Query base per i militari - carica tutti quelli delle compagnie visibili
-        // Il filtraggio per compagnia/plotone/ufficio avviene client-side
+        // Query base per i militari - OrganizationalUnitScope filtra automaticamente
+        // in base all'unità attiva (anche per admin)
         $query = Militare::with([
             'grado',
             'plotone.compagnia',
-            'compagnia'
+            'compagnia',
+            'organizationalUnit'
         ])->orderByGradoENome();
         
-        // Filtra solo per compagnie visibili all'utente (sicurezza)
-        if (!$user->hasGlobalVisibility() && $user->compagnia_id) {
-            // Utente normale: vede solo la sua compagnia
-            $query->where(function($q) use ($user) {
-                $q->whereHas('plotone', function($subq) use ($user) {
-                    $subq->where('compagnia_id', $user->compagnia_id);
-                })
-                ->orWhere('compagnia_id', $user->compagnia_id);
-            });
-        } elseif ($user->hasGlobalVisibility() && !empty($compagnieIds)) {
-            // Admin: vede tutte le compagnie visibili
-            $query->where(function($q) use ($compagnieIds) {
-                $q->whereHas('plotone', function($subq) use ($compagnieIds) {
-                    $subq->whereIn('compagnia_id', $compagnieIds);
-                })
-                ->orWhereIn('compagnia_id', $compagnieIds);
-            });
-        }
-        
-        // NON filtrare per compagnia/plotone/ufficio qui - lo facciamo client-side
+        // Il filtraggio è già applicato dall'OrganizationalUnitScope
+        // Filtri aggiuntivi client-side per plotone/ufficio
         
         $militari = $query->get();
         
